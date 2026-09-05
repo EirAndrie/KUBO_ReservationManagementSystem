@@ -48,11 +48,11 @@ The `repository` folder lives directly under each feature folder (no intermediat
 
 ```mermaid
 flowchart LR
-    A[End User (Frontend)] --> B[Express Router]
+    A[Frontend] --> B[Express Router]
     B --> C[Zod Validation]
     C --> D[Controller]
     D --> E[Service]
-    E --> F[Repository / Queries]
+    E --> F[Repository]
     F --> G[Drizzle ORM]
     G --> H[Neon PostgreSQL]
 ```
