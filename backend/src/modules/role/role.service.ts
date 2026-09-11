@@ -10,6 +10,7 @@ import {
 import { roleRelations } from "./repositories/role.relations";
 import { Pagination } from "../../utils/pagination";
 import { getPaginationMeta } from "../../utils/pagination";
+import { RoleCreateDTO, RoleUpdateDTO } from "./repositories/role.validations";
 
 // Service layer – thin wrappers around query functions (and relationships)
 
@@ -33,15 +34,17 @@ export const getRoleByIdService = async (
       return await getRoleById(roleId);
 };
 
-export const createRoleService = async (data: NewRole): Promise<Role> => {
-      return await createRole(data);
+export const createRoleService = async (data: RoleCreateDTO): Promise<Role> => {
+      // DTO matches NewRole shape, safe cast
+      return await createRole(data as NewRole);
 };
 
 export const updateRoleService = async (
       roleId: string,
-      data: Partial<NewRole>,
+      data: RoleUpdateDTO,
 ): Promise<Role | undefined> => {
-      return await updateRole(roleId, data);
+      // DTO may be partial, cast to Partial<NewRole>
+      return await updateRole(roleId, data as Partial<NewRole>);
 };
 
 export const deleteRoleService = async (roleId: string): Promise<void> => {

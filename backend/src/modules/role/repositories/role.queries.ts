@@ -4,11 +4,10 @@
 import { db } from "../../../config/connectDB";
 import { eq } from "drizzle-orm";
 import { role } from "./role.model";
-import type { InferModel } from "drizzle-orm";
 
-// Type definitions for Role records
-export type Role = InferModel<typeof role>;
-export type NewRole = InferModel<typeof role, "insert">;
+// Type definitions for Role records using Drizzle inference
+export type Role = typeof role.$inferSelect;
+export type NewRole = typeof role.$inferInsert;
 
 // Get all roles
 export const getAllRoles = async (): Promise<Role[]> => {
