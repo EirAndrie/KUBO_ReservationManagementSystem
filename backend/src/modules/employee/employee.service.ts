@@ -10,8 +10,14 @@ import {
 import { employeeRelations } from "./repositories/employee.relations";
 import { Pagination } from "../../utils/pagination";
 import { getPaginationMeta } from "../../utils/pagination";
+import {
+      EmployeeCreateDTO,
+      EmployeeUpdateDTO,
+} from "./repositories/employee.validations";
 
-export const getAllEmployeesService = async (pagination?: Pagination): Promise<{ data: Employee[]; meta?: any }> => {
+export const getAllEmployeesService = async (
+      pagination?: Pagination,
+): Promise<{ data: Employee[]; meta?: any }> => {
       const data = await getAllEmployees();
       if (pagination) {
             const total = data.length; // Placeholder; replace with count query
@@ -21,22 +27,34 @@ export const getAllEmployeesService = async (pagination?: Pagination): Promise<{
       return { data };
 };
 
-export const getEmployeeByIdService = async (employeeId: string): Promise<Employee | undefined> => {
+export const getEmployeeByIdService = async (
+      employeeId: string,
+): Promise<Employee | undefined> => {
       return await getEmployeeById(employeeId);
 };
 
-export const createEmployeeService = async (data: NewEmployee): Promise<Employee> => {
-      return await createEmployee(data);
+export const createEmployeeService = async (
+      data: EmployeeCreateDTO,
+): Promise<Employee> => {
+      // DTO matches NewEmployee shape, safe to pass to query
+      return await createEmployee(data as NewEmployee);
 };
 
-export const updateEmployeeService = async (employeeId: string, data: Partial<NewEmployee>): Promise<Employee | undefined> => {
-      return await updateEmployee(employeeId, data);
+export const updateEmployeeService = async (
+      employeeId: string,
+      data: EmployeeUpdateDTO,
+): Promise<Employee | undefined> => {
+      return await updateEmployee(employeeId, data as Partial<NewEmployee>);
 };
 
-export const deleteEmployeeService = async (employeeId: string): Promise<void> => {
+export const deleteEmployeeService = async (
+      employeeId: string,
+): Promise<void> => {
       await deleteEmployee(employeeId);
 };
 
-export const getRoleForEmployeeService = async (roleId: string): Promise<any> => {
+export const getRoleForEmployeeService = async (
+      roleId: string,
+): Promise<any> => {
       return await employeeRelations.getRoleForEmployee(roleId);
 };

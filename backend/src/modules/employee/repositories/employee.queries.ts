@@ -4,16 +4,17 @@
 import { db } from "../../../config/connectDB";
 import { eq } from "drizzle-orm";
 import { employee } from "./employee.model";
-import type { InferModel } from "drizzle-orm";
 
-export type Employee = InferModel<typeof employee>;
-export type NewEmployee = InferModel<typeof employee, "insert">;
+export type Employee = typeof employee.$inferSelect;
+export type NewEmployee = typeof employee.$inferInsert;
 
 export const getAllEmployees = async (): Promise<Employee[]> => {
       return await db.select().from(employee);
 };
 
-export const getEmployeeById = async (employeeId: string): Promise<Employee | undefined> => {
+export const getEmployeeById = async (
+      employeeId: string,
+): Promise<Employee | undefined> => {
       const result = await db
             .select()
             .from(employee)
@@ -27,7 +28,10 @@ export const createEmployee = async (data: NewEmployee): Promise<Employee> => {
       return created;
 };
 
-export const updateEmployee = async (employeeId: string, data: Partial<NewEmployee>): Promise<Employee | undefined> => {
+export const updateEmployee = async (
+      employeeId: string,
+      data: Partial<NewEmployee>,
+): Promise<Employee | undefined> => {
       const result = await db
             .update(employee)
             .set(data)
