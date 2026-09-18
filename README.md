@@ -1,210 +1,454 @@
 # KUBO Reservation Management System
 
-## Overview
+A reservation management system for resort operations, built with the **PERN stack**.
 
-This repository contains a **PERN** (PostgreSQL, Express, React, Node) stack application that uses **Drizzle ORM** for type‑safe database interactions and **Zod** for request validation. The backend lives in the `backend/` directory and can be connected to a PostgreSQL instance hosted on **Neon**.
-
-## Architecture Overview
-
-The backend follows a **feature‑based (module) architecture**. Each business feature lives under `src/modules/<feature>/`.
-
-```
-src/
- └─ modules/
-      ├─ room/
-      │   ├─ repository/
-      │   │   ├─ room.model.ts
-      │   │   ├─ room.queries.ts
-      │   │   └─ room.relations.ts
-      │   ├─ routes/
-      │   │   └─ room.routes.ts
-      │   ├─ controllers/
-      │   │   └─ room.controllers.ts
-      │   ├─ services/
-      │   │   └─ room.services.ts
-      │   └─ validations/
-      │       └─ room.validation.ts
-      └─ ... (other features)
-```
-
-The `repository` folder lives directly under each feature folder (no intermediate `entities` layer).
-
-**Naming conventions**
-
-- **Models / Queries / Relations**: `room.model.ts`, `room.queries.ts`, `room.relations.ts`
-- **Routes**: `room.routes.ts`
-- **Controllers**: `room.controllers.ts`
-- **Services**: `room.services.ts`
-- **Zod schemas**: `room.validation.ts`
-
-**Layer flow**
-
-1. **Request** arrives at Express router.
-2. **Zod validation** checks request payload.
-3. Router forwards to **controller**.
-4. Controller calls **service** for business logic.
-5. Service uses **repository** (queries) to interact with **Drizzle ORM**.
-6. Drizzle generates SQL and communicates with **PostgreSQL (Neon)**.
-
-```mermaid
-flowchart LR
-    A[Frontend] --> B[Express Router]
-    B --> C[Zod Validation]
-    C --> D[Controller]
-    D --> E[Service]
-    E --> F[Repository]
-    F --> G[Drizzle ORM]
-    G --> H[Neon PostgreSQL]
-```
+The system manages guests, employees, rooms, room types, reservations, payments, additional charges, and operational auditing.
 
 ---
 
-## Contributing
+## Tech Stack
 
-1. **Fork** the repository on GitHub.
-2. Clone your fork locally: `git clone <your-fork-url>`.
-3. Create a new branch for your work: `git checkout -b feature/your-feature-name`.
-4. Make your changes, commit them, and push to your fork.
-5. Open a **Pull Request** against the upstream `main` branch.
+| Layer             | Technology            |
+| ----------------- | --------------------- |
+| Database          | PostgreSQL            |
+| Backend           | Node.js + Express     |
+| Frontend          | React                 |
+| Language          | TypeScript            |
+| Database Driver   | `pg`                  |
+| Validation        | Zod                   |
+| Schema Validation | `drizzle-zod`         |
+| Architecture      | Feature-based modules |
 
-Follow the existing coding style and run the test suite before submitting.
+> **Important:** The project does **not** use an ORM. Drizzle ORM is prohibited. `drizzle-zod` is used only for validation/schema generation where appropriate.
+
+---
+
+## Project Structure
+
+The project uses a **feature-based module architecture**.
+
+```text
+src/
+└── modules/
+    ├── guest/
+    │   ├── repository/
+    │   │   ├── schemas/
+    │   │   ├── procedures/
+    │   │   ├── validations/
+    │   │   └── ...
+    │   ├── guest.controller.ts
+    │   ├── guest.service.ts
+    │   └── guest.routes.ts
+    │
+    ├── reservation/
+    │   ├── repository/
+    │   │   ├── schemas/
+    │   │   ├── procedures/
+    │   │   ├── validations/
+    │   │   └── ...
+    │   ├── reservation.controller.ts
+    │   ├── reservation.service.ts
+    │   └── reservation.routes.ts
+    │
+    ├── room/
+    ├── room-type/
+    ├── employee/
+    ├── payment/
+    ├── additional-charge/
+    └── audit-log/
+```
+
+Each module owns its domain-specific implementation.
+
+The `repository/` directory belongs directly to its feature and contains PostgreSQL-specific implementation.
+
+---
+
+## Backend Architecture
+
+The backend follows this dependency flow:
+
+```text
+HTTP Request
+     ↓
+Route
+     ↓
+Controller
+     ↓
+Service
+     ↓
+Repository
+     ↓
+PostgreSQL Function / Procedure
+     ↓
+PostgreSQL
+```
+
+### Responsibilities
+
+**Routes**
+
+- Define API endpoints.
+- Connect middleware and validation to controllers.
+- Do not contain business logic.
+
+**Controllers**
+
+- Handle HTTP concerns.
+- Read request data.
+- Call services.
+- Return HTTP responses.
+- Do not execute SQL.
+
+**Services**
+
+- Contain application and business logic.
+- Coordinate operations between modules when necessary.
+- Do not access PostgreSQL directly.
+
+**Repositories**
+
+- Handle database access.
+- Execute PostgreSQL functions/procedures through `pg`.
+- Handle database-specific queries and result mapping.
+- Keep PostgreSQL-specific implementation inside the owning module.
+
+**PostgreSQL**
+
+- Stores persistent data.
+- Enforces database constraints.
+- Executes database functions/procedures.
+- Handles transactional database operations where required.
+
+---
+
+## Database Architecture
+
+PostgreSQL is accessed through the `pg` Node.js driver.
+
+The project uses PostgreSQL functions and procedures for database operations instead of an ORM.
+
+```text
+Service
+   ↓
+Repository
+   ↓
+pg
+   ↓
+PostgreSQL Function / Procedure
+   ↓
+Tables
+```
+
+Database-specific code must remain inside the appropriate module's `repository/` directory.
+
+Queries must always use parameterized values.
+
+```ts
+await pool.query("SELECT * FROM kubo.get_guest_by_id($1)", [guestId]);
+```
+
+Do not construct SQL using string interpolation.
+
+---
+
+## Validation
+
+External input is validated using **Zod**.
+
+Typical validation flow:
+
+```text
+Request
+   ↓
+Zod Schema
+   ↓
+Controller
+   ↓
+Service
+   ↓
+Repository
+```
+
+Validation should cover:
+
+- Request body
+- Route parameters
+- Query parameters
+- Business-specific input requirements
+
+TypeScript types do not replace runtime validation.
+
+PostgreSQL constraints remain responsible for database-level integrity.
+
+---
+
+## Documentation
+
+Project-specific development rules are separated into dedicated documents.
+
+```text
+AGENTS.md
+
+docs/
+├── architecture.md
+├── database.md
+├── api.md
+├── validation.md
+├── coding-standards.md
+├── project-context-prompt.md
+└── developer-prompt-template.md
+```
+
+### Documentation Responsibilities
+
+| Document                       | Purpose                                                           |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `AGENTS.md`                    | Project-wide instructions for coding agents                       |
+| `architecture.md`              | Module structure and layer responsibilities                       |
+| `database.md`                  | PostgreSQL, repositories, functions, procedures, and transactions |
+| `api.md`                       | REST API conventions                                              |
+| `validation.md`                | Zod and validation rules                                          |
+| `coding-standards.md`          | TypeScript, naming, errors, security, and testing                 |
+| `project-context-prompt.md`    | Compact context for coding agents                                 |
+| `developer-prompt-template.md` | Template for feature implementation requests                      |
+
+Read `AGENTS.md` before making architectural or implementation changes.
+
+Read the relevant `docs/*.md` file before working on a specific area.
+
+---
+
+## Production-Ready Code Documentation
+
+Major features and complex implementations must include understandable JSDoc documentation.
+
+Example:
+
+```ts
+/**
+ * Creates a reservation and assigns the requested rooms.
+ *
+ * The operation is executed atomically through PostgreSQL so that
+ * the reservation and room assignments cannot be partially persisted.
+ *
+ * @param data - Validated reservation data.
+ * @returns The created reservation and assigned rooms.
+ * @throws {AppError} When the guest does not exist.
+ * @throws {AppError} When one or more requested rooms are unavailable.
+ */
+```
+
+Comments should explain:
+
+- Purpose
+- Business rules
+- Important parameters
+- Return values
+- Side effects
+- Transactional behavior
+- Security requirements
+- Non-obvious implementation decisions
+- Important failure conditions
+
+Avoid comments that simply restate obvious code.
 
 ---
 
 ## Prerequisites
 
-| Tool             | Minimum version |
-| ---------------- | --------------- |
-| **Node.js**      | 18.x (LTS)      |
-| **npm**          | 9.x             |
-| **git**          | any             |
-| **Neon account** | –               |
-
-> **Note**: The frontend lives in a separate directory (not covered here). This guide focuses on getting the backend up and running.
+| Tool       | Recommended   |
+| ---------- | ------------- |
+| Node.js    | 20+ LTS       |
+| npm        | 10+           |
+| PostgreSQL | 15+           |
+| Git        | Latest stable |
 
 ---
 
-## 1. Clone the repository
+## Installation
+
+### 1. Clone the repository
 
 ```bash
 git clone <repository-url>
-cd KUBO_ReservationManagementSystem/backend
+cd KUBO_ReservationManagementSystem
 ```
 
----
+### 2. Install dependencies
 
-## 2. Install dependencies
+If the backend is located in `backend/`:
 
 ```bash
-npm ci   # or `npm install` if you prefer the default install flow
+cd backend
+npm install
 ```
 
 ---
 
-## 3. Set up the Neon PostgreSQL database
+## Environment Configuration
 
-1. Sign‑in to the **Neon** console (https://console.neon.tech).
-2. Create a new **Project** → **PostgreSQL** instance.
-3. In the project’s **Settings**, copy the **Connection string** (it looks like `postgresql://<user>:<password>@<host>/<dbname>?sslmode=require`).
-4. In the **backend** folder (the same directory as `package.json`), copy the example environment file and fill in your values:
+Create the backend environment file:
 
 ```bash
 cp example.env .env
 ```
 
-_Note:_ The `.env` file should reside in the backend root directory, **not** inside the `src/` folder.
+Example:
 
-Edit `.env` (any editor) and provide at least the following variables:
+```env
+# Server
+PORT=4000
+NODE_ENV=development
 
-```dotenv
-# Server configuration
-PORT=4000                # any free port you prefer
-NODE_ENV=development    # or "production" when deploying
+# PostgreSQL
+DB_URL=postgresql://<user>:<password>@<host>:<port>/<database>
 
-# Neon connection string (required)
-DB_URL=postgresql://<user>:<password>@<host>/<dbname>?sslmode=require
-
-# CORS – URL of the frontend that may call the API
+# Frontend origin
 FR_ORIGIN=http://localhost:3000
 
-# Minimum password length for user accounts (optional, adjust as needed)
+# Application configuration
 PASSWORD_LENGTH=8
 ```
 
-> **Tip**: If you plan to run the backend in production, change `NODE_ENV` to `production` and ensure the `FR_ORIGIN` points to the deployed front‑end URL.
+Do not commit `.env` files or credentials to the repository.
 
 ---
 
-## 4. Generate the type‑safe SQL queries
+## Database Setup
 
-The project defines its database schema using **Drizzle ORM** model files located under `src/modules/**/models/*.ts`. To generate the corresponding query helpers and migration files, run:
+The project uses PostgreSQL directly.
 
-```bash
-npm run db:generate
+Database setup should follow the SQL schema and database documentation defined in:
+
+```text
+docs/database.md
 ```
 
-This command executes `drizzle-kit generate` which reads the schema definitions and produces a set of ready‑to‑use query functions under `src/generated/` (or the folder configured in `drizzle.config.ts`).
+If the project contains database initialization or migration scripts, use the existing project commands.
+
+Do not introduce Drizzle migrations or ORM-generated schema files.
 
 ---
 
-## 5. Apply migrations to Neon
+## Running the Backend
 
-After generation, apply the migrations to the remote Neon database:
-
-```bash
-npm run db:migrate
-```
-
-`drizzle-kit migrate` will create the required tables and indexes on the Neon instance. The command is idempotent – running it again will only apply new migrations.
-
----
-
-## 6. Run the backend server
-
-### Development mode (auto‑restart on file changes)
+### Development
 
 ```bash
 npm run dev
 ```
 
-The server will start on the port defined in `.env` (default `4000`). Nodemon watches the source files and restarts the process on changes.
-
-### Production build & run
+### Production Build
 
 ```bash
-npm run build   # compiles TypeScript to JavaScript in `dist/`
-node dist/server.js   # or use a process manager like PM2
+npm run build
+```
+
+### Production
+
+```bash
+node dist/server.js
+```
+
+Use the project's existing npm scripts where available.
+
+---
+
+## API
+
+The backend exposes REST endpoints through Express.
+
+Typical structure:
+
+```text
+/api
+├── /guests
+├── /employees
+├── /roles
+├── /rooms
+├── /room-types
+├── /reservations
+├── /payments
+├── /additional-charges
+└── /audit-logs
+```
+
+Exact endpoint behavior is defined in:
+
+```text
+docs/api.md
+```
+
+Do not assume an endpoint exists without checking the current implementation or API documentation.
+
+---
+
+## Development Workflow
+
+Before implementing a feature:
+
+```text
+1. Read AGENTS.md
+       ↓
+2. Identify the affected module
+       ↓
+3. Read the relevant documentation
+       ↓
+4. Inspect existing implementation
+       ↓
+5. Identify the correct layer
+       ↓
+6. Implement the smallest required change
+       ↓
+7. Add production-ready JSDoc when appropriate
+       ↓
+8. Run relevant checks
+       ↓
+9. Review for unrelated changes
 ```
 
 ---
 
-## 7. Verify the connection
+## Contribution Guidelines
 
-You can quickly test that the backend can talk to Neon by hitting a health‑check endpoint (if defined) or simply checking the console output after running `npm run dev`. You should see a line similar to:
+1. Create a feature branch.
 
+```bash
+git checkout -b feature/your-feature-name
 ```
-Server is running on port 4000
-Server Connected to Database Successfully
-```
 
-If the connection fails, double‑check the `DB_URL` value in `.env` and ensure the Neon project allows connections from your IP (Neon defaults to allowing all IPs).
-
----
-
-## 8. Common troubleshooting
-
-| Symptom                                      | Likely cause                    | Fix                                                                                  |
-| -------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
-| `Failed to connect to the database`          | Wrong `DB_URL` or network block | Verify the Neon connection string and that your IP is whitelisted.                   |
-| `npm run db:generate` prints _no migrations_ | No model files detected         | Ensure schema files are under `src/modules/**/models/*.ts` and exported correctly.   |
-| CORS errors in the browser                   | `FR_ORIGIN` mismatch            | Set `FR_ORIGIN` to the exact origin (including protocol and port) of your front‑end. |
+2. Implement the requested change.
+3. Follow `AGENTS.md` and the relevant documentation.
+4. Reuse existing project patterns.
+5. Run relevant tests and type checks.
+6. Review the changes before committing.
+7. Commit with a clear message.
+8. Push the branch.
+9. Open a pull request against the project's target branch.
 
 ---
 
-## 9. Further reading
+## Development Rules
 
-- **Drizzle ORM docs** – https://orm.drizzle.team/
-- **Neon documentation** – https://neon.tech/docs
-- **Zod validation** – https://zod.dev/
+- Do not introduce an ORM.
+- Do not use Drizzle ORM.
+- Use `pg` for PostgreSQL access.
+- Use Zod for runtime validation.
+- Keep database code inside repositories.
+- Keep SQL out of controllers and services.
+- Use PostgreSQL functions/procedures according to the database architecture.
+- Parameterize database queries.
+- Do not duplicate existing business logic.
+- Do not invent database relationships or API behavior.
+- Inspect existing code before introducing new patterns.
+- Do not modify unrelated files.
+- Prefer simple implementations over unnecessary abstractions.
+- Add production-ready JSDoc to major features and complex logic.
+- Keep implementation summaries concise.
 
 ---
+
+## License
+
+This project is developed for academic purposes.
