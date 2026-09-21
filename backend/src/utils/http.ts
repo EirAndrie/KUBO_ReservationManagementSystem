@@ -1,7 +1,7 @@
-import { Response } from "express";
 import { z, ZodError, ZodType } from "zod";
 import logger from "./logger";
 import { Pagination } from "./pagination";
+import type { Request, Response, NextFunction } from "express";
 
 export class AppError extends Error {
       statusCode: number;
@@ -12,14 +12,18 @@ export class AppError extends Error {
       }
 }
 
-export const validateBody = <T>(schema: ZodType<T>, body: unknown): T => {
-      const result = schema.safeParse(body);
+export const validateBody = <T>(schema: ZodType<T>) => {
+      return (req: Request, _res: Response, next: NextFunction) => {
+            const result = schema.safeParse(req.body);
 
-      if (!result.success) {
-            throw new AppError(400, formatZodError(result.error));
-      }
+            if (!result.success) {
+                  return next(new AppError(400, formatZodError(result.error)));
+            }
 
-      return result.data;
+            req.body = result.data;
+
+            next();
+      };
 };
 
 export const PaginationQuerySchema = z.object({
@@ -40,15 +44,34 @@ export const getPagination = (query: unknown): Pagination => {
       };
 };
 
-export const validateUuid = (value: string | string[], field = "id") => {
-      const uuidPattern =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const requireUuidParam = (paramName: string) => {
+      return (req: Request, res: Response, next: NextFunction) => {
+            try {
+                  const value = req.params[paramName];
 
-      if (Array.isArray(value) || !uuidPattern.test(value)) {
-            throw new AppError(400, `Invalid ${field}`);
-      }
+                  if (!value) {
+                        throw new AppError(
+                              400,
+                              `Missing UUID for ${paramName}, parameter is required, cannot proceed`,
+                        );
+                  }
 
-      return value;
+                  const uuidPattern =
+                        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+                  if (Array.isArray(value) || !uuidPattern.test(value)) {
+                        throw new AppError(400, `Invalid ${paramName} format`);
+                  }
+
+                  next(); // Validation passed, proceed to the controller
+            } catch (error: any) {
+                  logger.error(
+                        "UUID not found at the parameters, cannot proceed",
+                        { message: error.message, stack: error.stack },
+                  );
+                  handleControllerError(res, error, error.message);
+            }
+      };
 };
 
 export const getStringParam = (value: string | string[], field: string) => {
