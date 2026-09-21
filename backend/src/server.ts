@@ -9,6 +9,8 @@ import {
       configureCors,
       configureEnvironmentRoutes,
 } from "./utils/serverValidation";
+import apiRoutes from "./modules/index";
+import { runMigrations } from "./utils/migrate";
 
 const app = express();
 const PORT = validateServerPort(ENV.PORT);
@@ -20,10 +22,13 @@ app.use(express.json());
 configureCors(app, FR_ORIGIN, isProduction);
 
 // ROUTES SECTION
-// app.use("/GDGoC-CTU-Main/v0.0.1", apiRoutes);
+app.use("/KUBO_Resort/Management-System/v0.0.1", apiRoutes);
 configureEnvironmentRoutes(app, isProduction);
 
 connectDB()
+      .then(async () => {
+            await runMigrations();
+      })
       .then(() => {
             app.listen(PORT, () => {
                   logger.info(`Server is running on port ${PORT}`);
