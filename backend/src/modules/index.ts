@@ -3,6 +3,7 @@ import roleRoutes from "../modules/role/role.routes";
 import guestRoutes from "../modules/guest/guest.routes";
 import kuboTypesRoutes from "./room_kubo-type/kubo-type.routes";
 import employeeRoutes from "../modules/employee/employee.routes";
+import reservationRoutes from "../modules/reservation/reservation.routes";
 
 const router = Router();
 
@@ -10,5 +11,6 @@ router.use("/roles", roleRoutes);
 router.use("/guests", guestRoutes);
 router.use("/kubo-types", kuboTypesRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/reservations", reservationRoutes);
 
 export default router;
