@@ -31,8 +31,11 @@ export const ReservationScehma = z.object({
       }),
       reservationTotalAmount: z
             .number()
-            .positive({ message: "Total amount must be positive" })
-            .finite(),
+            .nonnegative({ message: "Total amount must be positive" })
+            .finite()
+            .refine((val) => Number(val.toFixed(2)) === val, {
+                  message: "Price cannot have more than 2 decimal places",
+            }),
       reservationStatus: z.enum(RESERVATION_STATUS, {
             message: "Invalid reservation status entry, did not follow system integrated status enums",
       }),
