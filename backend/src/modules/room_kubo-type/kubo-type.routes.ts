@@ -5,11 +5,11 @@ import {
       getKuboTypeByIdController,
       updateKuboTypeController,
       deleteKuboTypeController,
-} from "./kubo.controllers";
+} from "./kubo-type.controllers";
 import {
       CreateKuboTypeSchema,
       UpdateKuboTypeSchema,
-} from "./repository/kubo.schema";
+} from "./repository/kubo-type.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 
 const router = Router();

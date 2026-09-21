@@ -2,7 +2,7 @@ import type {
       CreateKuboTypeDTO,
       UpdateKuboTypeDTO,
       KuboTypeResponseDTO,
-} from "./kubo.schema";
+} from "./kubo-type.schema";
 import { db } from "../../../config/connectDB";
 import { AppError } from "../../../utils/http";
 import logger from "../../../utils/logger";
