@@ -9,11 +9,14 @@ export const KuboTypeSchema = z.object({
             })
             .positive(),
       pricePerNight: z
-            .number({
+            .number()
+            .nonnegative({
                   message: "Kubo type price per night is required and is a valid decimal(pricing) format",
             })
-            .positive()
-            .finite(),
+            .finite()
+            .refine((val) => Number(val.toFixed(2)) === val, {
+                  message: "Price cannot have more than 2 decimal places",
+            }),
       kuboTypeDescription: z.string({
             message: "Kubo description is required",
       }),
