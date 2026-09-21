@@ -6,6 +6,7 @@ import employeeRoutes from "../modules/employee/employee.routes";
 import reservationRoutes from "../modules/reservation/reservation.routes";
 import reservedRoomsRoutes from "../modules/reserved-room_kubo/reserved-room_kubo.routes";
 import paymentRoutes from "../modules/payment/payment.routes";
+import additinalChargesRoutes from "../modules/additional-charges/additional-charges.routes";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/employees", employeeRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/resrved-rooms", reservedRoomsRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/additional-charges", additinalChargesRoutes);
 
 export default router;
