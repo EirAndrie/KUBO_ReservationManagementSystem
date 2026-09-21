@@ -1,19 +1,25 @@
-import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import ENV from "./env";
 import logger from "../utils/logger";
-// import * as schema from "../modules";
+import { AppError } from "../utils/http";
+import ENV from "./env";
 
-export const pool = new Pool({
-      connectionString: ENV.DB_URL,
-});
-
-export const db = drizzle({
-      client: pool,
-      // schema,
+export const db = new Pool({
+      host: ENV.DB_HOST,
+      port: Number(ENV.DB_PORT),
+      user: ENV.DB_USERNAME,
+      password: ENV.DB_PASSWORD,
+      database: ENV.DB_NAME,
 });
 
 export const connectDB = async () => {
-      await pool.query("SELECT 1");
-      return logger.info("Server Connected to Database Successfully");
+      try {
+            const res = await db.query("SELECT NOW()");
+            console.log("Dataase connected successfully:", res.rows[0]);
+      } catch (error: any) {
+            logger.error("Failed to establish database connection", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw new AppError(500, "Failed to establish database connection");
+      }
 };
