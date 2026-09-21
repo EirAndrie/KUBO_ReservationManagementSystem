@@ -5,13 +5,13 @@ import {
       updateKuboType,
       deleteKuboType,
       searchKuboTypes,
-} from "./repository/kubo.repository";
+} from "./repository/kubo-type.repository";
 import { AppError } from "../../utils/http";
 import logger from "../../utils/logger";
 import type {
       CreateKuboTypeDTO,
       UpdateKuboTypeDTO,
-} from "./repository/kubo.schema";
+} from "./repository/kubo-type.schema";
 import type { Pagination } from "../../utils/pagination";
 
 export const createKuboTypeService = async (data: CreateKuboTypeDTO) => {

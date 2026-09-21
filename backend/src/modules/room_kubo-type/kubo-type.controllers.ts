@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import type {
       CreateKuboTypeDTO,
       UpdateKuboTypeDTO,
-} from "./repository/kubo.schema";
+} from "./repository/kubo-type.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
 import { getPagination } from "../../utils/http";
@@ -13,7 +13,7 @@ import {
       updateKuboTypeService,
       deleteKuboTypeService,
       searchKuboTypesService,
-} from "./kubo.services";
+} from "./kubo-type.services";
 
 export const createKuboTypeController = async (req: Request, res: Response) => {
       try {
