@@ -10,6 +10,7 @@ import { AppError } from "../../utils/http";
 import logger from "../../utils/logger";
 import type { CreateRoleDTO, UpdateRoleDTO } from "./repository/role.schema";
 
+// Checked
 export const createRoleService = async (data: CreateRoleDTO) => {
       const existingRole = await getRoleByName(data.roleName);
       if (existingRole) {
@@ -19,10 +20,21 @@ export const createRoleService = async (data: CreateRoleDTO) => {
       return createRole(data);
 };
 
+/** 
+ * Checked: Searching functionality/query to be added in the future
+ * - For MVP, this service will return all roles without any filtering or searching.
+*/
 export const getRolesService = async () => {
-      return getRoles();
+      const roles = await getRoles();
+
+      if (!roles || roles.length === 0) {
+            throw new AppError(404, "No roles found");
+      }
+
+      return roles;
 };
 
+// Checked
 export const getRoleByIdService = async (roleId: string) => {
       const role = await getRoleById(roleId);
       if (!role) {
@@ -32,15 +44,17 @@ export const getRoleByIdService = async (roleId: string) => {
       return role;
 };
 
-export const updateRoleService = async (data: UpdateRoleDTO) => {
-      const role = await getRoleById(data.roleId);
+// Checked
+export const updateRoleService = async (roleId: string, data: UpdateRoleDTO) => {
+      const role = await getRoleById(roleId);
       if (!role) {
             throw new AppError(404, "Role not found");
       }
 
-      return updateRole(data);
+      return updateRole(roleId, data);
 };
 
+// Checked
 export const deleteRoleService = async (roleId: string) => {
       const role = await getRoleById(roleId);
       if (!role) {

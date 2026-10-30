@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import type { CreateRoleDTO, UpdateRoleDTO } from "./repository/role.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
@@ -15,16 +15,15 @@ import {
 export const createRoleController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
             const data = req.body as CreateRoleDTO;
-
-            const role = await createRoleService(data);
+            const roles = await createRoleService(data);
 
             res.status(201).json({
                   success: true,
-                  data: role,
+                  message: `Role: ${data.roleName} created successfully`,
+                  roles,
             });
       } catch (error: any) {
             logger.error("Failed to create Role", {
@@ -38,16 +37,14 @@ export const createRoleController = async (
 export const getAllRolesController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
-            const pagination = getPagination(req.query);
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
-            const result = await getRolesService();
-            res.json(result);
+            const roles = await getRolesService();
+            res.json({
+                  success: true,
+                  message: "Roles retrieved successfully",
+                  roles
+            });
       } catch (error: any) {
             logger.error("Failed to list Roles", {
                   message: error.message,
@@ -60,13 +57,13 @@ export const getAllRolesController = async (
 export const getRoleByIdController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
-            const role = await getRoleByIdService(req.params.roleId as string);
+            const roles = await getRoleByIdService(req.params.roleId as string);
             res.status(200).json({
                   success: true,
-                  data: role,
+                  message: `Role: ${roles.roleName} retrieved successfully`,
+                  roles,
             });
       } catch (error: any) {
             logger.error("Failed to get Role by ID", {
@@ -80,16 +77,16 @@ export const getRoleByIdController = async (
 export const updateRoleController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
+            const roleId = String(req.params.roleId);
             const data = req.body as UpdateRoleDTO;
-            const updated = await updateRoleService({
-                  roleId: req.params.roleId as string,
-            });
+
+            const roles = await updateRoleService(roleId, data);
             res.status(200).json({
                   success: true,
-                  data: updated,
+                  message: `Role: ${roles?.roleName} updated successfully`,
+                  roles,
             });
       } catch (error: any) {
             logger.error("Failed to update Role", {
@@ -103,12 +100,11 @@ export const updateRoleController = async (
 export const deleteRoleController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
             await deleteRoleService(req.params.roleId as string);
 
-            res.status(204).send();
+            res.status(204).json();
       } catch (error: any) {
             logger.error("Failed to delete Role", {
                   message: error.message,
