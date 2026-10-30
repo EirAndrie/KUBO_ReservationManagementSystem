@@ -13,9 +13,9 @@ export const createRole = async (
       try {
             const result = await db.query(
                   `
-            SELECT *
-            FROM kubo.create_role($1, $2)
-          `,
+                  SELECT *
+                  FROM kubo_role_management.create_role($1, $2)
+                  `,
                   [data.roleName, data.description],
             );
 
@@ -37,10 +37,7 @@ export const createRole = async (
 export const getRoles = async (): Promise<RoleResponseDTO[]> => {
       try {
             const result = await db.query(
-                  `
-            SELECT *
-            FROM kubo.get_roles()
-          `,
+                  `SELECT * FROM kubo_role_management.get_roles()`
             );
 
             return result.rows;
@@ -64,13 +61,14 @@ export const getRoleById = async (
       try {
             const result = await db.query(
                   `
-            SELECT *
-            FROM kubo.get_role_by_id($1)
-          `,
+                  SELECT *
+                  FROM kubo_role_management.get_role_by_id($1)
+                  `,
                   [roleId],
             );
 
-            return result.rows[0] ?? null;
+            const role = result.rows[0];
+            return role?.role_id == null ? null : role;
       } catch (error: any) {
             logger.error("Failed to get role by id from database", {
                   message: error.message,
@@ -91,13 +89,14 @@ export const getRoleByName = async (
       try {
             const result = await db.query(
                   `
-            SELECT *
-            FROM kubo.get_role_by_name($1)
-          `,
+                  SELECT *
+                  FROM kubo_role_management.get_role_by_name($1)
+                  `,
                   [roleName],
             );
 
-            return result.rows[0] ?? null;
+            const role = result.rows[0];
+            return role?.role_id == null ? null : role;
       } catch (error: any) {
             logger.error("Failed to get role by name from database", {
                   message: error.message,
@@ -113,16 +112,17 @@ export const getRoleByName = async (
 };
 
 export const updateRole = async (
+      roleId: string,
       data: UpdateRoleDTO,
 ): Promise<RoleResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
-            SELECT *
-            FROM kubo.update_role($1, $2, $3)
-          `,
+                  SELECT *
+                  FROM kubo_role_management.update_role($1, $2, $3)
+                  `,
                   [
-                        data.roleId,
+                        roleId,
                         data.roleName ?? null,
                         data.description ?? null,
                   ],
@@ -147,8 +147,8 @@ export const deleteRole = async (roleId: string): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-            SELECT kubo.delete_role($1) AS role_id
-          `,
+                  SELECT kubo_role_management.delete_role($1) AS role_id
+                  `,
                   [roleId],
             );
 

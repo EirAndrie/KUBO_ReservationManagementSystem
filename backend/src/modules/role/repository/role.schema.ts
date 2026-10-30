@@ -13,9 +13,7 @@ export const CreateRoleSchema = RoleSchema.omit({ roleId: true });
 export type CreateRoleDTO = z.infer<typeof CreateRoleSchema>;
 
 // Schema and DTO for updating
-export const UpdateRoleSchema = RoleSchema.pick({ roleId: true }).merge(
-      RoleSchema.omit({ roleId: true }).partial(),
-);
+export const UpdateRoleSchema = RoleSchema.omit({ roleId: true }).partial();
 export type UpdateRoleDTO = z.infer<typeof UpdateRoleSchema>;
 
 // Reponse DTO
