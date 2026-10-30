@@ -1,12 +1,65 @@
 import { z } from "zod";
 
 const EMPLOYEE_STATUS = [
-      "active",
-      "inactive",
-      "suspended",
-      "on leave",
-      "terminated",
+      "Active",
+      "Inactive",
+      "Suspended",
+      "OnLeave",
+      "Terminated",
 ] as const;
+
+const EMPLOYEE_STATUS_DB = [
+      "Active",
+      "Inactive",
+      "Suspended",
+      "OnLeave",
+      "Terminated",
+] as const;
+
+type EmployeeStatusDB = (typeof EMPLOYEE_STATUS_DB)[number];
+
+const EMPLOYEE_STATUS_QUERY_ALIASES: Record<string, EmployeeStatusDB> = {
+      active: "Active",
+      inactive: "Inactive",
+      suspended: "Suspended",
+      onleave: "OnLeave",
+      terminated: "Terminated",
+};
+
+const normalizeEmployeeStatusQuery = (value: unknown) => {
+      if (typeof value !== "string") {
+            return value;
+      }
+
+      const trimmed = value.trim();
+      if (trimmed === "") {
+            return undefined;
+      }
+
+      const key = trimmed.toLowerCase().replace(/\s+/g, "");
+      return EMPLOYEE_STATUS_QUERY_ALIASES[key] ?? value;
+};
+
+const optionalFilterText = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      z.string().trim().min(1).max(100).optional(),
+);
+
+export const EmployeeFilterSchema = z.object({
+      role: optionalFilterText,
+      status: z.preprocess(
+            normalizeEmployeeStatusQuery,
+            z.enum(EMPLOYEE_STATUS_DB, {
+                  message: "Invalid employee status filter",
+            }).optional(),
+      ),
+      search: optionalFilterText,
+});
+
+export type EmployeeFilterDTO = z.infer<typeof EmployeeFilterSchema>;
 
 export const EmployeeSchema = z.object({
       employeeId: z.string().uuid(),
@@ -36,9 +89,9 @@ export const CreateEmployeeSchema = EmployeeSchema.omit({ employeeId: true });
 export type CreateEmployeeDTO = z.infer<typeof CreateEmployeeSchema>;
 
 // Schema and DTP fpr updating
-export const UpdateEmployeeSchame = EmployeeSchema.pick({
+export const UpdateEmployeeSchame = EmployeeSchema.omit({
       employeeId: true,
-}).merge(EmployeeSchema.omit({ employeeId: true }).partial());
+}).partial();
 export type UpdateEmployeeDTO = z.infer<typeof UpdateEmployeeSchame>;
 
 // Response DTO

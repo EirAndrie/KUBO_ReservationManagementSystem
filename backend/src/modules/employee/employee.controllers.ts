@@ -3,16 +3,15 @@ import type {
       CreateEmployeeDTO,
       UpdateEmployeeDTO,
 } from "./repository/employee.schema";
-import { handleControllerError } from "../../utils/http";
+import { EmployeeFilterSchema } from "./repository/employee.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       createEmployeeService,
       getAllEmployeesService,
       getEmployeeByIdService,
       updateEmployeeService,
       deleteEmployeeService,
-      searchEmployeesService,
 } from "./employee.services";
 
 export const createEmployeeController = async (req: Request, res: Response) => {
@@ -41,33 +40,33 @@ export const getAllEmployeesController = async (
       try {
             const pagination = getPagination(req.query);
 
-            const role =
-                  typeof req.query.role === "string"
-                        ? req.query.role
-                        : undefined;
-            const status =
-                  typeof req.query.status === "string"
-                        ? req.query.status
-                        : undefined;
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
+            const filters = EmployeeFilterSchema.safeParse({
+                  role: req.query.role,
+                  status: req.query.status,
+                  search: req.query.search,
+            });
 
-            let employees;
-            if (role || status || search) {
-                  employees = await searchEmployeesService({
-                        role,
-                        status,
-                        search,
-                        pagination,
-                  });
-            } else {
-                  employees = await getAllEmployeesService();
+            if (!filters.success) {
+                  throw new AppError(
+                        400,
+                        filters.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
             }
+
+            const employees = await getAllEmployeesService(
+                  filters.data,
+                  pagination,
+            );
 
             res.status(200).json({
                   success: true,
+                  count: employees.length,
                   message: "Successfully listed employees",
                   employees,
             });
@@ -85,9 +84,8 @@ export const getEmployeeByIdController = async (
       res: Response,
 ) => {
       try {
-            const employees = await getEmployeeByIdService(
-                  req.params.employeeId as string,
-            );
+            const employeeId = String(req.params.employeeId)
+            const employees = await getEmployeeByIdService(employeeId);
 
             res.status(200).json({
                   success: true,
@@ -105,11 +103,9 @@ export const getEmployeeByIdController = async (
 
 export const updateEmployeeController = async (req: Request, res: Response) => {
       try {
+            const employeeId = String(req.params.employeeId);
             const data = req.body as UpdateEmployeeDTO;
-            const employees = await updateEmployeeService({
-                  ...data,
-                  employeeId: req.params.employeeId as string,
-            });
+            const employees = await updateEmployeeService(employeeId, data);
 
             res.status(200).json({
                   success: true,
