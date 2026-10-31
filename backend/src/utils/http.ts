@@ -12,6 +12,56 @@ export class AppError extends Error {
       }
 }
 
+/**
+ * Converts common PostgreSQL error codes into safe application errors.
+ *
+ * Repositories call this after logging the original database error so SQL
+ * constraint and business-rule failures do not leak as generic 500 responses.
+ */
+export const mapDatabaseError = (
+      error: unknown,
+      fallbackMessage: string,
+): AppError => {
+      if (error instanceof AppError) {
+            return error;
+      }
+
+      const databaseError = error as {
+            code?: string;
+            message?: string;
+      };
+
+      switch (databaseError.code) {
+            case "23505":
+                  return new AppError(
+                        400,
+                        databaseError.message ?? "Duplicate record",
+                  );
+            case "23503":
+                  return new AppError(
+                        409,
+                        databaseError.message ?? "Record is still referenced",
+                  );
+            case "23514":
+                  return new AppError(
+                        400,
+                        databaseError.message ?? "Business rule violation",
+                  );
+            case "22023":
+                  return new AppError(
+                        400,
+                        databaseError.message ?? "Invalid input",
+                  );
+            case "P0002":
+                  return new AppError(
+                        404,
+                        databaseError.message ?? "Record not found",
+                  );
+            default:
+                  return new AppError(500, fallbackMessage);
+      }
+};
+
 export const validateBody = <T>(schema: ZodType<T>) => {
       return (req: Request, _res: Response, next: NextFunction) => {
             const result = schema.safeParse(req.body);
