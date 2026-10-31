@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import type { CreateGuestDTO, UpdateGuestDTO } from "./repository/guest.schema";
-import { handleControllerError } from "../../utils/http";
+import { GuestFilterSchema } from "./repository/guest.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       createGuestService,
       getAllGuestsService,
@@ -15,12 +15,15 @@ import {
 export const createGuestController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateGuestDTO;
-            const guests = await createGuestService(data);
+            const result = await createGuestService(data);
 
-            res.status(201).json({
+            res.status(result.reused ? 200 : 201).json({
                   success: true,
-                  message: "Guest created successfully",
-                  guests,
+                  message: result.reused
+                        ? "Existing guest reused"
+                        : "Guest created successfully",
+                  reused: result.reused,
+                  guests: result.guest,
             });
       } catch (error: any) {
             logger.error("Failed to create Guest", {
@@ -35,25 +38,32 @@ export const getAllGuestsController = async (req: Request, res: Response) => {
       try {
             const pagination = getPagination(req.query);
 
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
-            const validIdType =
-                  typeof req.query.validIdType === "string"
-                        ? req.query.validIdType
-                        : undefined;
+            const filters = GuestFilterSchema.safeParse({
+                  search: req.query.search,
+                  validIdType: req.query.validIdType,
+            });
 
-            let guests;
-            if (search || validIdType) {
-                  guests = await searchGuestsService({
-                        search,
-                        validIdType,
-                        pagination,
-                  });
-            } else {
-                  guests = await getAllGuestsService();
+            if (!filters.success) {
+                  throw new AppError(
+                        400,
+                        filters.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
             }
+
+            const guests =
+                  filters.data.search || filters.data.validIdType
+                        ? await searchGuestsService({
+                                search: filters.data.search,
+                                validIdType: filters.data.validIdType,
+                                pagination,
+                          })
+                        : await getAllGuestsService(pagination);
 
             res.status(200).json({
                   success: true,
@@ -92,11 +102,9 @@ export const getGuestByIdController = async (req: Request, res: Response) => {
 
 export const updateGuestController = async (req: Request, res: Response) => {
       try {
+            const guestId = String(req.params.guestId);
             const data = req.body as UpdateGuestDTO;
-            const guests = await updateGuestService({
-                  ...data,
-                  guestId: req.params.guestId as string,
-            });
+            const guests = await updateGuestService(guestId, data);
 
             res.status(200).json({
                   success: true,

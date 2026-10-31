@@ -5,10 +5,12 @@ import {
       getEmployeeByIdController,
       updateEmployeeController,
       deleteEmployeeController,
+      resetEmployeePasswordController,
 } from "./employee.controllers";
 import {
       CreateEmployeeSchema,
       UpdateEmployeeSchame,
+      ResetEmployeePasswordSchema,
 } from "./repository/employee.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 
@@ -20,6 +22,12 @@ router.get(
       "/:employeeId",
       requireUuidParam("employeeId"),
       getEmployeeByIdController,
+);
+router.patch(
+      "/:employeeId/password",
+      requireUuidParam("employeeId"),
+      validateBody(ResetEmployeePasswordSchema),
+      resetEmployeePasswordController,
 );
 router.patch(
       "/:employeeId",

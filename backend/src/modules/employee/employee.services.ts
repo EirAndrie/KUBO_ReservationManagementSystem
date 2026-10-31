@@ -5,9 +5,9 @@ import {
       getEmployeeByUsername,
       updateEmployee,
       deleteEmployee,
+      resetEmployeePassword,
 } from "./repository/employee.repository";
 import { AppError } from "../../utils/http";
-import logger from "../../utils/logger";
 import type {
       CreateEmployeeDTO,
       UpdateEmployeeDTO,
@@ -81,6 +81,25 @@ export const updateEmployeeService = async (
       }
 
       return updateEmployee(employeeId, data);
+};
+
+/**
+ * Resets an employee password after confirming the employee exists.
+ *
+ * Plaintext passwords are hashed with bcrypt in this layer and never reach the
+ * database or logs.
+ */
+export const resetEmployeePasswordService = async (
+      employeeId: string,
+      password: string,
+) => {
+      const existing = await getEmployeeById(employeeId);
+      if (!existing) {
+            throw new AppError(404, "Employee not found");
+      }
+
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      return resetEmployeePassword(employeeId, hashedPassword);
 };
 
 // Checked

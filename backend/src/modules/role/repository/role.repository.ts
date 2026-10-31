@@ -4,7 +4,7 @@ import type {
       UpdateRoleDTO,
 } from "./role.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { AppError, mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
 export const createRole = async (
@@ -26,11 +26,7 @@ export const createRole = async (
                   stack: error.stack,
             });
 
-            if (error instanceof AppError) {
-                  throw error;
-            }
-
-            throw new AppError(500, "Failed to insert Role to database");
+            throw mapDatabaseError(error, "Failed to insert Role to database");
       }
 };
 
@@ -135,11 +131,7 @@ export const updateRole = async (
                   stack: error.stack,
             });
 
-            if (error instanceof AppError) {
-                  throw error;
-            }
-
-            throw new AppError(500, "Failed to update Role to database");
+            throw mapDatabaseError(error, "Failed to update Role to database");
       }
 };
 
@@ -147,22 +139,18 @@ export const deleteRole = async (roleId: string): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_role_management.delete_role($1) AS role_id
+                  SELECT kubo_role_management.delete_unused_role($1) AS deleted
                   `,
                   [roleId],
             );
 
-            return result.rows[0]?.role_id != null;
+            return result.rows[0]?.deleted === true;
       } catch (error: any) {
             logger.error("Failed to delete role from database", {
                   message: error.message,
                   stack: error.stack,
             });
 
-            if (error instanceof AppError) {
-                  throw error;
-            }
-
-            throw new AppError(500, "Failed to delete Role from database");
+            throw mapDatabaseError(error, "Failed to delete Role from database");
       }
 };

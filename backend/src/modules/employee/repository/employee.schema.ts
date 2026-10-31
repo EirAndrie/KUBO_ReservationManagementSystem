@@ -1,13 +1,5 @@
 import { z } from "zod";
 
-const EMPLOYEE_STATUS = [
-      "Active",
-      "Inactive",
-      "Suspended",
-      "OnLeave",
-      "Terminated",
-] as const;
-
 const EMPLOYEE_STATUS_DB = [
       "Active",
       "Inactive",
@@ -18,7 +10,7 @@ const EMPLOYEE_STATUS_DB = [
 
 type EmployeeStatusDB = (typeof EMPLOYEE_STATUS_DB)[number];
 
-const EMPLOYEE_STATUS_QUERY_ALIASES: Record<string, EmployeeStatusDB> = {
+const EMPLOYEE_STATUS_ALIASES: Record<string, EmployeeStatusDB> = {
       active: "Active",
       inactive: "Inactive",
       suspended: "Suspended",
@@ -26,7 +18,7 @@ const EMPLOYEE_STATUS_QUERY_ALIASES: Record<string, EmployeeStatusDB> = {
       terminated: "Terminated",
 };
 
-const normalizeEmployeeStatusQuery = (value: unknown) => {
+const normalizeEmployeeStatus = (value: unknown) => {
       if (typeof value !== "string") {
             return value;
       }
@@ -37,8 +29,26 @@ const normalizeEmployeeStatusQuery = (value: unknown) => {
       }
 
       const key = trimmed.toLowerCase().replace(/\s+/g, "");
-      return EMPLOYEE_STATUS_QUERY_ALIASES[key] ?? value;
+      return EMPLOYEE_STATUS_ALIASES[key] ?? value;
 };
+
+const EmployeeStatusSchema = z.preprocess(
+      normalizeEmployeeStatus,
+      z.enum(EMPLOYEE_STATUS_DB, {
+            message: "Invalid employee status entry, did not follow system integrated status enums",
+      }),
+);
+
+const PASSWORD_SCHEMA = z
+      .string()
+      .min(8, { message: "Passsword must be at least 8 characters long" })
+      .max(12, { message: "Password cannot exceed 12 characters" })
+      .regex(
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+            {
+                  message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+            },
+      );
 
 const optionalFilterText = z.preprocess(
       (value) =>
@@ -50,12 +60,7 @@ const optionalFilterText = z.preprocess(
 
 export const EmployeeFilterSchema = z.object({
       role: optionalFilterText,
-      status: z.preprocess(
-            normalizeEmployeeStatusQuery,
-            z.enum(EMPLOYEE_STATUS_DB, {
-                  message: "Invalid employee status filter",
-            }).optional(),
-      ),
+      status: EmployeeStatusSchema.optional(),
       search: optionalFilterText,
 });
 
@@ -69,30 +74,35 @@ export const EmployeeSchema = z.object({
       firstName: z.string({ message: "Employee first name is required" }),
       lastName: z.string({ message: "Emplyoee last name is required" }),
       username: z.string({ message: "Employee username is required" }),
-      passwordHash: z
-            .string()
-            .min(8, { message: "Passsword must be at least 8 characters long" })
-            .max(12, { message: "Password cannot exceed 12 characters" })
-            .regex(
-                  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-                  {
-                        message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
-                  },
-            ),
-      status: z.enum(EMPLOYEE_STATUS, {
-            message: "Invalid employee status entry, did not follow system integrated status enums",
-      }),
+      passwordHash: PASSWORD_SCHEMA,
+      status: EmployeeStatusSchema,
+});
+
+export const EmployeeResponseSchema = EmployeeSchema.omit({
+      passwordHash: true,
 });
 
 // Schema and DTO for creating
-export const CreateEmployeeSchema = EmployeeSchema.omit({ employeeId: true });
+export const CreateEmployeeSchema = EmployeeSchema.omit({
+      employeeId: true,
+}).extend({
+      status: EmployeeStatusSchema.default("Active"),
+});
 export type CreateEmployeeDTO = z.infer<typeof CreateEmployeeSchema>;
 
-// Schema and DTP fpr updating
+// Schema and DTO for updating profile data (passwords use the reset endpoint)
 export const UpdateEmployeeSchame = EmployeeSchema.omit({
       employeeId: true,
+      passwordHash: true,
 }).partial();
 export type UpdateEmployeeDTO = z.infer<typeof UpdateEmployeeSchame>;
 
+export const ResetEmployeePasswordSchema = z.object({
+      password: PASSWORD_SCHEMA,
+});
+export type ResetEmployeePasswordDTO = z.infer<
+      typeof ResetEmployeePasswordSchema
+>;
+
 // Response DTO
-export type EmployeeResponseDTO = z.infer<typeof EmployeeSchema>;
+export type EmployeeResponseDTO = z.infer<typeof EmployeeResponseSchema>;
