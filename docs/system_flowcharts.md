@@ -22,40 +22,47 @@ flowchart TD
     E1 --> P2
     D2 -->|Yes| P4["Identify role from role table<br/>(BR-001)"]
     P4 --> A1["Audit successful login<br/>(BR-067)"]
-    A1 --> D3{"Role?"}
-    D3 -->|Administrator| ADM["Administrator dashboard"]
-    D3 -->|Staff| STF["Staff dashboard"]
+    A1 --> D3{"Role?<br/>(BR-005)"}
+    D3 -->|Administrator| ADM["Administrator dashboard<br/>administrative functions only"]
+    D3 -->|Staff| STF["Staff dashboard<br/>operational functions"]
 
-    ADM --> ADM1["Manage employees and roles<br/>(BR-008, BR-076)"]
+    ADM --> ADM1["Manage employees and roles<br/>(BR-008, BR-080)"]
     ADM --> ADM2["Manage kubo types, kubos, rates<br/>(BR-016–BR-023)"]
-    ADM --> ADM3["Review reservations and audit log<br/>(BR-078)"]
-    ADM --> ADM4["Perform staff operations"]
+    ADM --> ADM3["Review reservations (read-only)<br/>(BR-082)"]
+    ADM --> ADM4["Review audit log<br/>(BR-078)"]
+    ADM --> ADM5["Manage additional charges:<br/>review and audited corrections<br/>(BR-081)"]
 
     STF --> STF1["Register or retrieve guests<br/>(BR-009–BR-015)"]
     STF --> STF2["Create and manage reservations<br/>(BR-024–BR-038)"]
     STF --> STF3["Check availability and assign kubos<br/>(BR-031–BR-032)"]
-    STF --> STF4["Process payments and charges<br/>(BR-042–BR-057)"]
-    STF --> STF5["Check-in and check-out<br/>(BR-058–BR-066)"]
+    STF --> STF4["Record additional charges<br/>(BR-042–BR-046)"]
+    STF --> STF5["Process payments and refunds<br/>(BR-047–BR-057)"]
+    STF --> STF6["Check-in and check-out<br/>(BR-058–BR-066)"]
 
     ADM1 --> AUD["Write audit log"]
     ADM2 --> AUD
     ADM3 --> AUD
     ADM4 --> AUD
+    ADM5 --> AUD
     STF1 --> AUD
     STF2 --> AUD
     STF3 --> AUD
     STF4 --> AUD
     STF5 --> AUD
+    STF6 --> AUD
     AUD --> E2([End])
+
+    N1["Separation of duties: Administrators do not<br/>perform Staff operations, and Staff cannot<br/>perform administrative functions (BR-005)."]
+    style N1 fill:#fff2cc,stroke:#d6b656
 ```
 
 ---
 
-## 2. Reservation and Booking Flow
+## 2. Reservation and Booking Flow (Staff)
 
 ```mermaid
 flowchart TD
-    S([Start]) --> P1["Receive reservation request<br/>WalkIn, Online, Phone, Email, etc."]
+    S([Start]) --> P1["Staff receives reservation request<br/>WalkIn, Online, Phone, Email, etc."]
     P1 --> P2["Retrieve existing guest by email/ID<br/>or register a new guest<br/>(BR-009–BR-013)"]
     P2 --> D1{"Guest details complete<br/>and valid?<br/>(BR-009–BR-012)"}
     D1 -->|No| P3["Capture required guest fields<br/>name, email, phone, ID type, ID number"]
@@ -87,11 +94,11 @@ flowchart TD
 
 ---
 
-## 3. Reservation Management Flow
+## 3. Reservation Management Flow (Staff)
 
 ```mermaid
 flowchart TD
-    S([Start]) --> P1["Retrieve reservation by reference code<br/>or guest details"]
+    S([Start]) --> P1["Staff retrieves reservation by<br/>reference code or guest details"]
     P1 --> P2["Display reservation, assignments,<br/>payments, charges, and balance"]
     P2 --> D1{"Select action"}
 
@@ -125,6 +132,9 @@ flowchart TD
     I1 --> E7([Continue in check-in flow])
     O1 --> E8([Continue in check-out flow])
 
+    N1["Administrators may review reservations read-only<br/>but cannot perform these actions (BR-005, BR-082)."]
+    style N1 fill:#fff2cc,stroke:#d6b656
+
     style E2 fill:#f8cecc,stroke:#b85450
     style E3 fill:#f8cecc,stroke:#b85450
     style E5 fill:#f8cecc,stroke:#b85450
@@ -133,7 +143,7 @@ flowchart TD
 
 ---
 
-## 4. Kubo and Kubo Type Management Flow
+## 4. Kubo and Kubo Type Management Flow (Administrator)
 
 ```mermaid
 flowchart TD
@@ -181,7 +191,7 @@ flowchart TD
 
 ---
 
-## 5. Rate and Pricing Management Flow
+## 5. Rate and Pricing Management Flow (Administrator)
 
 ```mermaid
 flowchart TD
@@ -204,7 +214,75 @@ flowchart TD
 
 ---
 
-## 6. Payment and Refund Flow
+## 6. Manage Employees and Roles Flow (Administrator)
+
+Administrators create and maintain employee accounts and roles. The flow enforces
+required data, username uniqueness, credential handling, status rules,
+last-Administrator protection, and referential deletion restrictions (BR-080).
+Password material is never returned or logged (BR-003, BR-070).
+
+```mermaid
+flowchart TD
+    S([Start]) --> P1["Administrator opens employee<br/>and role management<br/>(BR-076, BR-080)"]
+    P1 --> D1{"Manage employee<br/>or role?"}
+
+    D1 -->|Employee| EMP1["Select employee action"]
+    EMP1 --> D2{"Action"}
+    D2 -->|Create| C1["Enter first_name, last_name,<br/>username, password, and role_id<br/>(BR-002, BR-080)"]
+    D2 -->|Update| C2["Enter changed name, role,<br/>or password<br/>(BR-002, BR-003)"]
+    D2 -->|Change status| C3["Select status: Active, Inactive,<br/>Suspended, OnLeave, Terminated<br/>(BR-004)"]
+    D2 -->|Delete| C4["Check references: reservations,<br/>payments, charges, and<br/>audit entries (BR-007, BR-072)"]
+
+    C1 --> V1{"Required fields valid, username<br/>unique, password 6-12 alphanumeric,<br/>role exists, and no second Active<br/>Administrator?<br/>(BR-002, BR-003, BR-006)"}
+    V1 -->|No| R1["Reject creation"]
+    V1 -->|Yes| S1["Hash password; create employee<br/>with status Active<br/>(BR-003, BR-080)"]
+
+    C2 --> V2{"Changes valid and the last<br/>Active Administrator is not<br/>demoted or disabled?<br/>(BR-006, BR-080)"}
+    V2 -->|No| R2["Reject change"]
+    V2 -->|Yes| S2["Update employee; never return<br/>or log password_hash<br/>(BR-003, BR-070)"]
+
+    C3 --> V3{"Is this the last Active<br/>Administrator?<br/>(BR-006)"}
+    V3 -->|Yes| R3["Block: at least one Active<br/>Administrator is required"]
+    V3 -->|No| S3["Update employee.status<br/>(BR-004)"]
+
+    C4 --> V4{"Any referencing records?<br/>(BR-007, BR-072)"}
+    V4 -->|Yes| R4["Block deletion;<br/>set status Terminated instead"]
+    V4 -->|No| S4["Delete employee account"]
+
+    S1 --> AUD["Audit employee or role change<br/>(BR-067, BR-068)"]
+    S2 --> AUD
+    S3 --> AUD
+    S4 --> AUD
+    R4 --> AUD
+    R1 --> E([End])
+    R2 --> E
+    R3 --> E
+
+    D1 -->|Role| ROLE1["Enter role_name<br/>and description<br/>(BR-008)"]
+    ROLE1 --> V5{"role_name unique?<br/>(BR-008)"}
+    V5 -->|No| R5["Reject role change"]
+    V5 -->|Yes| D3{"Delete role<br/>requested?<br/>(BR-008)"}
+    D3 -->|No| S5["Create or rename role"]
+    D3 -->|Yes| V6{"Any employee references<br/>this role?<br/>(BR-008, BR-072)"}
+    V6 -->|Yes| R6["Block deletion;<br/>reassign employees first"]
+    V6 -->|No| S6["Delete role"]
+    S5 --> AUD
+    S6 --> AUD
+    R6 --> AUD
+    R5 --> E
+    AUD --> E
+
+    style R1 fill:#f8cecc,stroke:#b85450
+    style R2 fill:#f8cecc,stroke:#b85450
+    style R3 fill:#f8cecc,stroke:#b85450
+    style R4 fill:#f8cecc,stroke:#b85450
+    style R5 fill:#f8cecc,stroke:#b85450
+    style R6 fill:#f8cecc,stroke:#b85450
+```
+
+---
+
+## 7. Payment and Refund Flow (Staff)
 
 ```mermaid
 flowchart TD
@@ -228,6 +306,9 @@ flowchart TD
     D4 -->|No| AUD
     AUD --> E4([End])
 
+    N1["Staff record Payment and Refund transactions.<br/>Adjustment and Reversal are administrative<br/>corrections recorded by an Administrator<br/>(BR-005, BR-057, BR-081)."]
+    style N1 fill:#fff2cc,stroke:#d6b656
+
     style E1 fill:#f8cecc,stroke:#b85450
     style E2 fill:#f8cecc,stroke:#b85450
     style E3 fill:#f8cecc,stroke:#b85450
@@ -235,7 +316,87 @@ flowchart TD
 
 ---
 
-## 7. Check-in and Check-out Flow
+## 8. Additional Charge Flow (Staff)
+
+Records extra bill items (extra bed, damage, late check-out, etc.) against an existing
+reservation. Charges are stored in `additional_charge` and are separate from `payment`
+transactions (BR-042–BR-047). The charge insert, balance recomputation, and audit write
+must run in one transaction (BR-071). Operational charge entry is performed by Staff;
+Administrators handle corrections through the next flow (BR-005, BR-081).
+
+```mermaid
+flowchart TD
+    S([Start]) --> P1["Staff retrieves the reservation<br/>(BR-043)"]
+    P1 --> P2["Display accommodation total,<br/>existing charges, net paid,<br/>and outstanding balance<br/>(BR-047)"]
+    P2 --> D1{"Reservation status allows<br/>a new charge?<br/>(BR-043)"}
+    D1 -->|No| E1["Reject new charge<br/>Cancelled/NoShow: only an audited<br/>correction of an existing amount<br/>already owed is allowed<br/>(BR-043)"]
+    D1 -->|Yes| P3["Select charge_type; enter<br/>amount and optional description<br/>(BR-042, BR-044)"]
+    P3 --> D2{"charge_type valid,<br/>amount >= 0 and<br/>at most 2 decimals?<br/>(BR-042, BR-048)"}
+    D2 -->|No| E2["Reject and show<br/>validation error"]
+    D2 -->|Yes| P4["Insert additional_charge with<br/>reservation_id, employee_id,<br/>and charge_date<br/>(BR-042)"]
+    P4 --> P5["Accommodation price and kubo rate<br/>remain unchanged<br/>(BR-045)"]
+    P5 --> P6["Recompute charges_total =<br/>accommodation_total + charges<br/>and outstanding_balance<br/>(BR-047)"]
+    P6 --> P7["Audit the charge<br/>(BR-067)"]
+    P7 --> D3{"Collect payment<br/>for the charge now?"}
+    D3 -->|Yes| P8["Record the payment;<br/>payment_type may be<br/>AdditionalCharge<br/>(BR-050)"]
+    D3 -->|No| E3([End: charge recorded])
+    P8 --> E4([Continue in Payment and Refund Flow])
+
+    P4 -.-> N1["Charges are append-only after settlement.<br/>Correct a settled charge with a new audited<br/>charge or payment adjustment, not by editing<br/>or deleting the original (BR-046)."]
+    P3 -.-> N2["No service catalog exists. charge_type<br/>comes from the charge_type enum and<br/>description carries any detail (BR-044, G-10)."]
+
+    style E1 fill:#f8cecc,stroke:#b85450
+    style E2 fill:#f8cecc,stroke:#b85450
+    style N1 fill:#fff2cc,stroke:#d6b656
+    style N2 fill:#fff2cc,stroke:#d6b656
+```
+
+---
+
+## 9. Additional Charge Management Flow (Administrator)
+
+Administrators review charges across reservations and record audited corrections.
+Existing charges are append-only: an increase is a new `additional_charge`, while a
+reduction must use an `Adjustment` or `Reversal` payment transaction (BR-046, BR-057,
+BR-081). Administrative corrections do not replace Staff operational charge entry.
+
+```mermaid
+flowchart TD
+    S([Start]) --> P1["Administrator opens additional<br/>charge management<br/>(BR-081)"]
+    P1 --> P2["Select a reservation or filter<br/>charges by date, employee,<br/>charge type, or reservation<br/>(BR-042, BR-047)"]
+    P2 --> P3["Display charges, accommodation total,<br/>charges total, net paid,<br/>and outstanding balance<br/>(BR-047)"]
+    P3 --> D1{"Select action"}
+
+    D1 -->|View| V1["Read-only review"] --> E1([End: review complete])
+    D1 -->|Edit or delete charge| E2["Block: charges are append-only;<br/>record a new audited correction<br/>(BR-046, BR-081)"]
+    D1 -->|Record correction| D2{"Correction relates to an amount owed<br/>before cancellation/no-show, or the<br/>reservation is still Pending, Confirmed,<br/>CheckedIn, or CheckedOut?<br/>(BR-043, BR-081)"}
+
+    D2 -->|No| R1["Reject correction"]
+    D2 -->|Yes| D3{"Type of correction"}
+    D3 -->|Increase amount owed| C1["Enter charge_type, amount,<br/>and reason in description<br/>(BR-042, BR-044, BR-048)"]
+    D3 -->|Reduce or reverse amount| C2["Record payment with transaction_type<br/>Adjustment or Reversal, plus the<br/>required payment_type and method<br/>(BR-049, BR-057, G-07)"]
+
+    C1 --> V2{"charge_type valid, amount >= 0<br/>and at most 2 decimals?<br/>(BR-042, BR-048)"}
+    V2 -->|No| R2["Reject correction"]
+    V2 -->|Yes| C3["Insert a new additional_charge<br/>attributed to the Administrator<br/>(BR-081)"]
+    C3 --> P4["Recompute charges_total<br/>and outstanding_balance<br/>(BR-047)"]
+    P4 --> AUD["Audit the correction<br/>(BR-067, BR-068)"]
+    C2 --> AUD
+    E2 --> AUD
+    R1 --> E([End])
+    R2 --> E
+    AUD --> E
+
+    N1["Administrators do not record operational charges,<br/>payments, or refunds; those remain Staff<br/>operations (BR-005). Balance effects of<br/>Adjustment/Reversal are unresolved (G-07)."]
+    style N1 fill:#fff2cc,stroke:#d6b656
+    style E2 fill:#f8cecc,stroke:#b85450
+    style R1 fill:#f8cecc,stroke:#b85450
+    style R2 fill:#f8cecc,stroke:#b85450
+```
+
+---
+
+## 10. Check-in and Check-out Flow (Staff)
 
 ```mermaid
 flowchart TD
@@ -280,9 +441,9 @@ flowchart TD
 
 ---
 
-## 8. Status Lifecycles
+## 11. Status Lifecycles
 
-### 8.1 Reservation status
+### 11.1 Reservation status
 
 ```mermaid
 stateDiagram-v2
@@ -298,7 +459,7 @@ stateDiagram-v2
     NoShow --> [*]
 ```
 
-### 8.2 Reserved-kubo assignment status
+### 11.2 Reserved-kubo assignment status
 
 ```mermaid
 stateDiagram-v2
@@ -312,7 +473,7 @@ stateDiagram-v2
     NoShow --> [*]
 ```
 
-### 8.3 Payment status
+### 11.3 Payment status
 
 ```mermaid
 stateDiagram-v2
@@ -332,7 +493,7 @@ stateDiagram-v2
     Refunded --> [*]
 ```
 
-### 8.4 Kubo operational status
+### 11.4 Kubo operational status
 
 ```mermaid
 stateDiagram-v2

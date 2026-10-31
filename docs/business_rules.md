@@ -5,7 +5,7 @@
 | **Status** | Revised specification |
 | **Source of truth for schema** | `docs/business_rules_DDL.md` (latest DDL in that file) |
 | **Supporting references** | `docs/ERD&Flowcharts.drawio`, previous rules `a–m` in `docs/business_rules_DDL.md` |
-| **Last revised** | 2026-10-18 |
+| **Last revised** | 2026-10-24 |
 | **Scope** | Simple reservation and booking system for a small resort |
 
 > The latest DDL is authoritative. Where the ERD or the previous rules use names or
@@ -19,12 +19,15 @@
 The system supports the daily reservation operations of a small resort. It allows
 staff to register guests, create and manage reservations, assign kubos (accommodation
 units) for a date range, record payments and additional charges, and process
-check-in and check-out. Administrators configure users, kubo types, kubos, and rates,
-and can review the audit trail.
+check-in and check-out. Administrators manage employees and roles, configure kubo
+types, kubos, and rates, review reservations and the audit trail, and manage
+additional-charge corrections. Administrators do **not** perform staff operations.
 
 The system covers:
 
-- Role-based authentication and authorization for **Administrator** and **Staff**.
+- Role-based authentication and authorization for **Administrator** and **Staff**,
+  with a deliberate separation of duties (BR-005).
+- Employee and role administration.
 - Guest registration and retrieval.
 - Kubo type, kubo, and rate configuration.
 - Reservation creation, modification, confirmation, cancellation, and no-show handling.
@@ -47,8 +50,8 @@ These limitations are detailed in Section 14.
 | Term | Meaning | Primary table(s) |
 |---|---|---|
 | **Employee** | System user who signs in. Every employee has exactly one role. | `employee`, `role` |
-| **Administrator** | Administrative role. Manages configuration, users, and can perform staff operations. Called *Owner* in the old rules. | `role`, `employee` |
-| **Staff** | Operational role. Handles guests, reservations, payments, and check-in/out. | `role`, `employee` |
+| **Administrator** | Administrative role. Manages employees and roles, kubo types, kubos, rates, reservation review, audit review, and additional-charge corrections. Does **not** perform staff operations. Called *Owner* in the old rules. | `role`, `employee` |
+| **Staff** | Operational role. Handles guests, reservations, operational additional charges, payments and refunds, and check-in/out. | `role`, `employee` |
 | **Guest** | Person for whom a reservation is made. Called *Customer* in the old rules. | `guest` |
 | **Kubo type** | Accommodation category with capacity and nightly price. Called *room type* in the ERD and old rules. | `kubo_type` |
 | **Kubo** | A rentable accommodation unit. Called *room* in the ERD and old rules. | `kubo` |
@@ -73,27 +76,31 @@ restrict the values. The business defines two operational roles:
 
 | `role_name` | Purpose |
 |---|---|
-| **Administrator** | Configuration and administration, plus all staff operations. |
-| **Staff** | Daily reservation and guest operations. |
+| **Administrator** | Administration and oversight: employees and roles, kubo types and kubos, rates, read-only reservation review, audit-log review, and additional-charge corrections. |
+| **Staff** | Daily operational transactions: guests, reservations, kubos assignments, charges, payments, and check-in/check-out. |
 
 ### 3.2 Permission matrix
 
 | Capability | Administrator | Staff |
 |---|:---:|:---:|
 | Sign in and access the system | Yes, while `Active` | Yes, while `Active` |
-| Register or update guests | Yes | Yes |
-| Create, view, modify, cancel reservations | Yes | Yes |
-| Check availability and assign kubos | Yes | Yes |
-| Record additional charges | Yes | Yes |
-| Record payments and refunds | Yes | Yes |
-| Check in and check out guests | Yes | Yes |
-| Create or change employees and roles | Yes | No |
-| Create or change kubo types, kubos, and rates | Yes | No |
-| Delete configuration records | Yes, subject to FK restrictions | No |
+| View reservations, assignments, charges, payments, and balances (read-only) | Yes | Yes |
+| Register or update guests | No | Yes |
+| Create, modify, or cancel reservations | No (view-only) | Yes |
+| Check availability and assign kubos | No | Yes |
+| Record operational additional charges | No | Yes |
+| Record payments and refunds | No | Yes |
+| Check in and check out guests | No | Yes |
+| Manage employees and roles | Yes | No |
+| Manage kubo types, kubos, and rates | Yes | No |
+| Review and correct additional charges | Yes, as audited corrections (BR-081) | No |
+| Approve audited corrections and settlement exceptions | Yes | No |
 | View the audit log | Yes | No |
 
-The Administrator inherits all Staff capabilities. This is an **assumption**; the DDL
-does not define a permission table.
+**Separation of duties:** The Administrator does **not** inherit Staff capabilities.
+The roles are deliberately disjoint: Staff perform operational transactions, and
+Administrators perform configuration, oversight, and audited corrections (BR-005).
+The DDL has no permission table, so this matrix is enforced by the application.
 
 ### 3.3 Rules
 
@@ -132,11 +139,22 @@ does not define a permission table.
 - **Enforcement:** Application/middleware check. The `employee_status` enum constrains
   the allowed values but cannot itself block a session.
 
-#### BR-005 — Role-based authorization
+#### BR-005 — Role-based authorization and separation of duties
 - **Rule:** Every protected operation checks the employee's role before executing.
-  Staff may perform only the capabilities marked "Yes" for Staff in the permission
-  matrix. Administrator-only operations must reject Staff callers.
-- **Entities:** `employee`, `role`
+  The roles are disjoint:
+  - **Staff** perform operational transactions: guest registration, reservation
+    creation and management, availability checks and kubo assignment, operational
+    additional-charge entry, payments and refunds, and check-in/check-out.
+  - **Administrators** perform administrative functions: employee and role
+    management, kubo type/kubo/rate configuration, read-only reservation review,
+    audit-log review, and additional-charge management (review and audited
+    corrections).
+
+  An Administrator must not perform Staff operations, and Staff must not perform
+  Administrator operations. Administrative approvals required by BR-053, BR-057, and
+  BR-064 are authorizations recorded in the audit log; they do not authorize an
+  Administrator to execute the underlying operational transaction.
+- **Entities:** `employee`, `role`, `audit_log`
 - **Enforcement:** Application middleware/service layer. The DDL has no permission
   table, so the matrix is enforced in code.
 
@@ -280,7 +298,14 @@ does not define a permission table.
   | `UnderInspection` | `Available` |
   | `OutOfService` | `Available` |
 
-  Status changes are performed by Staff or an Administrator and must be audited.
+  Status changes occur in two ways:
+  - as a consequence of Staff check-in/check-out operations (`→ Occupied`,
+    `→ Cleaning`, and `→ Available` when ready) under BR-060 and BR-063; and
+  - as administrative changes performed by an Administrator through kubo management
+    (for example `→ Maintenance`, `→ UnderInspection`, `→ OutOfService`, or
+    returning those states to `Available`).
+
+  Every status change must be audited.
 - **Entities:** `kubo`, `audit_log`
 - **Enforcement:** Application-level transition validation. The enum constrains the
   value set but does not constrain transitions.
@@ -516,6 +541,8 @@ instead (retained from old rule `l`).
   `Confirmed`, `CheckedIn`, or `CheckedOut` while the account is still being settled.
   Charges must not be added to a `Cancelled` or `NoShow` reservation except to correct
   an amount already owed before cancellation/no-show, and such a case must be audited.
+  Operational charge entry is a Staff operation (BR-005). Administrators handle
+  disputed or incorrect charges through the administrative correction path in BR-081.
 - **Entities:** `additional_charge`, `reservation`
 - **Enforcement:** Application-level status check.
 
@@ -654,10 +681,13 @@ instead (retained from old rule `l`).
 - **Enforcement:** `NOT NULL` foreign key with `ON DELETE RESTRICT`.
 
 #### BR-057 — Payments are not deleted; use refunds or reversals
-- **Rule:** A completed payment must not be hard-deleted. Refund it, or record an
-  audited `Reversal`/`Adjustment`. The DDL permits deletion of a payment row, so this is
-  an application policy. `Adjustment` and `Reversal` require Administrator review and
-  must be audited; their effect on the derived balance is unresolved (gap G-07).
+- **Rule:** A completed payment must not be hard-deleted. Staff refund it as a
+  `Refund` transaction (BR-054). An Administrator may record an audited
+  `Adjustment`/`Reversal` as an administrative correction after review (BR-081); these
+  transactions are not part of routine Staff payment entry (BR-005). The DDL permits
+  deletion of a payment row, so the no-deletion policy is application-level.
+  The effect of `Adjustment` and `Reversal` on the derived balance is unresolved
+  (gap G-07).
 - **Entities:** `payment`, `audit_log`
 - **Enforcement:** Application policy and authorization; no DDL protection against
   deleting a payment row.
@@ -743,7 +773,9 @@ instead (retained from old rule `l`).
 - **Rule:** At minimum, audit the following:
   - reservation creation, confirmation, modification, cancellation, no-show,
     check-in, and check-out;
-  - changes to kubo types, rates, kubos, employee status, and roles;
+  - changes to kubo types, rates, and kubos;
+  - employee account creation, updates (names, username, password reset, status, and
+    role assignment), and role changes;
   - payment and refund creation or status changes;
   - additional-charge creation and corrections;
   - successful login and logout; and
@@ -835,18 +867,25 @@ instead (retained from old rule `l`).
 
 ---
 
-## 11. Administrative Configuration and Reporting
+## 11. Administrative Functions and Reporting
 
-#### BR-076 — Administrator configuration scope
-- **Rule:** Administrators manage employees and roles, kubo types, kubos, and rates.
-  They may also perform every Staff operation. Configuration changes must be audited.
-- **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `audit_log`
+#### BR-076 — Administrator scope
+- **Rule:** Administrators manage employees and roles, kubo types, kubos, and rates;
+  review reservations read-only; review the audit log; and manage additional charges
+  through review and audited corrections. They do **not** create or modify
+  reservations, record operational charges or payments/refunds, or check guests in or
+  out. Administrative changes must be audited.
+- **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `additional_charge`,
+  `audit_log`
 - **Enforcement:** Authorization layer.
 
 #### BR-077 — Staff cannot perform administrative actions
 - **Rule:** Staff must not create or modify employees, roles, kubo types, kubos, or
-  rates, and must not view the audit log. Attempts must be rejected and may be audited.
-- **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `audit_log`
+  rates; must not view the audit log; and must not record administrative
+  charge corrections. Attempts must be rejected and may be audited. Conversely,
+  Administrators must not perform Staff operations (BR-005).
+- **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `additional_charge`,
+  `audit_log`
 - **Enforcement:** Authorization layer.
 
 #### BR-078 — Administrative review uses the audit log
@@ -863,21 +902,73 @@ instead (retained from old rule `l`).
 - **Entities:** all tables
 - **Enforcement:** Read-only queries; no schema additions.
 
+#### BR-080 — Employee and role administration
+- **Rule:** Only an Administrator may create, update, deactivate, or terminate
+  employee accounts; assign roles; reset passwords; and create, rename, or delete
+  roles. The following conditions apply:
+  1. Required employee fields and unique `username` follow BR-002; passwords follow
+     BR-003 and are stored only as hashes.
+  2. `status` must be a value of the `employee_status` enum and follows BR-004.
+  3. The last `Active` Administrator must not be deactivated, terminated, or assigned
+     another role (BR-006).
+  4. An employee with references from reservations, payments, charges, or audit
+     entries must not be hard-deleted; set `status = 'Terminated'` instead
+     (BR-007, BR-072).
+  5. A role referenced by any employee must not be deleted; employees must be
+     reassigned first (BR-008, BR-072).
+  6. Passwords and `password_hash` must never be returned by the API or written to
+     audit/log output (BR-003, BR-070).
+
+  Every employee or role change must be audited (BR-067).
+- **Entities:** `employee`, `role`, `audit_log`
+- **Enforcement:** Application/authorization layer. Uniqueness, foreign keys, enum
+  values, and `ON DELETE RESTRICT` are enforced by the DDL; last-Administrator,
+  credential, and separation rules are application-level.
+
+#### BR-081 — Administrative additional-charge management
+- **Rule:** Administrators may view all additional charges and record audited
+  corrections when a charge is disputed, mis-keyed, or must be adjusted. Existing
+  charge rows must not be edited or deleted by an Administrator; every correction is
+  a new record (BR-046). Specifically:
+  - an **increase** in the amount owed is recorded as a new `additional_charge` with
+    a reason in `description`;
+  - a **reduction** cannot be stored as a negative `additional_charge` because
+    `amount >= 0`; it must be recorded as a `payment` with
+    `transaction_type = 'Adjustment'` or `'Reversal'` and the required
+    `payment_type`/`payment_method` (BR-049), whose balance semantics remain
+    unresolved (G-07); and
+  - the correction must be attributable to the Administrator through `employee_id`
+    and must be audited (BR-067, BR-068).
+
+  Routine operational charge entry remains a Staff operation (BR-042–BR-046).
+- **Entities:** `additional_charge`, `payment`, `audit_log`
+- **Enforcement:** Application authorization, append-only policy, and audit trail.
+  The DDL has no charge status or approval field (G-16).
+
+#### BR-082 — Administrator reservation review is read-only
+- **Rule:** Administrators may retrieve and view reservations, assignments, charges,
+  payments, and derived balances for oversight and reporting, but must not create,
+  modify, cancel, or mark no-show a reservation, and must not check a guest in or out.
+  Operational corrections must be performed by Staff; financial corrections follow
+  BR-081.
+- **Entities:** `reservation`, `reserved_kubo`, `payment`, `additional_charge`
+- **Enforcement:** Authorization layer; read-only queries.
+
 ---
 
 ## 12. Database Entity Reference
 
 | Table | Purpose | Key rules |
 |---|---|---|
-| `role` | Role names | BR-001, BR-008 |
-| `employee` | System users | BR-002–BR-007 |
+| `role` | Role names | BR-001, BR-008, BR-080 |
+| `employee` | System users | BR-002–BR-007, BR-080 |
 | `guest` | Guests | BR-009–BR-015 |
 | `kubo_type` | Accommodation types and nightly rates | BR-016, BR-019, BR-020, BR-022 |
 | `kubo` | Individual accommodation units | BR-017, BR-021, BR-023 |
 | `reservation` | Booking header | BR-024–BR-028, BR-033–BR-038 |
 | `reserved_kubo` | Kubo assignments, dates, price snapshot, per-kubo status | BR-029–BR-032, BR-058–BR-066 |
 | `payment` | Payments, refunds, adjustments, reversals | BR-049–BR-057 |
-| `additional_charge` | Extra bill items | BR-042–BR-046 |
+| `additional_charge` | Extra bill items | BR-042–BR-046, BR-081 |
 | `audit_log` | Append-only activity trail | BR-067–BR-070, BR-078 |
 
 ---
@@ -919,6 +1010,7 @@ instead (retained from old rule `l`).
 | **G-13** | `audit_log.employee_id` is `NOT NULL`, so failed login attempts by unknown users cannot be recorded. | Authentication-failure auditing needs a schema change or a designated system employee. |
 | **G-14** | No database triggers enforce status-transition or timestamp-consistency rules. | All lifecycle rules depend on the application/procedure layer. |
 | **G-15** | No explicit `updated_at` trigger. | `updated_at` will be stale unless the application sets it on every update. |
+| **G-16** | `additional_charge` has no status, void flag, approval field, or link to a correcting record. | Administrative corrections must be new audited records; reductions rely on `Adjustment`/`Reversal` transactions, whose balance effect is unresolved (G-07). |
 
 ---
 
@@ -951,11 +1043,14 @@ The companion diagrams are:
 
 | Diagram | Related rules |
 |---|---|
-| Overall System Flow | BR-001–BR-008, BR-067, BR-076–BR-079 |
-| Reservation and Booking Flow | BR-009–BR-020, BR-024–BR-034, BR-039–BR-040 |
-| Reservation Management Flow | BR-033–BR-038 |
-| Kubo and Kubo Type Management Flow | BR-016–BR-023 |
-| Rate and Pricing Management Flow | BR-018–BR-020, BR-039–BR-041 |
-| Payment and Refund Flow | BR-047–BR-057 |
-| Check-in and Check-out Flow | BR-058–BR-066 |
+| Overall System Flow | BR-001–BR-008, BR-067, BR-076–BR-082 |
+| Reservation and Booking Flow (Staff) | BR-009–BR-020, BR-024–BR-034, BR-039–BR-040 |
+| Reservation Management Flow (Staff) | BR-033–BR-038 |
+| Kubo and Kubo Type Management Flow (Administrator) | BR-016–BR-023 |
+| Rate and Pricing Management Flow (Administrator) | BR-018–BR-020, BR-039–BR-041 |
+| Manage Employees and Roles Flow (Administrator) | BR-001–BR-008, BR-080 |
+| Payment and Refund Flow (Staff) | BR-047–BR-057 |
+| Additional Charge Flow (Staff) | BR-042–BR-048 |
+| Additional Charge Management Flow (Administrator) | BR-046, BR-057, BR-081 |
+| Check-in and Check-out Flow (Staff) | BR-058–BR-066 |
 | Status Lifecycles | BR-021, BR-033, BR-051 |
