@@ -20,6 +20,7 @@ router.patch(
       validateBody(UpdateGuestSchema),
       updateGuestController,
 );
+// Deletion is intended for Administrators only; enforce once auth/RBAC exists.
 router.delete("/:guestId", requireUuidParam("guestId"), deleteGuestController);
 
 export default router;

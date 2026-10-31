@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
       CreateEmployeeDTO,
       UpdateEmployeeDTO,
+      ResetEmployeePasswordDTO,
 } from "./repository/employee.schema";
 import { EmployeeFilterSchema } from "./repository/employee.schema";
 import { AppError, getPagination, handleControllerError } from "../../utils/http";
@@ -12,6 +13,7 @@ import {
       getEmployeeByIdService,
       updateEmployeeService,
       deleteEmployeeService,
+      resetEmployeePasswordService,
 } from "./employee.services";
 
 export const createEmployeeController = async (req: Request, res: Response) => {
@@ -114,6 +116,32 @@ export const updateEmployeeController = async (req: Request, res: Response) => {
             });
       } catch (error: any) {
             logger.error("Failed to update Employee", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const resetEmployeePasswordController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const employeeId = String(req.params.employeeId);
+            const data = req.body as ResetEmployeePasswordDTO;
+            const employees = await resetEmployeePasswordService(
+                  employeeId,
+                  data.password,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully reset Employee password",
+                  employees,
+            });
+      } catch (error: any) {
+            logger.error("Failed to reset Employee password", {
                   message: error.message,
                   stack: error.stack,
             });

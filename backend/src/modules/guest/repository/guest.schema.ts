@@ -1,52 +1,95 @@
 import { z } from "zod";
 
 const ID_TYPE_ENUMS = [
-      "passport",
-      "drivers license",
-      "national id",
-      "phil health id",
-      "sss id",
-      "um id",
-      "postal id",
-      "prc id",
-      "voters id",
-      "senior citizen id",
-      "student id",
-      "other",
+      "Passport",
+      "DriverLicense",
+      "NationalID",
+      "PhilHealthID",
+      "SSSID",
+      "UMID",
+      "PostalID",
+      "PRCID",
+      "VotersID",
+      "SeniorCitizenID",
+      "StudentID",
+      "Other",
 ] as const;
+
+const PHONE_PATTERN = /^(09\d{9}|\+639\d{9})$/;
 
 export const GuestSchema = z.object({
       guestId: z.string().uuid(),
       firstName: z
             .string()
-            .nonempty({ message: "Guest first name is required" }),
-      lastName: z.string().nonempty({ message: "Guest last name is required" }),
+            .trim()
+            .min(1, { message: "Guest first name is required" })
+            .max(100, { message: "Guest first name cannot exceed 100 characters" }),
+      lastName: z
+            .string()
+            .trim()
+            .min(1, { message: "Guest last name is required" })
+            .max(100, { message: "Guest last name cannot exceed 100 characters" }),
       email: z
             .string()
+            .trim()
             .email({ message: "Guest email must be a valid email format" })
+            .max(100, { message: "Guest email cannot exceed 100 characters" }),
+      phone: z
+            .string()
+            .trim()
+            .regex(PHONE_PATTERN, {
+                  message: "Guest phone must use 09XXXXXXXXX or +639XXXXXXXXX format",
+            }),
+      addressLine1: z
+            .string()
+            .trim()
+            .max(200, { message: "Guest address cannot exceed 200 characters" })
             .optional(),
-      phone: z.e164({
-            message: "Gues phone number must be in a valid format +09XXXXXXXX",
+      city: z
+            .string()
+            .trim()
+            .max(100, { message: "Guest city cannot exceed 100 characters" })
+            .optional(),
+      stateProvince: z
+            .string()
+            .trim()
+            .max(100, {
+                  message: "Guest state/province cannot exceed 100 characters",
+            })
+            .optional(),
+      zipPostalCode: z
+            .string()
+            .trim()
+            .max(20, { message: "Guest postal code cannot exceed 20 characters" })
+            .optional(),
+      country: z
+            .string()
+            .trim()
+            .max(100, { message: "Guest country cannot exceed 100 characters" })
+            .optional(),
+      validIdType: z.enum(ID_TYPE_ENUMS, {
+            message: "Guest ID type must be a supported ID type",
       }),
-      addressLine1: z.string({ message: "Guest address line is required" }),
-      city: z.string({ message: "Guest city is required" }),
-      stateProvince: z.string({ message: "Guest state province is required" }),
-      zidPostalCode: z.string({ message: "Guest postal code is required" }),
-      country: z.string({ message: "Guest country is required" }),
-      validIdType: z.enum(ID_TYPE_ENUMS, { message: "Guest ID invalid" }),
-      idNumber: z.string({
-            message: "Guest ID number is required and must be valid",
-      }),
+      idNumber: z
+            .string()
+            .trim()
+            .min(1, { message: "Guest ID number is required" })
+            .max(50, { message: "Guest ID number cannot exceed 50 characters" }),
 });
+
+export const GuestFilterSchema = z.object({
+      search: z.string().trim().min(1).max(100).optional(),
+      validIdType: z.enum(ID_TYPE_ENUMS).optional(),
+});
+
+export type GuestFilterDTO = z.infer<typeof GuestFilterSchema>;
 
 // Schema and DTO for creating
 export const CreateGuestSchema = GuestSchema.omit({ guestId: true });
 export type CreateGuestDTO = z.infer<typeof CreateGuestSchema>;
 
 // Schema and DTO for updating
-export const UpdateGuestSchema = GuestSchema.pick({ guestId: true }).merge(
-      GuestSchema.omit({ guestId: true }).partial(),
-);
+export const UpdateGuestSchema = GuestSchema.omit({ guestId: true }).partial();
 export type UpdateGuestDTO = z.infer<typeof UpdateGuestSchema>;
 
 // Response DTO

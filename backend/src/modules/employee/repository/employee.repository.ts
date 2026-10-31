@@ -5,7 +5,7 @@ import type {
       EmployeeResponseDTO,
 } from "./employee.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { AppError, mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
 // Checked
@@ -15,7 +15,8 @@ export const createEmployee = async (
       try {
             const result = await db.query(
                   `
-                  CALL kubo_employee_management.create_employee($1, $2, $3, $4, $5, $6)
+                  SELECT *
+                  FROM kubo_employee_management.create_employee($1, $2, $3, $4, $5, $6)
                   `,
                   [
                         data.roleId,
@@ -32,10 +33,10 @@ export const createEmployee = async (
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) {
-                  throw error;
-            }
-            throw new AppError(500, "Failed to insert employee into database");
+            throw mapDatabaseError(
+                  error,
+                  "Failed to insert employee into database",
+            );
       }
 };
 
@@ -143,15 +144,7 @@ export const updateEmployee = async (
       try {
             const result = await db.query(
                   `
-                  SELECT
-                        employee_id,
-                        role_id,
-                        first_name,
-                        last_name,
-                        username,
-                  status,
-                        created_at,
-                        updated_at
+                  SELECT *
                   FROM kubo_employee_management.update_employee_role_status(
                         p_employee_id => $1,
                         p_role_id => $2,
@@ -176,10 +169,7 @@ export const updateEmployee = async (
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) {
-                  throw error;
-            }
-            throw new AppError(500, "Failed to update employee in database");
+            throw mapDatabaseError(error, "Failed to update employee in database");
       }
 };
 
@@ -187,21 +177,49 @@ export const updateEmployee = async (
 export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
       try {
             const result = await db.query(
-                  ` 
-                  CALL kubo_employee_management.delete_unused_employee($1)
+                  `
+                  SELECT kubo_employee_management.delete_unused_employee($1) AS deleted
                   `,
                   [employeeId],
             );
-            return result.rows[0]?.deleted != null;
+            return result.rows[0]?.deleted === true;
       } catch (error: any) {
             logger.error("Failed to delete employee from database", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) {
-                  throw error;
-            }
-            throw new AppError(500, "Failed to delete employee from database");
+            throw mapDatabaseError(error, "Failed to delete employee from database");
+      }
+};
+
+/**
+ * Resets an employee password using a pre-hashed bcrypt value.
+ *
+ * The database routine never returns `password_hash`; the caller receives the
+ * safe employee profile instead.
+ */
+export const resetEmployeePassword = async (
+      employeeId: string,
+      passwordHash: string,
+): Promise<EmployeeResponseDTO | null> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_employee_management.reset_employee_password($1, $2)
+                  `,
+                  [employeeId, passwordHash],
+            );
+            return result.rows[0] ?? null;
+      } catch (error: any) {
+            logger.error("Failed to reset employee password in database", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(
+                  error,
+                  "Failed to reset employee password in database",
+            );
       }
 };
 
