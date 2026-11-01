@@ -7,22 +7,28 @@ import {
       searchKuboTypes,
 } from "./repository/kubo-type.repository";
 import { AppError } from "../../utils/http";
-import logger from "../../utils/logger";
 import type {
       CreateKuboTypeDTO,
       UpdateKuboTypeDTO,
 } from "./repository/kubo-type.schema";
 import type { Pagination } from "../../utils/pagination";
 
+// Checked
 export const createKuboTypeService = async (data: CreateKuboTypeDTO) => {
-      // No uniqueness constraints defined
       return createKuboType(data);
 };
 
-export const getAllKuboTypesService = async () => {
-      return getKuboTypes();
+// Checked
+export const getAllKuboTypesService = async (pagination: Pagination) => {
+      return getKuboTypes({
+            pagination: {
+                  limit: pagination.limit,
+                  offset: pagination.offset,
+            },
+      });
 };
 
+// Checked
 export const getKuboTypeByIdService = async (kuboTypeId: string) => {
       const type = await getKuboTypeById(kuboTypeId);
       if (!type) {
@@ -31,22 +37,32 @@ export const getKuboTypeByIdService = async (kuboTypeId: string) => {
       return type;
 };
 
-export const updateKuboTypeService = async (data: UpdateKuboTypeDTO) => {
-      const existing = await getKuboTypeById(data.kuboTypeId);
+// Checked
+export const updateKuboTypeService = async (
+      kuboTypeId: string,
+      data: UpdateKuboTypeDTO,
+) => {
+      const existing = await getKuboTypeById(kuboTypeId);
       if (!existing) {
             throw new AppError(404, "Kubo type not found");
       }
-      return updateKuboType(data);
+      return updateKuboType(kuboTypeId, data);
 };
 
+// Checked
 export const deleteKuboTypeService = async (kuboTypeId: string) => {
       const existing = await getKuboTypeById(kuboTypeId);
       if (!existing) {
             throw new AppError(404, "Kubo type not found");
       }
-      await deleteKuboType(kuboTypeId);
+
+      const deleted = await deleteKuboType(kuboTypeId);
+      if (!deleted) {
+            throw new AppError(404, "Kubo type not found");
+      }
 };
 
+// Checked
 export const searchKuboTypesService = async (params: {
       search?: string;
       minCapacity?: number;

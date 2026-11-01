@@ -1,11 +1,11 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import type {
       CreateKuboTypeDTO,
       UpdateKuboTypeDTO,
 } from "./repository/kubo-type.schema";
-import { handleControllerError } from "../../utils/http";
+import { KuboTypeFilterSchema } from "./repository/kubo-type.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       createKuboTypeService,
       getAllKuboTypesService,
@@ -41,35 +41,40 @@ export const getAllKuboTypesController = async (
       try {
             const pagination = getPagination(req.query);
 
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
-            const minCapacity = req.query.minCapacity
-                  ? Number(req.query.minCapacity)
-                  : undefined;
-            const maxCapacity = req.query.maxCapacity
-                  ? Number(req.query.maxCapacity)
-                  : undefined;
+            const filters = KuboTypeFilterSchema.safeParse({
+                  search: req.query.search,
+                  minCapacity: req.query.minCapacity,
+                  maxCapacity: req.query.maxCapacity,
+            });
 
-            let kuboTypes;
-            if (
-                  search ||
-                  minCapacity !== undefined ||
-                  maxCapacity !== undefined
-            ) {
-                  kuboTypes = await searchKuboTypesService({
-                        search,
-                        minCapacity,
-                        maxCapacity,
-                        pagination,
-                  });
-            } else {
-                  kuboTypes = await getAllKuboTypesService();
+            if (!filters.success) {
+                  throw new AppError(
+                        400,
+                        filters.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
             }
+
+            const kuboTypes =
+                  filters.data.search !== undefined ||
+                  filters.data.minCapacity !== undefined ||
+                  filters.data.maxCapacity !== undefined
+                        ? await searchKuboTypesService({
+                                search: filters.data.search,
+                                minCapacity: filters.data.minCapacity,
+                                maxCapacity: filters.data.maxCapacity,
+                                pagination,
+                          })
+                        : await getAllKuboTypesService(pagination);
 
             res.status(200).json({
                   success: true,
+                  count: kuboTypes.length,
                   message: "Successfully listed kubo types",
                   kuboTypes,
             });
@@ -107,11 +112,9 @@ export const getKuboTypeByIdController = async (
 
 export const updateKuboTypeController = async (req: Request, res: Response) => {
       try {
+            const kuboTypeId = String(req.params.kuboTypeId);
             const data = req.body as UpdateKuboTypeDTO;
-            const kuboTypes = await updateKuboTypeService({
-                  ...data,
-                  kuboTypeId: req.params.kuboTypeId as string,
-            });
+            const kuboTypes = await updateKuboTypeService(kuboTypeId, data);
 
             res.status(200).json({
                   success: true,
@@ -129,15 +132,9 @@ export const updateKuboTypeController = async (req: Request, res: Response) => {
 
 export const deleteKuboTypeController = async (req: Request, res: Response) => {
       try {
-            const kuboTypes = await deleteKuboTypeService(
-                  req.params.kuboTypeId as string,
-            );
+            await deleteKuboTypeService(req.params.kuboTypeId as string);
 
-            res.status(204).json({
-                  success: true,
-                  message: "Successfully deleted kubo type",
-                  kuboTypes,
-            });
+            res.status(204).json();
       } catch (error: any) {
             logger.error("Failed to delete Kubo type", {
                   message: error.message,
