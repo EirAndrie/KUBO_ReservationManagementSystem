@@ -1,15 +1,13 @@
 import { Router } from "express";
 import {
-      assignRoomController,
-      getRoomsByReservationController,
-      getReservedRoomController,
-      updateReservedRoomController,
-      deleteReservedRoomController,
-      checkInRoomController,
-      checkOutRoomController,
-      earlyCheckInController,
-      searchReservedRoomsController,
-      getReservationsByRoomController,
+      assignKuboController,
+      getReservedKubosController,
+      getReservedKuboController,
+      updateReservedKuboController,
+      deleteReservedKuboController,
+      checkInReservedKuboController,
+      checkOutReservedKuboController,
+      approveEarlyCheckInController,
 } from "./reserved-room_kubo.controllers";
 import {
       CreateReservedKuboSchema,
@@ -19,62 +17,53 @@ import { validateBody, requireUuidParam } from "../../utils/http";
 
 const router = Router();
 
-// Assignment endpoints – nested under a reservation
 router.post(
-      "/reservations/:reservationId/rooms",
-      validateBody(CreateReservedKuboSchema),
-      assignRoomController,
-);
-router.get(
-      "/reservations/:reservationId/rooms",
-      getRoomsByReservationController,
-);
-router.get(
-      "/reservations/:reservationId/rooms/:roomId",
+      "/:reservationId/kubos",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
-      getReservedRoomController,
+      validateBody(CreateReservedKuboSchema),
+      assignKuboController,
+);
+router.get(
+      "/:reservationId/kubos",
+      requireUuidParam("reservationId"),
+      getReservedKubosController,
+);
+router.get(
+      "/:reservationId/kubos/:kuboId",
+      requireUuidParam("reservationId"),
+      requireUuidParam("kuboId"),
+      getReservedKuboController,
 );
 router.patch(
-      "/reservations/:reservationId/rooms/:roomId",
+      "/:reservationId/kubos/:kuboId",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
+      requireUuidParam("kuboId"),
       validateBody(UpdateReservedKuboSchema),
-      updateReservedRoomController,
+      updateReservedKuboController,
 );
 router.delete(
-      "/reservations/:reservationId/rooms/:roomId",
+      "/:reservationId/kubos/:kuboId",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
-      deleteReservedRoomController,
+      requireUuidParam("kuboId"),
+      deleteReservedKuboController,
 );
 router.patch(
-      "/reservations/:reservationId/rooms/:roomId/check-in",
+      "/:reservationId/kubos/:kuboId/check-in",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
-      checkInRoomController,
+      requireUuidParam("kuboId"),
+      checkInReservedKuboController,
 );
 router.patch(
-      "/reservations/:reservationId/rooms/:roomId/check-out",
+      "/:reservationId/kubos/:kuboId/check-out",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
-      checkOutRoomController,
+      requireUuidParam("kuboId"),
+      checkOutReservedKuboController,
 );
 router.patch(
-      "/reservations/:reservationId/rooms/:roomId/early-check-in",
+      "/:reservationId/kubos/:kuboId/early-check-in",
       requireUuidParam("reservationId"),
-      requireUuidParam("roomId"),
-      earlyCheckInController,
-);
-
-// Public search endpoint for reserved rooms
-router.get("/reserved-rooms", searchReservedRoomsController);
-
-// Public endpoint to get reservations for a specific room
-router.get(
-      "/rooms/:roomId/reservations",
-      requireUuidParam("roomId"),
-      getReservationsByRoomController,
+      requireUuidParam("kuboId"),
+      approveEarlyCheckInController,
 );
 
 export default router;

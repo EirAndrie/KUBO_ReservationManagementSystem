@@ -1,122 +1,118 @@
 import {
-      assignRoom,
-      getRoomsByReservation,
-      getReservedRoom,
-      updateReservedRoom,
-      deleteReservedRoom,
-      checkInRoom,
-      checkOutRoom,
+      assignKubo,
+      getReservedKubos,
+      getReservedKubo,
+      updateReservedKubo,
+      deleteReservedKubo,
+      checkInReservedKubo,
+      checkOutReservedKubo,
       approveEarlyCheckIn,
-      searchReservedRooms,
-      getReservationsByRoom,
 } from "./repository/reserved-kubo.repository";
 import { AppError } from "../../utils/http";
-import logger from "../../utils/logger";
 import type {
       CreateReservedKuboDTO,
       UpdateReservedKuboDTO,
 } from "./repository/reserved-kubo.schema";
-import type { Pagination } from "../../utils/pagination";
 
-// Assign a room to a reservation
-export const assignRoomService = async (data: CreateReservedKuboDTO) => {
-      // No additional checks for now – could verify reservation & room existence here
-      return assignRoom(data);
+// Checked
+export const assignKuboService = async (
+      reservationId: string,
+      data: CreateReservedKuboDTO,
+) => {
+      const assignment = await assignKubo(reservationId, data);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
+      }
+      return assignment;
 };
 
-export const getRoomsByReservationService = async (reservationId: string) => {
-      return getRoomsByReservation(reservationId);
+// Checked
+export const getReservedKubosService = async (reservationId: string) => {
+      return getReservedKubos(reservationId);
 };
 
-export const getReservedRoomService = async (
+// Checked
+export const getReservedKuboService = async (
       reservationId: string,
       kuboId: string,
 ) => {
-      const rr = await getReservedRoom(reservationId, kuboId);
-      if (!rr) {
-            throw new AppError(404, "Reserved room not found");
+      const assignment = await getReservedKubo(reservationId, kuboId);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
       }
-      return rr;
+      return assignment;
 };
 
-export const updateReservedRoomService = async (
+// Checked
+export const updateReservedKuboService = async (
+      reservationId: string,
+      kuboId: string,
       data: UpdateReservedKuboDTO,
 ) => {
-      // Ensure the row exists before update
-      const existing = await getReservedRoom(data.reservationId, data.kuboId);
+      const existing = await getReservedKubo(reservationId, kuboId);
       if (!existing) {
-            throw new AppError(404, "Reserved room not found");
+            throw new AppError(404, "Reserved kubo not found");
       }
-      return updateReservedRoom(data);
+
+      const assignment = await updateReservedKubo(
+            reservationId,
+            kuboId,
+            data,
+      );
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
+      }
+      return assignment;
 };
 
-export const deleteReservedRoomService = async (
+// Checked
+export const deleteReservedKuboService = async (
       reservationId: string,
       kuboId: string,
 ) => {
-      const existing = await getReservedRoom(reservationId, kuboId);
+      const existing = await getReservedKubo(reservationId, kuboId);
       if (!existing) {
-            throw new AppError(404, "Reserved room not found");
+            throw new AppError(404, "Reserved kubo not found");
       }
-      await deleteReservedRoom(reservationId, kuboId);
+
+      const deleted = await deleteReservedKubo(reservationId, kuboId);
+      if (!deleted) {
+            throw new AppError(404, "Reserved kubo not found");
+      }
 };
 
-export const checkInRoomService = async (
+// Checked
+export const checkInReservedKuboService = async (
       reservationId: string,
       kuboId: string,
 ) => {
-      const existing = await getReservedRoom(reservationId, kuboId);
-      if (!existing) {
-            throw new AppError(404, "Reserved room not found");
+      const assignment = await checkInReservedKubo(reservationId, kuboId);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
       }
-      return checkInRoom(reservationId, kuboId);
+      return assignment;
 };
 
-export const checkOutRoomService = async (
+// Checked
+export const checkOutReservedKuboService = async (
       reservationId: string,
       kuboId: string,
 ) => {
-      const existing = await getReservedRoom(reservationId, kuboId);
-      if (!existing) {
-            throw new AppError(404, "Reserved room not found");
+      const assignment = await checkOutReservedKubo(reservationId, kuboId);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
       }
-      return checkOutRoom(reservationId, kuboId);
+      return assignment;
 };
 
+// Checked
 export const approveEarlyCheckInService = async (
       reservationId: string,
       kuboId: string,
 ) => {
-      const existing = await getReservedRoom(reservationId, kuboId);
-      if (!existing) {
-            throw new AppError(404, "Reserved room not found");
+      const assignment = await approveEarlyCheckIn(reservationId, kuboId);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
       }
-      return approveEarlyCheckIn(reservationId, kuboId);
-};
-
-export const searchReservedRoomsService = async (params: {
-      roomId?: string;
-      status?: string;
-      checkInDate?: string;
-      checkOutDate?: string;
-      pagination: Pagination;
-}) => {
-      return searchReservedRooms({
-            roomId: params.roomId,
-            status: params.status,
-            checkInDate: params.checkInDate,
-            checkOutDate: params.checkOutDate,
-            pagination: {
-                  limit: params.pagination.limit,
-                  offset: params.pagination.offset,
-            },
-      });
-};
-
-export const getReservationsByRoomService = async (
-      roomId: string,
-      checkInDate?: string,
-      checkOutDate?: string,
-) => {
-      return getReservationsByRoom(roomId, checkInDate, checkOutDate);
+      return assignment;
 };

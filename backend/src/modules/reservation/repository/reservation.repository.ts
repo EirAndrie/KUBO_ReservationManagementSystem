@@ -4,152 +4,66 @@ import type {
       ReservationResponseDTO,
 } from "./reservation.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
+
+const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+const buildAssignmentsPayload = (
+      assignments: CreateReservationDTO["assignments"],
+) =>
+      JSON.stringify(
+            assignments.map((assignment) => ({
+                  kubo_id: assignment.kuboId,
+                  check_in_date: toDateOnly(assignment.checkInDate),
+                  check_out_date: toDateOnly(assignment.checkOutDate),
+                  scheduled_check_in_time:
+                        assignment.scheduledCheckInTime ?? null,
+                  scheduled_check_out_time:
+                        assignment.scheduledCheckOutTime ?? null,
+            })),
+      );
 
 export const createReservation = async (
       data: CreateReservationDTO,
 ): Promise<ReservationResponseDTO> => {
       try {
-            const result = await db.query(
+            const created = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.create_reservation(
-                              $1, $2, $3, $4, $5, $6, $7
-                        )
+                  SELECT kubo_reservation_management.fn_create_reservation(
+                        $1,
+                        $2,
+                        $3::kubo.booking_source,
+                        $4::jsonb
+                  ) AS reservation_id
                   `,
                   [
-                        data.referenceCode,
-                        data.reservationGuestId,
-                        data.reservationEmployeeId,
-                        data.reservationTotalAmount,
-                        data.reservationStatus,
-                        data.reservationBookingSource,
-                        data.reservedAt,
+                        data.guestId,
+                        data.employeeId,
+                        data.bookingSource,
+                        buildAssignmentsPayload(data.assignments),
                   ],
             );
-            return result.rows[0];
+
+            const reservationId = created.rows[0]?.reservation_id;
+            const reservation = await getReservationById(reservationId);
+            if (!reservation) {
+                  throw new Error("Created reservation could not be loaded.");
+            }
+            return reservation;
       } catch (error: any) {
             logger.error("Failed to insert reservation into database", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
+            throw mapDatabaseError(
+                  error,
                   "Failed to insert reservation into database",
             );
       }
 };
 
-export const getReservations = async (): Promise<ReservationResponseDTO[]> => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_reservations()
-                  `,
-            );
-            return result.rows;
-      } catch (error: any) {
-            logger.error("Failed to fetch reservations from database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
-                  "Failed to fetch reservations from database",
-            );
-      }
-};
-
-export const getReservationById = async (
-      reservationId: string,
-): Promise<ReservationResponseDTO | null> => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_reservation_by_id($1)
-                  `,
-                  [reservationId],
-            );
-            return result.rows[0] ?? null;
-      } catch (error: any) {
-            logger.error("Failed to get reservation by id from database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
-                  "Failed to get reservation by id from database",
-            );
-      }
-};
-
-export const updateReservation = async (
-      data: UpdateReservationDTO,
-): Promise<ReservationResponseDTO | null> => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.update_reservation(
-                              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-                        )
-                  `,
-                  [
-                        data.reservationId,
-                        data.referenceCode ?? null,
-                        data.reservationGuestId ?? null,
-                        data.reservationEmployeeId ?? null,
-                        data.reservationTotalAmount ?? null,
-                        data.reservationStatus ?? null,
-                        data.reservationBookingSource ?? null,
-                        data.reservedAt ?? null,
-                        data.reservationCancelledAt ?? null,
-                        data.cancellationReason ?? null,
-                  ],
-            );
-            return result.rows[0] ?? null;
-      } catch (error: any) {
-            logger.error("Failed to update reservation in database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to update reservation in database");
-      }
-};
-
-export const deleteReservation = async (
-      reservationId: string,
-): Promise<boolean> => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT kubo.delete_reservation($1) AS deleted
-                  `,
-                  [reservationId],
-            );
-            return result.rows[0]?.deleted != null;
-      } catch (error: any) {
-            logger.error("Failed to delete reservation from database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
-                  "Failed to delete reservation from database",
-            );
-      }
-};
-
-export const searchReservations = async (params: {
+export const getReservations = async (params: {
       status?: string;
       bookingSource?: string;
       search?: string;
@@ -172,10 +86,18 @@ export const searchReservations = async (params: {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.search_reservations(
-                              $1, $2, $3, $4, $5, $6, $7, $8, $9
-                        )
+                  SELECT *
+                  FROM kubo_reservation_management.fn_get_reservations(
+                        p_status => $1::kubo.reservation_status,
+                        p_booking_source => $2::kubo.booking_source,
+                        p_search => $3,
+                        p_guest_id => $4,
+                        p_employee_id => $5,
+                        p_check_in_date => $6::date,
+                        p_check_out_date => $7::date,
+                        p_limit => $8,
+                        p_offset => $9
+                  )
                   `,
                   [
                         status ?? null,
@@ -191,60 +113,146 @@ export const searchReservations = async (params: {
             );
             return result.rows;
       } catch (error: any) {
-            logger.error("Failed to search reservations in database", {
+            logger.error("Failed to fetch reservations from database", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
-                  "Failed to search reservations in database",
+            throw mapDatabaseError(
+                  error,
+                  "Failed to fetch reservations from database",
             );
+      }
+};
+
+export const getReservationById = async (
+      reservationId: string,
+): Promise<ReservationResponseDTO | null> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_reservation_management.fn_get_reservation_by_id($1)
+                  `,
+                  [reservationId],
+            );
+            return result.rows[0] ?? null;
+      } catch (error: any) {
+            logger.error("Failed to get reservation by id from database", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(
+                  error,
+                  "Failed to get reservation by id from database",
+            );
+      }
+};
+
+export const updateReservation = async (
+      reservationId: string,
+      data: UpdateReservationDTO,
+): Promise<ReservationResponseDTO | null> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_update_reservation(
+                        p_reservation_id => $1,
+                        p_guest_id => $2,
+                        p_booking_source => $3::kubo.booking_source
+                  )
+                  `,
+                  [reservationId, data.guestId ?? null, data.bookingSource ?? null],
+            );
+            return getReservationById(reservationId);
+      } catch (error: any) {
+            logger.error("Failed to update reservation in database", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(
+                  error,
+                  "Failed to update reservation in database",
+            );
+      }
+};
+
+export const confirmReservation = async (
+      reservationId: string,
+): Promise<ReservationResponseDTO | null> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_confirm_reservation($1)
+                  `,
+                  [reservationId],
+            );
+            return getReservationById(reservationId);
+      } catch (error: any) {
+            logger.error("Failed to confirm reservation", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to confirm reservation");
       }
 };
 
 export const cancelReservation = async (
       reservationId: string,
-      reason?: string,
+      reason: string,
 ): Promise<ReservationResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.cancel_reservation($1, $2)
+                  SELECT kubo_reservation_management.fn_cancel_reservation($1, $2)
                   `,
-                  [reservationId, reason ?? null],
+                  [reservationId, reason],
             );
-            return result.rows[0] ?? null;
+            return getReservationById(reservationId);
       } catch (error: any) {
             logger.error("Failed to cancel reservation", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to cancel reservation");
+            throw mapDatabaseError(error, "Failed to cancel reservation");
       }
 };
 
-export const updateReservationStatus = async (
+export const markReservationNoShow = async (
       reservationId: string,
-      status: string,
 ): Promise<ReservationResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.update_reservation_status($1, $2)
+                  SELECT kubo_reservation_management.fn_mark_no_show($1)
                   `,
-                  [reservationId, status],
+                  [reservationId],
             );
-            return result.rows[0] ?? null;
+            return getReservationById(reservationId);
       } catch (error: any) {
-            logger.error("Failed to update reservation status", {
+            logger.error("Failed to mark reservation NoShow", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to update reservation status");
+            throw mapDatabaseError(error, "Failed to mark reservation NoShow");
+      }
+};
+
+export const deleteReservation = async (
+      reservationId: string,
+): Promise<boolean> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_delete_reservation($1) AS deleted
+                  `,
+                  [reservationId],
+            );
+            return result.rows[0]?.deleted === true;
+      } catch (error: any) {
+            logger.error("Failed to delete reservation", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to delete reservation");
       }
 };
