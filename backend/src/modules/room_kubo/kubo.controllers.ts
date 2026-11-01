@@ -1,22 +1,32 @@
 import type { Request, Response } from "express";
-import type { CreateKuboDTO, UpdateKuboDTO } from "./repository/kubo.schema";
-import { handleControllerError } from "../../utils/http";
-import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
+import type {
+      CreateKuboDTO,
+      UpdateKuboDTO,
+      ChangeKuboStatusDTO,
+} from "./repository/kubo.schema";
 import {
-      createRoomService,
-      getAllRoomsService,
-      getRoomByIdService,
-      updateRoomService,
-      deleteRoomService,
-      searchRoomsService,
-      getRoomsByTypeService,
+      KuboAvailabilitySchema,
+      KuboFilterSchema,
+} from "./repository/kubo.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
+import logger from "../../utils/logger";
+import {
+      createKuboService,
+      getAllKubosService,
+      getKuboByIdService,
+      updateKuboService,
+      changeKuboStatusService,
+      deleteKuboService,
+      searchKubosService,
+      getAvailableKubosService,
 } from "./kubo.services";
 
-export const createRoomController = async (req: Request, res: Response) => {
+const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+export const createKuboController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateKuboDTO;
-            const kubos = await createRoomService(data);
+            const kubos = await createKuboService(data);
 
             res.status(201).json({
                   success: true,
@@ -24,7 +34,7 @@ export const createRoomController = async (req: Request, res: Response) => {
                   kubos,
             });
       } catch (error: any) {
-            logger.error("Failed to create Room", {
+            logger.error("Failed to create Kubo", {
                   error: error.message,
                   stack: error.stack,
             });
@@ -32,42 +42,49 @@ export const createRoomController = async (req: Request, res: Response) => {
       }
 };
 
-export const getAllRoomsController = async (req: Request, res: Response) => {
+export const getAllKubosController = async (req: Request, res: Response) => {
       try {
             const pagination = getPagination(req.query);
 
-            const roomTypeId =
-                  typeof req.query.roomTypeId === "string"
-                        ? req.query.roomTypeId
-                        : undefined;
-            const status =
-                  typeof req.query.status === "string"
-                        ? req.query.status
-                        : undefined;
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
+            const filters = KuboFilterSchema.safeParse({
+                  search: req.query.search,
+                  kuboTypeId: req.query.kuboTypeId,
+                  status: req.query.status,
+            });
 
-            let kubos;
-            if (roomTypeId || status || search) {
-                  kubos = await searchRoomsService({
-                        roomTypeId,
-                        status,
-                        search,
-                        pagination,
-                  });
-            } else {
-                  kubos = await getAllRoomsService();
+            if (!filters.success) {
+                  throw new AppError(
+                        400,
+                        filters.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
             }
+
+            const kubos =
+                  filters.data.search !== undefined ||
+                  filters.data.kuboTypeId !== undefined ||
+                  filters.data.status !== undefined
+                        ? await searchKubosService({
+                                search: filters.data.search,
+                                kuboTypeId: filters.data.kuboTypeId,
+                                status: filters.data.status,
+                                pagination,
+                          })
+                        : await getAllKubosService(pagination);
 
             res.status(200).json({
                   success: true,
+                  count: kubos.length,
                   message: "Successfully listed all kubos",
                   kubos,
             });
       } catch (error: any) {
-            logger.error("Failed to list Rooms", {
+            logger.error("Failed to list Kubos", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -75,9 +92,11 @@ export const getAllRoomsController = async (req: Request, res: Response) => {
       }
 };
 
-export const getRoomByIdController = async (req: Request, res: Response) => {
+export const getKuboByIdController = async (req: Request, res: Response) => {
       try {
-            const kubos = await getRoomByIdService(req.params.roomId as string);
+            const kubos = await getKuboByIdService(
+                  req.params.kuboId as string,
+            );
 
             res.status(200).json({
                   success: true,
@@ -85,7 +104,7 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
                   kubos,
             });
       } catch (error: any) {
-            logger.error("Failed to get Room by ID", {
+            logger.error("Failed to get Kubo by ID", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -93,13 +112,11 @@ export const getRoomByIdController = async (req: Request, res: Response) => {
       }
 };
 
-export const updateRoomController = async (req: Request, res: Response) => {
+export const updateKuboController = async (req: Request, res: Response) => {
       try {
+            const kuboId = String(req.params.kuboId);
             const data = req.body as UpdateKuboDTO;
-            const kubos = await updateRoomService({
-                  ...data,
-                  kuboId: req.params.roomId as string,
-            });
+            const kubos = await updateKuboService(kuboId, data);
 
             res.status(200).json({
                   success: true,
@@ -107,7 +124,7 @@ export const updateRoomController = async (req: Request, res: Response) => {
                   kubos,
             });
       } catch (error: any) {
-            logger.error("Failed to update Room", {
+            logger.error("Failed to update Kubo", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -115,37 +132,105 @@ export const updateRoomController = async (req: Request, res: Response) => {
       }
 };
 
-export const deleteRoomController = async (req: Request, res: Response) => {
+export const changeKuboStatusController = async (
+      req: Request,
+      res: Response,
+) => {
       try {
-            const kubos = await deleteRoomService(req.params.roomId as string);
-
-            res.status(204).json({
-                  sucess: true,
-                  message: "Succesfully deleted kubo",
-                  kubos,
-            });
-      } catch (error: any) {
-            logger.error("Failed to delete Room", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            handleControllerError(res, error, error.message);
-      }
-};
-
-export const getRoomsByTypeController = async (req: Request, res: Response) => {
-      try {
-            const kubos = await getRoomsByTypeService(
-                  req.params.roomTypeId as string,
-            );
+            const kuboId = String(req.params.kuboId);
+            const data = req.body as ChangeKuboStatusDTO;
+            const kubos = await changeKuboStatusService(kuboId, data.status);
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully fetched kubo by its type",
+                  message: "Successfully changed kubo status",
                   kubos,
             });
       } catch (error: any) {
-            logger.error("Failed to get rooms by type", {
+            logger.error("Failed to change Kubo status", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const deleteKuboController = async (req: Request, res: Response) => {
+      try {
+            await deleteKuboService(req.params.kuboId as string);
+
+            res.status(204).json();
+      } catch (error: any) {
+            logger.error("Failed to delete Kubo", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const getKubosByTypeController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const pagination = getPagination(req.query);
+            const kubos = await searchKubosService({
+                  kuboTypeId: String(req.params.kuboTypeId),
+                  pagination,
+            });
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully fetched kubos by type",
+                  kubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to get kubos by type", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const getAvailableKubosController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const parsed = KuboAvailabilitySchema.safeParse({
+                  checkIn: req.query.checkIn,
+                  checkOut: req.query.checkOut,
+                  kuboTypeId: req.query.kuboTypeId,
+            });
+
+            if (!parsed.success) {
+                  throw new AppError(
+                        400,
+                        parsed.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
+            }
+
+            const kubos = await getAvailableKubosService({
+                  checkIn: toDateOnly(parsed.data.checkIn),
+                  checkOut: toDateOnly(parsed.data.checkOut),
+                  kuboTypeId: parsed.data.kuboTypeId,
+            });
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully fetched available kubos",
+                  kubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to fetch available kubos", {
                   message: error.message,
                   stack: error.stack,
             });
