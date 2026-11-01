@@ -4,13 +4,15 @@ import {
       getAllReservationsController,
       getReservationByIdController,
       updateReservationController,
-      deleteReservationController,
+      confirmReservationController,
       cancelReservationController,
-      updateReservationStatusController,
+      markReservationNoShowController,
+      deleteReservationController,
 } from "./reservation.controllers";
 import {
       CreateReservationSchema,
       UpdateReservationSchema,
+      CancelReservationSchema,
 } from "./repository/reservation.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 
@@ -33,20 +35,27 @@ router.patch(
       validateBody(UpdateReservationSchema),
       updateReservationController,
 );
-router.delete(
-      "/:reservationId",
+router.patch(
+      "/:reservationId/confirm",
       requireUuidParam("reservationId"),
-      deleteReservationController,
+      confirmReservationController,
 );
 router.patch(
       "/:reservationId/cancel",
       requireUuidParam("reservationId"),
+      validateBody(CancelReservationSchema),
       cancelReservationController,
 );
 router.patch(
-      "/:reservationId/status",
+      "/:reservationId/no-show",
       requireUuidParam("reservationId"),
-      updateReservationStatusController,
+      markReservationNoShowController,
+);
+// Repair-only action; normal operations use cancellation.
+router.delete(
+      "/:reservationId",
+      requireUuidParam("reservationId"),
+      deleteReservationController,
 );
 
 export default router;

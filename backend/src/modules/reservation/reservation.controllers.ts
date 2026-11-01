@@ -2,21 +2,26 @@ import type { Request, Response } from "express";
 import type {
       CreateReservationDTO,
       UpdateReservationDTO,
+      CancelReservationDTO,
 } from "./repository/reservation.schema";
-import { handleControllerError } from "../../utils/http";
+import { ReservationFilterSchema } from "./repository/reservation.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       createReservationService,
       getAllReservationsService,
       getReservationByIdService,
       updateReservationService,
+      confirmReservationService,
+      cancelReservationService,
+      markReservationNoShowService,
       deleteReservationService,
       searchReservationsService,
-      cancelReservationService,
-      updateReservationStatusService,
 } from "./reservation.services";
 
+const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+// Checked
 export const createReservationController = async (
       req: Request,
       res: Response,
@@ -39,6 +44,7 @@ export const createReservationController = async (
       }
 };
 
+// checked
 export const getAllReservationsController = async (
       req: Request,
       res: Response,
@@ -46,61 +52,58 @@ export const getAllReservationsController = async (
       try {
             const pagination = getPagination(req.query);
 
-            const status =
-                  typeof req.query.status === "string"
-                        ? req.query.status
-                        : undefined;
-            const bookingSource =
-                  typeof req.query.bookingSource === "string"
-                        ? req.query.bookingSource
-                        : undefined;
-            const search =
-                  typeof req.query.search === "string"
-                        ? req.query.search
-                        : undefined;
-            const guestId =
-                  typeof req.query.guestId === "string"
-                        ? req.query.guestId
-                        : undefined;
-            const employeeId =
-                  typeof req.query.employeeId === "string"
-                        ? req.query.employeeId
-                        : undefined;
-            const checkInDate =
-                  typeof req.query.checkInDate === "string"
-                        ? req.query.checkInDate
-                        : undefined;
-            const checkOutDate =
-                  typeof req.query.checkOutDate === "string"
-                        ? req.query.checkOutDate
-                        : undefined;
+            const filters = ReservationFilterSchema.safeParse({
+                  status: req.query.status,
+                  bookingSource: req.query.bookingSource,
+                  search: req.query.search,
+                  guestId: req.query.guestId,
+                  employeeId: req.query.employeeId,
+                  checkInDate: req.query.checkInDate,
+                  checkOutDate: req.query.checkOutDate,
+            });
 
-            let reservations;
-            if (
-                  status ||
-                  bookingSource ||
-                  search ||
-                  guestId ||
-                  employeeId ||
-                  checkInDate ||
-                  checkOutDate
-            ) {
-                  reservations = await searchReservationsService({
-                        status,
-                        bookingSource,
-                        search,
-                        guestId,
-                        employeeId,
-                        checkInDate,
-                        checkOutDate,
-                        pagination,
-                  });
-            } else {
-                  reservations = await getAllReservationsService();
+            if (!filters.success) {
+                  throw new AppError(
+                        400,
+                        filters.error.issues
+                              .map((issue) =>
+                                    issue.path.length
+                                          ? `${issue.path.join(".")}: ${issue.message}`
+                                          : issue.message,
+                              )
+                              .join("; "),
+                  );
             }
+
+            const hasFilters =
+                  filters.data.status !== undefined ||
+                  filters.data.bookingSource !== undefined ||
+                  filters.data.search !== undefined ||
+                  filters.data.guestId !== undefined ||
+                  filters.data.employeeId !== undefined ||
+                  filters.data.checkInDate !== undefined ||
+                  filters.data.checkOutDate !== undefined;
+
+            const reservations = hasFilters
+                  ? await searchReservationsService({
+                          status: filters.data.status,
+                          bookingSource: filters.data.bookingSource,
+                          search: filters.data.search,
+                          guestId: filters.data.guestId,
+                          employeeId: filters.data.employeeId,
+                          checkInDate: filters.data.checkInDate
+                                ? toDateOnly(filters.data.checkInDate)
+                                : undefined,
+                          checkOutDate: filters.data.checkOutDate
+                                ? toDateOnly(filters.data.checkOutDate)
+                                : undefined,
+                          pagination,
+                    })
+                  : await getAllReservationsService(pagination);
 
             res.status(200).json({
                   success: true,
+                  count: reservations.length,
                   message: "Successfully listed all Reservations",
                   reservations,
             });
@@ -113,6 +116,7 @@ export const getAllReservationsController = async (
       }
 };
 
+// Checked
 export const getReservationByIdController = async (
       req: Request,
       res: Response,
@@ -136,16 +140,19 @@ export const getReservationByIdController = async (
       }
 };
 
+
+// Checked
 export const updateReservationController = async (
       req: Request,
       res: Response,
 ) => {
       try {
+            const reservationId = String(req.params.reservationId);
             const data = req.body as UpdateReservationDTO;
-            const reservations = await updateReservationService({
-                  ...data,
-                  reservationId: req.params.reservationId as string,
-            });
+            const reservations = await updateReservationService(
+                  reservationId,
+                  data,
+            );
 
             res.status(200).json({
                   success: true,
@@ -161,22 +168,23 @@ export const updateReservationController = async (
       }
 };
 
-export const deleteReservationController = async (
+
+export const confirmReservationController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const reservations = await deleteReservationService(
+            const reservations = await confirmReservationService(
                   req.params.reservationId as string,
             );
 
-            res.status(204).json({
+            res.status(200).json({
                   success: true,
-                  message: "Successfully deleted Reservation",
+                  message: "Successfully confirmed Reservation",
                   reservations,
             });
       } catch (error: any) {
-            logger.error("Failed to delete Reservation", {
+            logger.error("Failed to confirm Reservation", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -189,13 +197,10 @@ export const cancelReservationController = async (
       res: Response,
 ) => {
       try {
-            const reason =
-                  typeof req.body.reason === "string"
-                        ? req.body.reason
-                        : undefined;
+            const data = req.body as CancelReservationDTO;
             const reservations = await cancelReservationService(
                   req.params.reservationId as string,
-                  reason,
+                  data.reason,
             );
 
             res.status(200).json({
@@ -212,31 +217,41 @@ export const cancelReservationController = async (
       }
 };
 
-export const updateReservationStatusController = async (
+export const markReservationNoShowController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const status =
-                  typeof req.body.status === "string"
-                        ? req.body.status
-                        : undefined;
-            if (!status) {
-                  throw new Error("Missing status in request body");
-            }
-
-            const reservations = await updateReservationStatusService(
+            const reservations = await markReservationNoShowService(
                   req.params.reservationId as string,
-                  status,
             );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully updated Reservation Status",
+                  message: "Successfully marked Reservation as NoShow",
                   reservations,
             });
       } catch (error: any) {
-            logger.error("Failed to update Reservation status", {
+            logger.error("Failed to mark Reservation as NoShow", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const deleteReservationController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            await deleteReservationService(
+                  req.params.reservationId as string,
+            );
+
+            res.status(204).json();
+      } catch (error: any) {
+            logger.error("Failed to delete Reservation", {
                   message: error.message,
                   stack: error.stack,
             });

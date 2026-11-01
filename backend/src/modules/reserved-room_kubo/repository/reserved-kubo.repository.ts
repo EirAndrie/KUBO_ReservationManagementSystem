@@ -1,275 +1,211 @@
 import type {
       CreateReservedKuboDTO,
       UpdateReservedKuboDTO,
-      ReservedKuboSchema,
+      ReservedKuboResponseDTO,
 } from "./reserved-kubo.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
-// Assign a room to a reservation (create)
-export const assignRoom = async (data: CreateReservedKuboDTO) => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.assign_room_to_reservation(
-                              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-                        )
-                  `,
-                  [
-                        data.reservationId,
-                        data.kuboId,
-                        data.checkInDate,
-                        data.checkOutDate,
-                        data.scheduledCheckInTime,
-                        data.scheduledCheckOutTime,
-                        data.priceAtBooking,
-                        data.reservedKuboStatus,
-                        data.earlyCheckInApproved,
-                        // actual dates are null on creation
-                  ],
-            );
-            return result.rows[0];
-      } catch (error: any) {
-            logger.error("Failed to assign room to reservation", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to assign room to reservation");
-      }
-};
+const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 
-// Get all rooms for a reservation
-export const getRoomsByReservation = async (reservationId: string) => {
+export const getReservedKubos = async (
+      reservationId: string,
+): Promise<ReservedKuboResponseDTO[]> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_rooms_by_reservation($1)
+                  SELECT *
+                  FROM kubo_reservation_management.fn_get_reserved_kubos($1)
                   `,
                   [reservationId],
             );
             return result.rows;
       } catch (error: any) {
-            logger.error("Failed to fetch rooms for reservation", {
+            logger.error("Failed to fetch reserved kubos", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to fetch rooms for reservation");
+            throw mapDatabaseError(error, "Failed to fetch reserved kubos");
       }
 };
 
-// Get a specific reserved room (by reservationId + kuboId)
-export const getReservedRoom = async (
+export const getReservedKubo = async (
       reservationId: string,
       kuboId: string,
-) => {
+): Promise<ReservedKuboResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_reserved_room($1, $2)
+                  SELECT *
+                  FROM kubo_reservation_management.fn_get_reserved_kubo($1, $2)
                   `,
                   [reservationId, kuboId],
             );
             return result.rows[0] ?? null;
       } catch (error: any) {
-            logger.error("Failed to get reserved room", {
+            logger.error("Failed to fetch reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to get reserved room");
+            throw mapDatabaseError(error, "Failed to fetch reserved kubo");
       }
 };
 
-// Update a reserved room
-export const updateReservedRoom = async (data: UpdateReservedKuboDTO) => {
+export const assignKubo = async (
+      reservationId: string,
+      data: CreateReservedKuboDTO,
+): Promise<ReservedKuboResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.update_reserved_room(
-                              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
-                        )
+                  SELECT kubo_reservation_management.fn_add_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_check_in_date => $3::date,
+                        p_check_out_date => $4::date,
+                        p_scheduled_check_in_time => $5::time,
+                        p_scheduled_check_out_time => $6::time
+                  )
                   `,
                   [
-                        data.reservationId,
+                        reservationId,
                         data.kuboId,
-                        data.checkInDate ?? null,
-                        data.checkOutDate ?? null,
+                        toDateOnly(data.checkInDate),
+                        toDateOnly(data.checkOutDate),
                         data.scheduledCheckInTime ?? null,
                         data.scheduledCheckOutTime ?? null,
-                        data.actualCheckInDateTime ?? null,
-                        data.actualCheckOutDateTime ?? null,
-                        data.earlyCheckInApproved ?? null,
-                        data.priceAtBooking ?? null,
-                        data.reservedKuboStatus ?? null,
-                        // any other fields omitted intentionally
                   ],
             );
-            return result.rows[0] ?? null;
+            return getReservedKubo(reservationId, data.kuboId);
       } catch (error: any) {
-            logger.error("Failed to update reserved room", {
+            logger.error("Failed to assign kubo to reservation", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to update reserved room");
+            throw mapDatabaseError(
+                  error,
+                  "Failed to assign kubo to reservation",
+            );
       }
 };
 
-// Delete a reserved room assignment
-export const deleteReservedRoom = async (
+export const updateReservedKubo = async (
       reservationId: string,
       kuboId: string,
-) => {
+      data: UpdateReservedKuboDTO,
+): Promise<ReservedKuboResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT kubo.delete_reserved_room($1, $2) AS deleted
+                  SELECT kubo_reservation_management.fn_update_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_check_in_date => $3::date,
+                        p_check_out_date => $4::date,
+                        p_scheduled_check_in_time => $5::time,
+                        p_scheduled_check_out_time => $6::time
+                  )
                   `,
-                  [reservationId, kuboId],
+                  [
+                        reservationId,
+                        kuboId,
+                        data.checkInDate ? toDateOnly(data.checkInDate) : null,
+                        data.checkOutDate ? toDateOnly(data.checkOutDate) : null,
+                        data.scheduledCheckInTime ?? null,
+                        data.scheduledCheckOutTime ?? null,
+                  ],
             );
-            return result.rows[0]?.deleted != null;
+            return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {
-            logger.error("Failed to delete reserved room", {
+            logger.error("Failed to update reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to delete reserved room");
+            throw mapDatabaseError(error, "Failed to update reserved kubo");
       }
 };
 
-// Check‑in a reserved room (set actualCheckInDateTime & status)
-export const checkInRoom = async (reservationId: string, kuboId: string) => {
+export const deleteReservedKubo = async (
+      reservationId: string,
+      kuboId: string,
+): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.checkin_reserved_room($1, $2)
+                  SELECT kubo_reservation_management.fn_delete_reserved_kubo($1, $2) AS deleted
                   `,
                   [reservationId, kuboId],
             );
-            return result.rows[0] ?? null;
+            return result.rows[0]?.deleted === true;
       } catch (error: any) {
-            logger.error("Failed to check‑in reserved room", {
+            logger.error("Failed to delete reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to check‑in reserved room");
+            throw mapDatabaseError(error, "Failed to delete reserved kubo");
       }
 };
 
-// Check‑out a reserved room
-export const checkOutRoom = async (reservationId: string, kuboId: string) => {
+export const checkInReservedKubo = async (
+      reservationId: string,
+      kuboId: string,
+): Promise<ReservedKuboResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.checkout_reserved_room($1, $2)
+                  SELECT kubo_reservation_management.fn_check_in_reserved_kubo($1, $2)
                   `,
                   [reservationId, kuboId],
             );
-            return result.rows[0] ?? null;
+            return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {
-            logger.error("Failed to check‑out reserved room", {
+            logger.error("Failed to check in reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to check‑out reserved room");
+            throw mapDatabaseError(error, "Failed to check in reserved kubo");
       }
 };
 
-// Approve early check‑in
+export const checkOutReservedKubo = async (
+      reservationId: string,
+      kuboId: string,
+): Promise<ReservedKuboResponseDTO | null> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_check_out_reserved_kubo($1, $2)
+                  `,
+                  [reservationId, kuboId],
+            );
+            return getReservedKubo(reservationId, kuboId);
+      } catch (error: any) {
+            logger.error("Failed to check out reserved kubo", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to check out reserved kubo");
+      }
+};
+
 export const approveEarlyCheckIn = async (
       reservationId: string,
       kuboId: string,
-) => {
+): Promise<ReservedKuboResponseDTO | null> => {
       try {
-            const result = await db.query(
+            await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.approve_early_checkin($1, $2)
+                  SELECT kubo_reservation_management.fn_approve_early_check_in($1, $2)
                   `,
                   [reservationId, kuboId],
             );
-            return result.rows[0] ?? null;
+            return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {
-            logger.error("Failed to approve early check‑in", {
+            logger.error("Failed to approve early check-in", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to approve early check‑in");
-      }
-};
-
-// Search reserved rooms with filters & pagination
-export const searchReservedRooms = async (params: {
-      roomId?: string;
-      status?: string;
-      checkInDate?: string;
-      checkOutDate?: string;
-      pagination: { limit: number; offset: number };
-}) => {
-      const { roomId, status, checkInDate, checkOutDate, pagination } = params;
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.search_reserved_rooms(
-                              $1, $2, $3, $4, $5, $6
-                        )
-                  `,
-                  [
-                        roomId ?? null,
-                        status ?? null,
-                        checkInDate ?? null,
-                        checkOutDate ?? null,
-                        pagination.limit,
-                        pagination.offset,
-                  ],
-            );
-            return result.rows;
-      } catch (error: any) {
-            logger.error("Failed to search reserved rooms", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to search reserved rooms");
-      }
-};
-
-// Get reservations for a specific room within a date range
-export const getReservationsByRoom = async (
-      roomId: string,
-      checkInDate?: string,
-      checkOutDate?: string,
-) => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_reservations_by_room($1, $2, $3)
-                  `,
-                  [roomId, checkInDate ?? null, checkOutDate ?? null],
-            );
-            return result.rows;
-      } catch (error: any) {
-            logger.error("Failed to fetch reservations for room", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to fetch reservations for room");
+            throw mapDatabaseError(error, "Failed to approve early check-in");
       }
 };

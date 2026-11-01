@@ -5,37 +5,33 @@ import type {
 } from "./repository/reserved-kubo.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
-      assignRoomService,
-      getRoomsByReservationService,
-      getReservedRoomService,
-      updateReservedRoomService,
-      deleteReservedRoomService,
-      checkInRoomService,
-      checkOutRoomService,
+      assignKuboService,
+      getReservedKubosService,
+      getReservedKuboService,
+      updateReservedKuboService,
+      deleteReservedKuboService,
+      checkInReservedKuboService,
+      checkOutReservedKuboService,
       approveEarlyCheckInService,
-      searchReservedRoomsService,
-      getReservationsByRoomService,
 } from "./reserved-room_kubo.services";
 
-// POST /reservations/:reservationId/rooms – assign a room
-export const assignRoomController = async (req: Request, res: Response) => {
+export const assignKuboController = async (req: Request, res: Response) => {
       try {
-            // reservationId comes from URL, ensure it matches payload if provided
-            const data = {
-                  ...(req.body as Omit<CreateReservedKuboDTO, "reservationId">),
-                  reservationId: req.params.reservationId as string,
-            } as CreateReservedKuboDTO;
-            const reservedRooms = await assignRoomService(data);
+            const reservationId = String(req.params.reservationId);
+            const data = req.body as CreateReservedKuboDTO;
+            const reservedKubos = await assignKuboService(
+                  reservationId,
+                  data,
+            );
 
             res.status(201).json({
                   success: true,
-                  message: "Successfully assigned a Room to Reservation",
-                  reservedRooms,
+                  message: "Successfully assigned a Kubo to Reservation",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to assign room to reservation", {
+            logger.error("Failed to assign kubo to reservation", {
                   error: error.message,
                   stack: error.stack,
             });
@@ -43,23 +39,22 @@ export const assignRoomController = async (req: Request, res: Response) => {
       }
 };
 
-// GET /reservations/:reservationId/rooms – list rooms for a reservation
-export const getRoomsByReservationController = async (
+export const getReservedKubosController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const reservedRooms = await getRoomsByReservationService(
+            const reservedKubos = await getReservedKubosService(
                   req.params.reservationId as string,
             );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully fetched rooms by reservation",
-                  reservedRooms,
+                  message: "Successfully fetched reserved kubos",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to list rooms for reservation", {
+            logger.error("Failed to list reserved kubos", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -67,24 +62,23 @@ export const getRoomsByReservationController = async (
       }
 };
 
-// GET /reservations/:reservationId/rooms/:roomId – single assignment
-export const getReservedRoomController = async (
+export const getReservedKuboController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const reservedRooms = await getReservedRoomService(
+            const reservedKubos = await getReservedKuboService(
                   req.params.reservationId as string,
-                  req.params.roomId as string,
+                  req.params.kuboId as string,
             );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully fetched reserved room",
-                  reservedRooms,
+                  message: "Successfully fetched reserved kubo",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to get reserved room", {
+            logger.error("Failed to get reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -92,29 +86,27 @@ export const getReservedRoomController = async (
       }
 };
 
-// PATCH /reservations/:reservationId/rooms/:roomId – update assignment
-export const updateReservedRoomController = async (
+export const updateReservedKuboController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const data = {
-                  ...(req.body as Omit<
-                        UpdateReservedKuboDTO,
-                        "reservationId" | "kuboId"
-                  >),
-                  reservationId: req.params.reservationId as string,
-                  kuboId: req.params.roomId as string,
-            } as UpdateReservedKuboDTO;
-            const reservedRooms = await updateReservedRoomService(data);
+            const reservationId = String(req.params.reservationId);
+            const kuboId = String(req.params.kuboId);
+            const data = req.body as UpdateReservedKuboDTO;
+            const reservedKubos = await updateReservedKuboService(
+                  reservationId,
+                  kuboId,
+                  data,
+            );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully updated reserved room",
-                  reservedRooms,
+                  message: "Successfully updated reserved kubo",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to update reserved room", {
+            logger.error("Failed to update reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -122,24 +114,19 @@ export const updateReservedRoomController = async (
       }
 };
 
-// DELETE /reservations/:reservationId/rooms/:roomId – remove assignment
-export const deleteReservedRoomController = async (
+export const deleteReservedKuboController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const reservedRooms = await deleteReservedRoomService(
+            await deleteReservedKuboService(
                   req.params.reservationId as string,
-                  req.params.roomId as string,
+                  req.params.kuboId as string,
             );
 
-            res.status(204).json({
-                  success: true,
-                  message: "Successfully deleted reserved room",
-                  reservedRooms,
-            });
+            res.status(204).json();
       } catch (error: any) {
-            logger.error("Failed to delete reserved room", {
+            logger.error("Failed to delete reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -147,112 +134,23 @@ export const deleteReservedRoomController = async (
       }
 };
 
-// PATCH /reservations/:reservationId/rooms/:roomId/check-in
-export const checkInRoomController = async (req: Request, res: Response) => {
-      try {
-            const reservedRooms = await checkInRoomService(
-                  req.params.reservationId as string,
-                  req.params.roomId as string,
-            );
-
-            res.status(200).json({
-                  success: true,
-                  message: "Successfully checked in guest to reserved room",
-                  reservedRooms,
-            });
-      } catch (error: any) {
-            logger.error("Failed to check‑in reserved room", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            handleControllerError(res, error, error.message);
-      }
-};
-
-// PATCH /reservations/:reservationId/rooms/:roomId/check-out
-export const checkOutRoomController = async (req: Request, res: Response) => {
-      try {
-            const reservedRooms = await checkOutRoomService(
-                  req.params.reservationId as string,
-                  req.params.roomId as string,
-            );
-
-            res.status(200).json({
-                  success: true,
-                  message: "Successfully checked out guest to reserved room",
-                  reservedRooms,
-            });
-      } catch (error: any) {
-            logger.error("Failed to check‑out reserved room", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            handleControllerError(res, error, error.message);
-      }
-};
-
-// PATCH /reservations/:reservationId/rooms/:roomId/early-check-in
-export const earlyCheckInController = async (req: Request, res: Response) => {
-      try {
-            const reservedRooms = await approveEarlyCheckInService(
-                  req.params.reservationId as string,
-                  req.params.roomId as string,
-            );
-
-            res.status(200).json({
-                  success: true,
-                  message: "Successfully approved guest for early check in",
-                  reservedRooms,
-            });
-      } catch (error: any) {
-            logger.error("Failed to approve early check‑in", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            handleControllerError(res, error, error.message);
-      }
-};
-
-// GET /reserved-rooms – filtered list (public endpoint)
-export const searchReservedRoomsController = async (
+export const checkInReservedKuboController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const pagination = getPagination(req.query);
+            const reservedKubos = await checkInReservedKuboService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+            );
 
-            const roomId =
-                  typeof req.query.roomId === "string"
-                        ? req.query.roomId
-                        : undefined;
-            const status =
-                  typeof req.query.status === "string"
-                        ? req.query.status
-                        : undefined;
-            const checkInDate =
-                  typeof req.query.checkInDate === "string"
-                        ? req.query.checkInDate
-                        : undefined;
-            const checkOutDate =
-                  typeof req.query.checkOutDate === "string"
-                        ? req.query.checkOutDate
-                        : undefined;
-
-            const reservedRooms = await searchReservedRoomsService({
-                  roomId,
-                  status,
-                  checkInDate,
-                  checkOutDate,
-                  pagination,
-            });
-
-            res.status(201).json({
+            res.status(200).json({
                   success: true,
-                  message: "Successfully fetched room by filter search",
-                  reservedRooms,
+                  message: "Successfully checked in reserved kubo",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to search reserved rooms", {
+            logger.error("Failed to check in reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -260,34 +158,47 @@ export const searchReservedRoomsController = async (
       }
 };
 
-// GET /rooms/:roomId/reservations – reservations for a room within date range
-export const getReservationsByRoomController = async (
+export const checkOutReservedKuboController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const checkInDate =
-                  typeof req.query.checkInDate === "string"
-                        ? req.query.checkInDate
-                        : undefined;
-            const checkOutDate =
-                  typeof req.query.checkOutDate === "string"
-                        ? req.query.checkOutDate
-                        : undefined;
-
-            const reservedRooms = await getReservationsByRoomService(
-                  req.params.roomId as string,
-                  checkInDate,
-                  checkOutDate,
+            const reservedKubos = await checkOutReservedKuboService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
             );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully fetched reservations by room",
-                  reservedRooms,
+                  message: "Successfully checked out reserved kubo",
+                  reservedKubos,
             });
       } catch (error: any) {
-            logger.error("Failed to get reservations for room", {
+            logger.error("Failed to check out reserved kubo", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const approveEarlyCheckInController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const reservedKubos = await approveEarlyCheckInService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully approved early check-in",
+                  reservedKubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to approve early check-in", {
                   message: error.message,
                   stack: error.stack,
             });

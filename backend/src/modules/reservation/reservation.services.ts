@@ -3,52 +3,100 @@ import {
       getReservations,
       getReservationById,
       updateReservation,
-      deleteReservation,
-      searchReservations,
+      confirmReservation,
       cancelReservation,
-      updateReservationStatus,
+      markReservationNoShow,
+      deleteReservation,
 } from "./repository/reservation.repository";
 import { AppError } from "../../utils/http";
-import logger from "../../utils/logger";
 import type {
       CreateReservationDTO,
       UpdateReservationDTO,
 } from "./repository/reservation.schema";
 import type { Pagination } from "../../utils/pagination";
 
-export const createReservationService = async (data: CreateReservationDTO) => {
-      // No uniqueness checks defined
+// Checked
+export const createReservationService = async (
+      data: CreateReservationDTO,
+) => {
       return createReservation(data);
 };
 
-export const getAllReservationsService = async () => {
-      return getReservations();
+// Checked
+export const getAllReservationsService = async (pagination: Pagination) => {
+      return getReservations({
+            pagination: {
+                  limit: pagination.limit,
+                  offset: pagination.offset,
+            },
+      });
 };
 
+// Checked
 export const getReservationByIdService = async (reservationId: string) => {
-      const res = await getReservationById(reservationId);
-      if (!res) {
+      const reservation = await getReservationById(reservationId);
+      if (!reservation) {
             throw new AppError(404, "Reservation not found");
       }
-      return res;
+      return reservation;
 };
 
-export const updateReservationService = async (data: UpdateReservationDTO) => {
-      const existing = await getReservationById(data.reservationId);
+// Checked
+export const updateReservationService = async (
+      reservationId: string,
+      data: UpdateReservationDTO,
+) => {
+      const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
-      return updateReservation(data);
+      return updateReservation(reservationId, data);
 };
 
+// Checked
+export const confirmReservationService = async (reservationId: string) => {
+      const existing = await getReservationById(reservationId);
+      if (!existing) {
+            throw new AppError(404, "Reservation not found");
+      }
+      return confirmReservation(reservationId);
+};
+
+// Checked
+export const cancelReservationService = async (
+      reservationId: string,
+      reason: string,
+) => {
+      const existing = await getReservationById(reservationId);
+      if (!existing) {
+            throw new AppError(404, "Reservation not found");
+      }
+      return cancelReservation(reservationId, reason);
+};
+
+// Checked
+export const markReservationNoShowService = async (reservationId: string) => {
+      const existing = await getReservationById(reservationId);
+      if (!existing) {
+            throw new AppError(404, "Reservation not found");
+      }
+      return markReservationNoShow(reservationId);
+};
+
+// Checked
 export const deleteReservationService = async (reservationId: string) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
-      await deleteReservation(reservationId);
+
+      const deleted = await deleteReservation(reservationId);
+      if (!deleted) {
+            throw new AppError(404, "Reservation not found");
+      }
 };
 
+// Checked
 export const searchReservationsService = async (params: {
       status?: string;
       bookingSource?: string;
@@ -59,7 +107,7 @@ export const searchReservationsService = async (params: {
       checkOutDate?: string;
       pagination: Pagination;
 }) => {
-      return searchReservations({
+      return getReservations({
             status: params.status,
             bookingSource: params.bookingSource,
             search: params.search,
@@ -72,26 +120,4 @@ export const searchReservationsService = async (params: {
                   offset: params.pagination.offset,
             },
       });
-};
-
-export const cancelReservationService = async (
-      reservationId: string,
-      reason?: string,
-) => {
-      const existing = await getReservationById(reservationId);
-      if (!existing) {
-            throw new AppError(404, "Reservation not found");
-      }
-      return cancelReservation(reservationId, reason);
-};
-
-export const updateReservationStatusService = async (
-      reservationId: string,
-      status: string,
-) => {
-      const existing = await getReservationById(reservationId);
-      if (!existing) {
-            throw new AppError(404, "Reservation not found");
-      }
-      return updateReservationStatus(reservationId, status);
 };
