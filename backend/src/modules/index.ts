@@ -19,8 +19,8 @@ router.use("/kubos", kuboRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/reservations", reservedRoomsRoutes);
-router.use("/payments", paymentRoutes);
-router.use("/additional-charges", additinalChargesRoutes);
 router.use("/audit-logs", auditLogsRoutes);
+router.use("/", paymentRoutes);
+router.use("/", additinalChargesRoutes);
 
 export default router;

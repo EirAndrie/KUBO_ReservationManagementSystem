@@ -1,29 +1,51 @@
 import type { Request, Response } from "express";
 import type {
       CreatePaymentDTO,
-      UpdatePaymentDTO,
+      RefundPaymentDTO,
+      UpdatePaymentStatusDTO,
+      PaymentFilterDTO,
+      DeletePaymentActorDTO,
 } from "./repository/payment.schema";
-import { handleControllerError } from "../../utils/http";
+import {
+      PaymentFilterSchema,
+      DeletePaymentActorSchema,
+} from "./repository/payment.schema";
+import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       createPaymentService,
       getPaymentsByReservationService,
       getPaymentByIdService,
-      updatePaymentService,
-      deletePaymentService,
-      searchPaymentsService,
+      updatePaymentStatusService,
       refundPaymentService,
+      getPaymentsService,
+      deletePaymentCleanupService,
 } from "./payment.services";
 
-// POST /reservations/:reservationId/payments – create payment
+const zodMessage = (error: any) =>
+      error.issues
+            .map((issue: any) =>
+                  issue.path.length
+                        ? `${issue.path.join(".")}: ${issue.message}`
+                        : issue.message,
+            )
+            .join("; ");
+
+const parseOrThrow = <T>(result: any): T => {
+      if (!result.success) {
+            throw new AppError(400, zodMessage(result.error));
+      }
+      return result.data as T;
+};
+
+// POST /reservations/:reservationId/payments – record a new payment (Pending)
 export const createPaymentController = async (req: Request, res: Response) => {
       try {
-            const data = {
-                  ...(req.body as Omit<CreatePaymentDTO, "reservationId">),
-                  reservationId: req.params.reservationId as string,
-            } as CreatePaymentDTO;
-            const payments = await createPaymentService(data);
+            const data = req.body as CreatePaymentDTO;
+            const payments = await createPaymentService(
+                  req.params.reservationId as string,
+                  data,
+            );
 
             res.status(201).json({
                   success: true,
@@ -32,7 +54,7 @@ export const createPaymentController = async (req: Request, res: Response) => {
             });
       } catch (error: any) {
             logger.error("Failed to create payment", {
-                  error: error.message,
+                  message: error.message,
                   stack: error.stack,
             });
             handleControllerError(res, error, error.message);
@@ -51,6 +73,7 @@ export const getPaymentsByReservationController = async (
 
             res.status(200).json({
                   success: true,
+                  count: payments.length,
                   message: "Successfully fetched payments by reservation",
                   payments,
             });
@@ -84,23 +107,24 @@ export const getPaymentByIdController = async (req: Request, res: Response) => {
       }
 };
 
-// PATCH /payments/:paymentId – update payment
-export const updatePaymentController = async (req: Request, res: Response) => {
+// PATCH /payments/:paymentId/status – apply an allowed status transition
+export const updatePaymentStatusController = async (
+      req: Request,
+      res: Response,
+) => {
       try {
-            const data = {
-                  ...(req.body as Omit<UpdatePaymentDTO, "paymentId">),
-                  paymentId: req.params.paymentId as string,
-            } as UpdatePaymentDTO;
-
-            const payments = await updatePaymentService(data);
+            const payments = await updatePaymentStatusService(
+                  req.params.paymentId as string,
+                  req.body as UpdatePaymentStatusDTO,
+            );
 
             res.status(200).json({
                   success: true,
-                  message: "Successfully updated Payment",
+                  message: "Successfully updated Payment status",
                   payments,
             });
       } catch (error: any) {
-            logger.error("Failed to update payment", {
+            logger.error("Failed to update payment status", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -108,20 +132,21 @@ export const updatePaymentController = async (req: Request, res: Response) => {
       }
 };
 
-// DELETE /payments/:paymentId – delete payment
-export const deletePaymentController = async (req: Request, res: Response) => {
+// POST /reservations/:reservationId/payments/refund – record a refund
+export const refundPaymentController = async (req: Request, res: Response) => {
       try {
-            const payments = await deletePaymentService(
-                  req.params.paymentId as string,
+            const payments = await refundPaymentService(
+                  req.params.reservationId as string,
+                  req.body as RefundPaymentDTO,
             );
 
-            res.status(204).json({
+            res.status(201).json({
                   success: true,
-                  message: "Successfully deleted Payment",
+                  message: "Successfully refunded Payment",
                   payments,
             });
       } catch (error: any) {
-            logger.error("Failed to delete payment", {
+            logger.error("Failed to record refund", {
                   message: error.message,
                   stack: error.stack,
             });
@@ -130,37 +155,29 @@ export const deletePaymentController = async (req: Request, res: Response) => {
 };
 
 // GET /payments – filtered list with pagination
-export const searchPaymentsController = async (req: Request, res: Response) => {
+export const getPaymentsController = async (req: Request, res: Response) => {
       try {
             const pagination = getPagination(req.query);
+            const filters = parseOrThrow<PaymentFilterDTO>(
+                  PaymentFilterSchema.safeParse({
+                        reservationId: req.query.reservationId,
+                        employeeId: req.query.employeeId,
+                        paymentStatus: req.query.paymentStatus,
+                        paymentMethod: req.query.paymentMethod,
+                        transactionType: req.query.transactionType,
+                        createdFrom: req.query.createdFrom,
+                        createdTo: req.query.createdTo,
+                  }),
+            );
 
-            const reservationId =
-                  typeof req.query.reservationId === "string"
-                        ? req.query.reservationId
-                        : undefined;
-            const employeeId =
-                  typeof req.query.employeeId === "string"
-                        ? req.query.employeeId
-                        : undefined;
-            const paymentStatus =
-                  typeof req.query.paymentStatus === "string"
-                        ? req.query.paymentStatus
-                        : undefined;
-            const paymentMethod =
-                  typeof req.query.paymentMethod === "string"
-                        ? req.query.paymentMethod
-                        : undefined;
-
-            const payments = await searchPaymentsService({
-                  reservationId,
-                  employeeId,
-                  paymentStatus,
-                  paymentMethod,
+            const payments = await getPaymentsService({
+                  ...filters,
                   pagination,
             });
 
-            res.status(201).json({
+            res.status(200).json({
                   success: true,
+                  count: payments.length,
                   message: "Successfully fetched Payment by filter",
                   payments,
             });
@@ -173,27 +190,24 @@ export const searchPaymentsController = async (req: Request, res: Response) => {
       }
 };
 
-// POST /reservations/:reservationId/payments/refund – record a refund
-export const refundPaymentController = async (req: Request, res: Response) => {
+// DELETE /payments/:paymentId?employeeId=... – cleanup-only, Administrator only
+export const deletePaymentCleanupController = async (
+      req: Request,
+      res: Response,
+) => {
       try {
-            // body should contain same fields as CreatePaymentDTO except reservationId & transactionType
-            const body = req.body as Omit<
-                  CreatePaymentDTO,
-                  "reservationId" | "transactionType"
-            >;
-
-            const payments = await refundPaymentService(
-                  req.params.reservationId as string,
-                  body,
+            const actor = parseOrThrow<DeletePaymentActorDTO>(
+                  DeletePaymentActorSchema.safeParse(req.query),
             );
 
-            res.status(201).json({
-                  success: true,
-                  message: "Successfully refunded Payment",
-                  payments,
-            });
+            await deletePaymentCleanupService(
+                  req.params.paymentId as string,
+                  actor.employeeId,
+            );
+
+            res.status(204).json();
       } catch (error: any) {
-            logger.error("Failed to record refund", {
+            logger.error("Failed to cleanup-delete payment", {
                   message: error.message,
                   stack: error.stack,
             });
