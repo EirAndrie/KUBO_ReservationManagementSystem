@@ -3,12 +3,16 @@ import {
       createPaymentController,
       getPaymentsByReservationController,
       getPaymentByIdController,
-      updatePaymentController,
-      deletePaymentController,
-      searchPaymentsController,
+      updatePaymentStatusController,
       refundPaymentController,
+      getPaymentsController,
+      deletePaymentCleanupController,
 } from "./payment.controllers";
-import { CreatePaymentSchema, UpdatePaymentSchema } from "./repository/payment.schema";
+import {
+      CreatePaymentSchema,
+      RefundPaymentSchema,
+      UpdatePaymentStatusSchema,
+} from "./repository/payment.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 
 const router = Router();
@@ -16,33 +20,39 @@ const router = Router();
 // Payments scoped under a reservation
 router.post(
       "/reservations/:reservationId/payments",
+      requireUuidParam("reservationId"),
       validateBody(CreatePaymentSchema),
       createPaymentController,
-);
+); // Checked
 router.get(
       "/reservations/:reservationId/payments",
+      requireUuidParam("reservationId"),
       getPaymentsByReservationController,
-);
+); // Checked
 router.post(
       "/reservations/:reservationId/payments/refund",
-      // Body may omit reservationId and transactionType – validation can be same schema or a custom one; using CreatePaymentSchema for simplicity
-      validateBody(CreatePaymentSchema),
+      requireUuidParam("reservationId"),
+      validateBody(RefundPaymentSchema),
       refundPaymentController,
-);
+); // Checked
 
 // Direct payment routes
-router.get("/payments/:paymentId", requireUuidParam("paymentId"), getPaymentByIdController);
-router.patch(
+router.get("/payments", getPaymentsController); // Checked
+router.get(
       "/payments/:paymentId",
       requireUuidParam("paymentId"),
-      validateBody(UpdatePaymentSchema),
-      updatePaymentController,
-);
+      getPaymentByIdController,
+); // Checked
+router.patch(
+      "/payments/:paymentId/status",
+      requireUuidParam("paymentId"),
+      validateBody(UpdatePaymentStatusSchema),
+      updatePaymentStatusController,
+); // Checked
 router.delete(
       "/payments/:paymentId",
       requireUuidParam("paymentId"),
-      deletePaymentController,
-);
-router.get("/payments", searchPaymentsController);
+      deletePaymentCleanupController,
+); 
 
 export default router;

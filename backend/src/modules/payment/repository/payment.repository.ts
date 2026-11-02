@@ -1,35 +1,37 @@
 import type {
       CreatePaymentDTO,
-      UpdatePaymentDTO,
+      RefundPaymentDTO,
+      UpdatePaymentStatusDTO,
       PaymentResponseDTO,
 } from "./payment.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
-/**
- * Record a new payment (or refund when transactionType is set accordingly).
- */
+const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
 export const createPayment = async (
+      reservationId: string,
       data: CreatePaymentDTO,
 ): Promise<PaymentResponseDTO> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.create_payment(
-                              $1, $2, $3, $4, $5, $6, $7, $8
-                        )
+                  SELECT *
+                  FROM kubo_payment_management.fn_create_payment(
+                        p_reservation_id => $1,
+                        p_employee_id => $2,
+                        p_payment_amount => $3,
+                        p_payment_type => $4::kubo.payment_type,
+                        p_payment_method => $5::kubo.payment_method
+                  )
                   `,
                   [
-                        data.reservationId,
+                        reservationId,
                         data.employeeId,
                         data.paymentAmount,
-                        data.transactionType,
                         data.paymentType,
                         data.paymentMethod,
-                        data.paymentStatus,
-                        data.paymentDate,
                   ],
             );
             return result.rows[0];
@@ -38,8 +40,10 @@ export const createPayment = async (
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to insert payment into database");
+            throw mapDatabaseError(
+                  error,
+                  "Failed to insert payment into database",
+            );
       }
 };
 
@@ -49,19 +53,18 @@ export const getPaymentsByReservation = async (
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_payments_by_reservation($1)
+                  SELECT *
+                  FROM kubo_payment_management.fn_get_payments_by_reservation($1)
                   `,
                   [reservationId],
             );
             return result.rows;
       } catch (error: any) {
-            logger.error("Failed to fetch payments for reservation", {
+            logger.error("Failed to fetch reservation payments", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to fetch payments for reservation");
+            throw mapDatabaseError(error, "Failed to fetch reservation payments");
       }
 };
 
@@ -71,8 +74,8 @@ export const getPaymentById = async (
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_payment_by_id($1)
+                  SELECT *
+                  FROM kubo_payment_management.fn_get_payment_by_id($1)
                   `,
                   [paymentId],
             );
@@ -82,146 +85,145 @@ export const getPaymentById = async (
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(
-                  500,
+            throw mapDatabaseError(
+                  error,
                   "Failed to get payment by id from database",
             );
       }
 };
 
-export const updatePayment = async (
-      data: UpdatePaymentDTO,
+export const updatePaymentStatus = async (
+      paymentId: string,
+      data: UpdatePaymentStatusDTO,
 ): Promise<PaymentResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.update_payment(
-                              $1, $2, $3, $4, $5, $6, $7, $8, $9
-                        )
+                  SELECT *
+                  FROM kubo_payment_management.fn_update_payment_status(
+                        p_payment_id => $1,
+                        p_employee_id => $2,
+                        p_payment_status => $3::kubo.payment_status
+                  )
                   `,
-                  [
-                        data.paymentId,
-                        data.reservationId ?? null,
-                        data.employeeId ?? null,
-                        data.paymentAmount ?? null,
-                        data.transactionType ?? null,
-                        data.paymentType ?? null,
-                        data.paymentMethod ?? null,
-                        data.paymentStatus ?? null,
-                        data.paymentDate ?? null,
-                  ],
+                  [paymentId, data.employeeId, data.status],
             );
             return result.rows[0] ?? null;
       } catch (error: any) {
-            logger.error("Failed to update payment in database", {
+            logger.error("Failed to update payment status", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to update payment in database");
+            throw mapDatabaseError(error, "Failed to update payment status");
       }
 };
 
-export const deletePayment = async (paymentId: string): Promise<boolean> => {
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT kubo.delete_payment($1) AS deleted
-                  `,
-                  [paymentId],
-            );
-            return result.rows[0]?.deleted != null;
-      } catch (error: any) {
-            logger.error("Failed to delete payment from database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to delete payment from database");
-      }
-};
-
-/**
- * Search payments with optional filters and pagination.
- */
-export const searchPayments = async (params: {
-      reservationId?: string;
-      employeeId?: string;
-      paymentStatus?: string;
-      paymentMethod?: string;
-      pagination: { limit: number; offset: number };
-}): Promise<PaymentResponseDTO[]> => {
-      const {
-            reservationId,
-            employeeId,
-            paymentStatus,
-            paymentMethod,
-            pagination,
-      } = params;
-      try {
-            const result = await db.query(
-                  `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.search_payments(
-                              $1, $2, $3, $4, $5, $6
-                        )
-                  `,
-                  [
-                        reservationId ?? null,
-                        employeeId ?? null,
-                        paymentStatus ?? null,
-                        paymentMethod ?? null,
-                        pagination.limit,
-                        pagination.offset,
-                  ],
-            );
-            return result.rows;
-      } catch (error: any) {
-            logger.error("Failed to search payments in database", {
-                  message: error.message,
-                  stack: error.stack,
-            });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to search payments in database");
-      }
-};
-
-/**
- * Record a refund for a reservation. The caller provides the same fields as a payment
- * but the `transactionType` will be forced to `refund`.
- */
 export const recordRefund = async (
-      data: CreatePaymentDTO,
+      reservationId: string,
+      data: RefundPaymentDTO,
 ): Promise<PaymentResponseDTO> => {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.create_payment(
-                              $1, $2, $3, $4, $5, $6, $7, $8
-                        )
+                  SELECT *
+                  FROM kubo_payment_management.fn_record_refund(
+                        p_reservation_id => $1,
+                        p_employee_id => $2,
+                        p_original_payment_id => $3,
+                        p_payment_amount => $4,
+                        p_payment_type => $5::kubo.payment_type,
+                        p_payment_method => $6::kubo.payment_method
+                  )
                   `,
                   [
-                        data.reservationId,
+                        reservationId,
                         data.employeeId,
+                        data.originalPaymentId,
                         data.paymentAmount,
-                        "refund", // force transaction type
                         data.paymentType,
                         data.paymentMethod,
-                        data.paymentStatus,
-                        data.paymentDate,
                   ],
             );
             return result.rows[0];
       } catch (error: any) {
-            logger.error("Failed to record refund in database", {
+            logger.error("Failed to record refund", {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to record refund in database");
+            throw mapDatabaseError(error, "Failed to record refund");
+      }
+};
+
+export const getPayments = async (params: {
+      reservationId?: string;
+      employeeId?: string;
+      paymentStatus?: string;
+      paymentMethod?: string;
+      transactionType?: string;
+      createdFrom?: Date;
+      createdTo?: Date;
+      pagination: { limit: number; offset: number };
+}): Promise<PaymentResponseDTO[]> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_payment_management.fn_get_payments(
+                        p_reservation_id => $1,
+                        p_employee_id => $2,
+                        p_payment_status => $3::kubo.payment_status,
+                        p_payment_method => $4::kubo.payment_method,
+                        p_transaction_type => $5::kubo.transaction_type,
+                        p_created_from => $6::date,
+                        p_created_to => $7::date,
+                        p_limit => $8,
+                        p_offset => $9
+                  )
+                  `,
+                  [
+                        params.reservationId ?? null,
+                        params.employeeId ?? null,
+                        params.paymentStatus ?? null,
+                        params.paymentMethod ?? null,
+                        params.transactionType ?? null,
+                        params.createdFrom
+                              ? toDateOnly(params.createdFrom)
+                              : null,
+                        params.createdTo ? toDateOnly(params.createdTo) : null,
+                        params.pagination.limit,
+                        params.pagination.offset,
+                  ],
+            );
+            return result.rows;
+      } catch (error: any) {
+            logger.error("Failed to fetch payments", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to fetch payments");
+      }
+};
+
+/**
+ * Cleanup-only deletion. Normal business operations must use refunds/reversals.
+ */
+export const deletePaymentCleanup = async (
+      paymentId: string,
+      employeeId: string,
+): Promise<boolean> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT kubo_payment_management.fn_delete_payment_cleanup($1, $2) AS deleted
+                  `,
+                  [paymentId, employeeId],
+            );
+            return result.rows[0]?.deleted === true;
+      } catch (error: any) {
+            logger.error("Failed to cleanup-delete payment", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to cleanup-delete payment");
       }
 };
