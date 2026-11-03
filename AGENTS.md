@@ -61,7 +61,7 @@ backend/src/modules/<feature>/
 - The real base path is `/KUBO_Resort/Management-System/v0.0.1`, not `/api` as the docs and frontend plan state.
 - Mounted prefixes: `/roles`, `/guests`, `/kubo-types`, `/kubos`, `/employees`, `/reservations`, `/audit-logs`, plus root-mounted route groups for payments and additional charges.
 - Reservation assignment routes are under `/reservations/:reservationId/kubos`. Payments are under `/reservations/:reservationId/payments` and `/payments`. Additional-charge routes define their own full paths under `/additional-charge-catalog`, `/additional-charges`, `/additional-charge-requests`, and `/reservations/:reservationId/charges`.
-- There is no authentication or RBAC middleware implemented. Mutation routines for additional charges and payments enforce Administrator/Staff roles from the temporary `employeeId` actor; reads are unrestricted. Do not assume all routes enforce `docs/business_rules.md`.
+- Authentication (`authenticate`) and role-based access (`authorizeRoles`) are implemented and mounted in `src/modules/index.ts`. The acting employee is always `req.auth.employeeId`; clients cannot supply an `employeeId` to act on another employee's behalf.
 
 ## Data and Validation Rules
 
@@ -81,30 +81,28 @@ rediscover it. It is context, not a replacement for `docs/business_rules.md`.
 
 - `main` includes the merged additional-charge/payment hardening work
   (`63d4be0`, merge `2193c67`).
-- Uncommitted working-tree work currently includes the audit-history read API
-  (`GET /audit-logs/history/:entityType/:entityId`), audit migrations, the SQL
-  `42501` -> HTTP `403` mapping, and documentation updates.
+- Authentication, RBAC, and audit logging (read API plus writes across all modules,
+  including login/logout) are committed on `main`.
+- Remaining uncommitted working-tree work is limited to documentation and frontend
+  planning updates under `docs/` and `frontend/docs/`.
 - `backend/` is the only runnable app. `frontend/` remains planning-only.
-- There is still no authentication/RBAC middleware. Additional-charge and payment
-  mutation routines enforce roles from the supplied `employeeId`; read endpoints are
-  unrestricted.
 
 ### Backend module state
 
 | Area | Current state |
 |---|---|
 | `role` | CRUD, validation, and reference-safe deletion. |
-| `employee` | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks. Audit wiring and RBAC remain. |
-| `guest` | CRUD, reuse-by-email/ID, profile updates, DB pagination, and unused-guest deletion. Administrator-only deletion and audit wiring remain. |
+| `employee` | CRUD, safe reads, filtering/search, password reset, last-Administrator checks, Administrator-only RBAC, and audit writes (no `password_hash`). |
+| `guest` | CRUD, reuse-by-email/ID, profile updates, DB pagination, unused-guest deletion, Administrator-only deletion, and audit writes (`id_number` masked). |
 | `kubo_type` | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion. |
 | `kubo` | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion. Mounted at `/kubos`. |
-| `reservation` | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard. Audit and RBAC remain. |
+| `reservation` | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, zero-balance checkout guard, Staff-only lifecycle, and audit writes. |
 | `reserved_kubo` | Add/update/remove assignments and per-assignment check-in/check-out under `/reservations/:reservationId/kubos`. |
 | `additional_charge` | Catalog application, pre-settlement deletion, and Administrator increase corrections. Reductions are deferred. |
 | `additional_charge_catalog` | Administrator CRUD, activation/deactivation, usage totals, and reference-safe deletion. |
 | `additional_charge_request` | Staff submission/withdrawal and Administrator approval/rejection/adjustment. |
 | `payment` | Pending creation, status transitions, refunds, filters, and Administrator cleanup deletion. Adjustment/Reversal effects remain deferred. |
-| `audit_log` | Append-only table, write routine, read routines, entity-history query, and read API. Additional-charge and payment mutations write audit rows; reservation, role, employee, guest, kubo, and kubo-type mutations still need wiring. |
+| `audit_log` | Append-only table, write routine, read routines, entity-history query, and Administrator-only read API. All tracked mutations plus successful login/logout write audit rows. |
 
 ### Additional-charge implementation
 
@@ -183,7 +181,7 @@ The payment lifecycle is implemented in
   `GET /audit-logs/history/:entityType/:entityId`, and
   `GET /audit-logs/employees/:employeeId/audit-logs`.
 - Refund audit rows include the original payment ID in the description.
-- Audit writes currently use the temporary `employeeId` supplied by the API.
+- Audit writes use the authenticated `req.auth.employeeId`; a client-supplied `employeeId` is ignored.
 
 ### Migration inventory
 

@@ -85,12 +85,12 @@ mutation routines (BR-071), except login/logout which use an application helper.
 - [x] Logout writes a `Logout` audit row
 - [x] Verify: `write_audit_log` with `Login` action writes a correct row (manual rollback test)
 
-## Phase 5 — Documentation and verification
+## Phase 5 — Documentation and verification ✅
 
-- [ ] Update `docs/development-progress.md` audit rows and "Next up"
-- [ ] Update `docs/architecture.md` audit section
-- [ ] Update `docs/validation.md` audit query validation
-- [ ] Optionally update `docs/database.md` audit routine vocabulary
-- [ ] Optionally refresh `AGENTS.md` (stale auth/RBAC/audit statements)
-- [ ] `npm run typecheck` and `npm run build`
-- [ ] Manual API/SQL regression matrix
+- [x] Update `docs/development-progress.md` audit rows and "Next up"
+- [x] Update `docs/architecture.md` audit section
+- [x] Update `docs/validation.md` audit query validation
+- [x] Update `docs/database.md` audit routine vocabulary
+- [x] Refresh `AGENTS.md` stale auth/RBAC/audit statements
+- [x] `npm run typecheck` and `npm run build`
+- [x] Manual API/SQL regression matrix (rollback tests per phase)

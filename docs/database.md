@@ -102,3 +102,18 @@ Never interpolate user‑controlled values directly into SQL strings.
 
 - Repositories may detect database‑specific errors (e.g., unique‑violation) and throw `AppError` with appropriate HTTP status codes.
 - Services translate these into application‑level errors, and controllers forward them to the centralized error handler.
+
+## Audit Logging
+
+- `kubo.audit_log` is append-only. `kubo_audit_management.prevent_audit_mutation`
+  blocks `UPDATE`, `DELETE`, and `TRUNCATE` (BR-069).
+- `kubo_audit_management.write_audit_log(p_employee_id, p_action, p_entity_type,
+  p_entity_id, p_description, p_old_values, p_new_values)` writes a row and verifies the
+  acting employee exists.
+- Read routines:
+  - `kubo.get_audit_log_by_id(p_audit_id)`
+  - `kubo.search_audit_logs(...)`
+  - `kubo.get_audit_history(p_entity_type, p_entity_id, p_limit, p_offset)`
+- Mutation routines call `write_audit_log` inside their own transaction (BR-071), so a
+  failed mutation rolls its audit row back. Login and logout call it from the
+  application layer because they have no database mutation routine.
