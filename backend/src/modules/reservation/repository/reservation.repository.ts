@@ -151,7 +151,7 @@ export const getReservationById = async (
 
 export const updateReservation = async (
       reservationId: string,
-      data: UpdateReservationDTO,
+      data: WithActor<UpdateReservationDTO>,
 ): Promise<ReservationResponseDTO | null> => {
       try {
             await db.query(
@@ -159,10 +159,16 @@ export const updateReservation = async (
                   SELECT kubo_reservation_management.fn_update_reservation(
                         p_reservation_id => $1,
                         p_guest_id => $2,
-                        p_booking_source => $3::kubo.booking_source
+                        p_booking_source => $3::kubo.booking_source,
+                        p_actor_employee_id => $4
                   )
                   `,
-                  [reservationId, data.guestId ?? null, data.bookingSource ?? null],
+                  [
+                        reservationId,
+                        data.guestId ?? null,
+                        data.bookingSource ?? null,
+                        data.employeeId,
+                  ],
             );
             return getReservationById(reservationId);
       } catch (error: any) {
@@ -179,13 +185,17 @@ export const updateReservation = async (
 
 export const confirmReservation = async (
       reservationId: string,
+      employeeId: string,
 ): Promise<ReservationResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_confirm_reservation($1)
+                  SELECT kubo_reservation_management.fn_confirm_reservation(
+                        p_reservation_id => $1,
+                        p_actor_employee_id => $2
+                  )
                   `,
-                  [reservationId],
+                  [reservationId, employeeId],
             );
             return getReservationById(reservationId);
       } catch (error: any) {
@@ -200,13 +210,18 @@ export const confirmReservation = async (
 export const cancelReservation = async (
       reservationId: string,
       reason: string,
+      employeeId: string,
 ): Promise<ReservationResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_cancel_reservation($1, $2)
+                  SELECT kubo_reservation_management.fn_cancel_reservation(
+                        p_reservation_id => $1,
+                        p_reason => $2,
+                        p_actor_employee_id => $3
+                  )
                   `,
-                  [reservationId, reason],
+                  [reservationId, reason, employeeId],
             );
             return getReservationById(reservationId);
       } catch (error: any) {
@@ -220,13 +235,17 @@ export const cancelReservation = async (
 
 export const markReservationNoShow = async (
       reservationId: string,
+      employeeId: string,
 ): Promise<ReservationResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_mark_no_show($1)
+                  SELECT kubo_reservation_management.fn_mark_no_show(
+                        p_reservation_id => $1,
+                        p_actor_employee_id => $2
+                  )
                   `,
-                  [reservationId],
+                  [reservationId, employeeId],
             );
             return getReservationById(reservationId);
       } catch (error: any) {
@@ -240,13 +259,17 @@ export const markReservationNoShow = async (
 
 export const deleteReservation = async (
       reservationId: string,
+      employeeId: string,
 ): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_delete_reservation($1) AS deleted
+                  SELECT kubo_reservation_management.fn_delete_reservation(
+                        p_reservation_id => $1,
+                        p_actor_employee_id => $2
+                  ) AS deleted
                   `,
-                  [reservationId],
+                  [reservationId, employeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {

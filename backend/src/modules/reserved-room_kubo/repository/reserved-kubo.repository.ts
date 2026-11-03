@@ -2,6 +2,7 @@ import type {
       CreateReservedKuboDTO,
       UpdateReservedKuboDTO,
       ReservedKuboResponseDTO,
+      WithActor,
 } from "./reserved-kubo.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -54,7 +55,7 @@ export const getReservedKubo = async (
 
 export const assignKubo = async (
       reservationId: string,
-      data: CreateReservedKuboDTO,
+      data: WithActor<CreateReservedKuboDTO>,
 ): Promise<ReservedKuboResponseDTO | null> => {
       try {
             await db.query(
@@ -65,7 +66,8 @@ export const assignKubo = async (
                         p_check_in_date => $3::date,
                         p_check_out_date => $4::date,
                         p_scheduled_check_in_time => $5::time,
-                        p_scheduled_check_out_time => $6::time
+                        p_scheduled_check_out_time => $6::time,
+                        p_actor_employee_id => $7
                   )
                   `,
                   [
@@ -75,6 +77,7 @@ export const assignKubo = async (
                         toDateOnly(data.checkOutDate),
                         data.scheduledCheckInTime ?? null,
                         data.scheduledCheckOutTime ?? null,
+                        data.employeeId,
                   ],
             );
             return getReservedKubo(reservationId, data.kuboId);
@@ -93,7 +96,7 @@ export const assignKubo = async (
 export const updateReservedKubo = async (
       reservationId: string,
       kuboId: string,
-      data: UpdateReservedKuboDTO,
+      data: WithActor<UpdateReservedKuboDTO>,
 ): Promise<ReservedKuboResponseDTO | null> => {
       try {
             await db.query(
@@ -104,7 +107,8 @@ export const updateReservedKubo = async (
                         p_check_in_date => $3::date,
                         p_check_out_date => $4::date,
                         p_scheduled_check_in_time => $5::time,
-                        p_scheduled_check_out_time => $6::time
+                        p_scheduled_check_out_time => $6::time,
+                        p_actor_employee_id => $7
                   )
                   `,
                   [
@@ -114,6 +118,7 @@ export const updateReservedKubo = async (
                         data.checkOutDate ? toDateOnly(data.checkOutDate) : null,
                         data.scheduledCheckInTime ?? null,
                         data.scheduledCheckOutTime ?? null,
+                        data.employeeId,
                   ],
             );
             return getReservedKubo(reservationId, kuboId);
@@ -129,13 +134,18 @@ export const updateReservedKubo = async (
 export const deleteReservedKubo = async (
       reservationId: string,
       kuboId: string,
+      employeeId: string,
 ): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_delete_reserved_kubo($1, $2) AS deleted
+                  SELECT kubo_reservation_management.fn_delete_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  ) AS deleted
                   `,
-                  [reservationId, kuboId],
+                  [reservationId, kuboId, employeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {
@@ -150,13 +160,18 @@ export const deleteReservedKubo = async (
 export const checkInReservedKubo = async (
       reservationId: string,
       kuboId: string,
+      employeeId: string,
 ): Promise<ReservedKuboResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_check_in_reserved_kubo($1, $2)
+                  SELECT kubo_reservation_management.fn_check_in_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  )
                   `,
-                  [reservationId, kuboId],
+                  [reservationId, kuboId, employeeId],
             );
             return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {
@@ -171,13 +186,18 @@ export const checkInReservedKubo = async (
 export const checkOutReservedKubo = async (
       reservationId: string,
       kuboId: string,
+      employeeId: string,
 ): Promise<ReservedKuboResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_check_out_reserved_kubo($1, $2)
+                  SELECT kubo_reservation_management.fn_check_out_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  )
                   `,
-                  [reservationId, kuboId],
+                  [reservationId, kuboId, employeeId],
             );
             return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {
@@ -192,13 +212,18 @@ export const checkOutReservedKubo = async (
 export const approveEarlyCheckIn = async (
       reservationId: string,
       kuboId: string,
+      employeeId: string,
 ): Promise<ReservedKuboResponseDTO | null> => {
       try {
             await db.query(
                   `
-                  SELECT kubo_reservation_management.fn_approve_early_check_in($1, $2)
+                  SELECT kubo_reservation_management.fn_approve_early_check_in(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  )
                   `,
-                  [reservationId, kuboId],
+                  [reservationId, kuboId, employeeId],
             );
             return getReservedKubo(reservationId, kuboId);
       } catch (error: any) {

@@ -45,7 +45,7 @@ export const getReservationByIdService = async (reservationId: string) => {
 // Checked
 export const updateReservationService = async (
       reservationId: string,
-      data: UpdateReservationDTO,
+      data: WithActor<UpdateReservationDTO>,
 ) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
@@ -55,43 +55,53 @@ export const updateReservationService = async (
 };
 
 // Checked
-export const confirmReservationService = async (reservationId: string) => {
+export const confirmReservationService = async (
+      reservationId: string,
+      employeeId: string,
+) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
-      return confirmReservation(reservationId);
+      return confirmReservation(reservationId, employeeId);
 };
 
 // Checked
 export const cancelReservationService = async (
       reservationId: string,
       reason: string,
+      employeeId: string,
 ) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
-      return cancelReservation(reservationId, reason);
+      return cancelReservation(reservationId, reason, employeeId);
 };
 
 // Checked
-export const markReservationNoShowService = async (reservationId: string) => {
+export const markReservationNoShowService = async (
+      reservationId: string,
+      employeeId: string,
+) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
-      return markReservationNoShow(reservationId);
+      return markReservationNoShow(reservationId, employeeId);
 };
 
 // Checked
-export const deleteReservationService = async (reservationId: string) => {
+export const deleteReservationService = async (
+      reservationId: string,
+      employeeId: string,
+) => {
       const existing = await getReservationById(reservationId);
       if (!existing) {
             throw new AppError(404, "Reservation not found");
       }
 
-      const deleted = await deleteReservation(reservationId);
+      const deleted = await deleteReservation(reservationId, employeeId);
       if (!deleted) {
             throw new AppError(404, "Reservation not found");
       }

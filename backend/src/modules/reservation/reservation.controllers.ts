@@ -152,10 +152,10 @@ export const updateReservationController = async (
       try {
             const reservationId = String(req.params.reservationId);
             const data = req.body as UpdateReservationDTO;
-            const reservations = await updateReservationService(
-                  reservationId,
-                  data,
-            );
+            const reservations = await updateReservationService(reservationId, {
+                  ...data,
+                  employeeId: req.auth!.employeeId,
+            });
 
             res.status(200).json({
                   success: true,
@@ -179,6 +179,7 @@ export const confirmReservationController = async (
       try {
             const reservations = await confirmReservationService(
                   req.params.reservationId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -204,6 +205,7 @@ export const cancelReservationController = async (
             const reservations = await cancelReservationService(
                   req.params.reservationId as string,
                   data.reason,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -227,6 +229,7 @@ export const markReservationNoShowController = async (
       try {
             const reservations = await markReservationNoShowService(
                   req.params.reservationId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -250,6 +253,7 @@ export const deleteReservationController = async (
       try {
             await deleteReservationService(
                   req.params.reservationId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(204).json();

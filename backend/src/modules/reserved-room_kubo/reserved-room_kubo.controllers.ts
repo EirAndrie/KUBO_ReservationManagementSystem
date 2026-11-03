@@ -20,10 +20,10 @@ export const assignKuboController = async (req: Request, res: Response) => {
       try {
             const reservationId = String(req.params.reservationId);
             const data = req.body as CreateReservedKuboDTO;
-            const reservedKubos = await assignKuboService(
-                  reservationId,
-                  data,
-            );
+            const reservedKubos = await assignKuboService(reservationId, {
+                  ...data,
+                  employeeId: req.auth!.employeeId,
+            });
 
             res.status(201).json({
                   success: true,
@@ -97,7 +97,7 @@ export const updateReservedKuboController = async (
             const reservedKubos = await updateReservedKuboService(
                   reservationId,
                   kuboId,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
 
             res.status(200).json({
@@ -122,6 +122,7 @@ export const deleteReservedKuboController = async (
             await deleteReservedKuboService(
                   req.params.reservationId as string,
                   req.params.kuboId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(204).json();
@@ -142,6 +143,7 @@ export const checkInReservedKuboController = async (
             const reservedKubos = await checkInReservedKuboService(
                   req.params.reservationId as string,
                   req.params.kuboId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -166,6 +168,7 @@ export const checkOutReservedKuboController = async (
             const reservedKubos = await checkOutReservedKuboService(
                   req.params.reservationId as string,
                   req.params.kuboId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -190,6 +193,7 @@ export const approveEarlyCheckInController = async (
             const reservedKubos = await approveEarlyCheckInService(
                   req.params.reservationId as string,
                   req.params.kuboId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({

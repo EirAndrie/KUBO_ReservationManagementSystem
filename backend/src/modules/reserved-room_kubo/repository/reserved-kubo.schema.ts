@@ -120,6 +120,12 @@ export type UpdateReservedKuboDTO = z.infer<
       typeof UpdateReservedKuboSchema
 >;
 
+/**
+ * Internal wrapper adding the acting employee (sourced from the access token,
+ * never from the client) to a validated mutation payload.
+ */
+export type WithActor<T> = T & { employeeId: string };
+
 export type ReservedKuboResponseDTO = {
       reservation_id: string;
       kubo_id: string;
