@@ -1,6 +1,6 @@
 import type { AuditLogResponseDTO } from "./audit-log.schema";
 import { db } from "../../../config/connectDB";
-import { AppError, mapDatabaseError } from "../../../utils/http";
+import { mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
 /**
@@ -12,8 +12,7 @@ export const getAuditLogById = async (
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.get_audit_log_by_id($1)
+                  SELECT * FROM kubo.get_audit_log_by_id($1)
                   `,
                   [auditLogId],
             );
@@ -23,22 +22,21 @@ export const getAuditLogById = async (
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to get audit log by id");
+            throw mapDatabaseError(error, "Failed to get audit log by id");
       }
 };
 
 /**
  * Search audit logs with optional filters and pagination.
- * All parameters are optional – the stored procedure should handle nulls.
+ * All filter parameters are optional; nulls are passed through to the routine.
  */
 export const searchAuditLogs = async (params: {
       employeeId?: string;
       action?: string;
       entityType?: string;
       entityId?: string;
-      createdFrom?: string;
-      createdTo?: string;
+      createdFrom?: Date;
+      createdTo?: Date;
       pagination: { limit: number; offset: number };
 }): Promise<AuditLogResponseDTO[]> => {
       const {
@@ -53,18 +51,25 @@ export const searchAuditLogs = async (params: {
       try {
             const result = await db.query(
                   `
-                        -- TODO: replace with actual stored procedure call
-                        SELECT * FROM kubo.search_audit_logs(
-                              $1, $2, $3, $4, $5, $6, $7, $8
-                        )
+                  SELECT *
+                  FROM kubo.search_audit_logs(
+                        p_employee_id => $1,
+                        p_action => $2,
+                        p_entity_type => $3,
+                        p_entity_id => $4,
+                        p_created_from => $5::timestamptz,
+                        p_created_to => $6::timestamptz,
+                        p_limit => $7,
+                        p_offset => $8
+                  )
                   `,
                   [
                         employeeId ?? null,
                         action ?? null,
                         entityType ?? null,
                         entityId ?? null,
-                        createdFrom ?? null,
-                        createdTo ?? null,
+                        createdFrom ? createdFrom.toISOString() : null,
+                        createdTo ? createdTo.toISOString() : null,
                         pagination.limit,
                         pagination.offset,
                   ],
@@ -75,8 +80,7 @@ export const searchAuditLogs = async (params: {
                   message: error.message,
                   stack: error.stack,
             });
-            if (error instanceof AppError) throw error;
-            throw new AppError(500, "Failed to search audit logs");
+            throw mapDatabaseError(error, "Failed to search audit logs");
       }
 };
 

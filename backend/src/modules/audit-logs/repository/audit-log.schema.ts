@@ -1,51 +1,90 @@
 import { z } from "zod";
 
-const ACTION_ENUM = [
-      "create",
-      "update",
-      "delete",
-      "login",
-      "logout",
-      "cancel",
-      "approve",
-      "reject",
+/**
+ * Audit actions understood by the audit log, matching the `kubo.audit_action`
+ * enum. Input is normalized to this casing before validation.
+ */
+export const AUDIT_ACTIONS = [
+      "Create",
+      "Update",
+      "Delete",
+      "Login",
+      "Logout",
+      "Cancel",
+      "Approve",
+      "Reject",
 ] as const;
 
-export const AuditLogSchema = z.object({
-      // PKs & FKs
-      auditLogId: z.string().uuid(),
-      employeeId: z.string().uuid({
-            message: "Invalid Employee ID format, must be UUID to reference",
-      }),
-
-      // Audit log details
-      auditAction: z.enum(ACTION_ENUM, {
-            message: "Invalid audit action entry, must follow system integrated status enums",
-      }),
-      entityId: z.string({
-            message: "Must include the id of the entity being performed at",
-      }),
-      auditDescription: z.string({
-            message: "Audit description is required for history records",
-      }),
-
-      // JSON values
-      oldValues: z.object({}).catchall(z.any()).nullable().default(null),
-      newValues: z.object({}).catchall(z.any()).nullable().default(null),
-
-      // Date when the audit was triggered
-      dateTime: z.date(),
+export const AuditActionSchema = z.enum(AUDIT_ACTIONS, {
+      message: "Invalid audit action",
 });
 
-// Schema and DTO for creating
-export const CreateAuditLogSchema = AuditLogSchema.omit({ auditLogId: true });
-export type CreateAuditLogDTO = z.infer<typeof CreateAuditLogSchema>;
+const optionalUuid = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      z.string().uuid().optional(),
+);
 
-// Schema and DTO for updating
-export const UpdateAuditLogSchema = AuditLogSchema.pick({
-      auditLogId: true,
-}).merge(AuditLogSchema.omit({ auditLogId: true }).partial());
-export type UpdateAuditLogDTO = z.infer<typeof UpdateAuditLogSchema>;
+const optionalText = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      z.string().trim().min(1).max(255).optional(),
+);
 
-// Response DTO
-export type AuditLogResponseDTO = z.infer<typeof AuditLogSchema>;
+const optionalDateTime = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      z.coerce.date().optional(),
+);
+
+const normalizeAction = (value: unknown) => {
+      if (typeof value !== "string") {
+            return value;
+      }
+      const trimmed = value.trim();
+      if (trimmed === "") {
+            return undefined;
+      }
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+};
+
+export const AuditLogFilterSchema = z
+      .object({
+            employeeId: optionalUuid,
+            action: z.preprocess(normalizeAction, AuditActionSchema.optional()),
+            entityType: optionalText,
+            entityId: optionalUuid,
+            createdFrom: optionalDateTime,
+            createdTo: optionalDateTime,
+      })
+      .refine(
+            (value) =>
+                  value.createdFrom === undefined ||
+                  value.createdTo === undefined ||
+                  value.createdTo >= value.createdFrom,
+            {
+                  message: "createdTo must not be earlier than createdFrom",
+                  path: ["createdTo"],
+            },
+      );
+
+export type AuditLogFilterDTO = z.infer<typeof AuditLogFilterSchema>;
+
+/** Shape of a row returned by the audit read routines (snake_case). */
+export type AuditLogResponseDTO = {
+      audit_id: string;
+      employee_id: string;
+      action: (typeof AUDIT_ACTIONS)[number];
+      entity_type: string;
+      entity_id: string;
+      description: string | null;
+      old_values: Record<string, unknown> | null;
+      new_values: Record<string, unknown> | null;
+      created_at: string;
+};

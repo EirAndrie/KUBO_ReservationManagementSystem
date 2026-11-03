@@ -1,17 +1,41 @@
-import type { Request, Response, NextFunction } from "express";
-import { getPagination, getStringParam, handleControllerError } from "../../utils/http";
+import type { Request, Response } from "express";
+import {
+      AppError,
+      getPagination,
+      getStringParam,
+      handleControllerError,
+} from "../../utils/http";
 import logger from "../../utils/logger";
+import {
+      AuditLogFilterSchema,
+      type AuditLogFilterDTO,
+} from "./repository/audit-log.schema";
 import {
       getAuditLogByIdService,
       searchAuditLogsService,
       getAuditHistoryService,
 } from "./audit-logs.services";
 
+const zodMessage = (error: any) =>
+      error.issues
+            .map((issue: any) =>
+                  issue.path.length
+                        ? `${issue.path.join(".")}: ${issue.message}`
+                        : issue.message,
+            )
+            .join("; ");
+
+const parseFilters = <T>(result: any): T => {
+      if (!result.success) {
+            throw new AppError(400, zodMessage(result.error));
+      }
+      return result.data as T;
+};
+
 // GET /audit-logs/:auditId – single log
 export const getAuditLogByIdController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
             const auditLogs = await getAuditLogByIdService(
@@ -31,52 +55,33 @@ export const getAuditLogByIdController = async (
       }
 };
 
-// GET /audit-logs – filtered list (including employee-specific via query)
+// GET /audit-logs – filtered list
 export const searchAuditLogsController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
             const pagination = getPagination(req.query);
 
-            const employeeId =
-                  typeof req.query.employeeId === "string"
-                        ? req.query.employeeId
-                        : undefined;
-            const action =
-                  typeof req.query.action === "string"
-                        ? req.query.action
-                        : undefined;
-            const entityType =
-                  typeof req.query.entityType === "string"
-                        ? req.query.entityType
-                        : undefined;
-            const entityId =
-                  typeof req.query.entityId === "string"
-                        ? req.query.entityId
-                        : undefined;
-            const createdFrom =
-                  typeof req.query.createdFrom === "string"
-                        ? req.query.createdFrom
-                        : undefined;
-            const createdTo =
-                  typeof req.query.createdTo === "string"
-                        ? req.query.createdTo
-                        : undefined;
+            const filters = parseFilters<AuditLogFilterDTO>(
+                  AuditLogFilterSchema.safeParse({
+                        employeeId: req.query.employeeId,
+                        action: req.query.action,
+                        entityType: req.query.entityType,
+                        entityId: req.query.entityId,
+                        createdFrom: req.query.createdFrom,
+                        createdTo: req.query.createdTo,
+                  }),
+            );
 
             const auditLogs = await searchAuditLogsService({
-                  employeeId,
-                  action,
-                  entityType,
-                  entityId,
-                  createdFrom,
-                  createdTo,
+                  ...filters,
                   pagination,
             });
 
             res.status(200).json({
                   success: true,
+                  count: auditLogs.length,
                   message: "Successfully fetched Audit Logs",
                   auditLogs,
             });
@@ -110,6 +115,7 @@ export const getAuditHistoryController = async (
 
             res.status(200).json({
                   success: true,
+                  count: auditLogs.length,
                   message: "Successfully fetched Audit Log history",
                   auditLogs,
             });
@@ -126,29 +132,27 @@ export const getAuditHistoryController = async (
 export const getAuditLogsByEmployeeController = async (
       req: Request,
       res: Response,
-      next: NextFunction,
 ) => {
       try {
             const pagination = getPagination(req.query);
 
-            const action =
-                  typeof req.query.action === "string"
-                        ? req.query.action
-                        : undefined;
-            const entityType =
-                  typeof req.query.entityType === "string"
-                        ? req.query.entityType
-                        : undefined;
+            const filters = parseFilters<AuditLogFilterDTO>(
+                  AuditLogFilterSchema.safeParse({
+                        action: req.query.action,
+                        entityType: req.query.entityType,
+                  }),
+            );
 
             const auditLogs = await searchAuditLogsService({
                   employeeId: req.params.employeeId as string,
-                  action,
-                  entityType,
+                  action: filters.action,
+                  entityType: filters.entityType,
                   pagination,
             });
 
             res.status(200).json({
                   success: true,
+                  count: auditLogs.length,
                   message: "Successfully fetched Audit Logs related to Employee",
                   auditLogs,
             });

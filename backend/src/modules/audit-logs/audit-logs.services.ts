@@ -4,7 +4,6 @@ import {
       getAuditHistory,
 } from "./repository/audit-log.repository";
 import { AppError } from "../../utils/http";
-import logger from "../../utils/logger";
 import type { Pagination } from "../../utils/pagination";
 
 export const getAuditLogByIdService = async (auditLogId: string) => {
@@ -20,8 +19,8 @@ export const searchAuditLogsService = async (params: {
       action?: string;
       entityType?: string;
       entityId?: string;
-      createdFrom?: string;
-      createdTo?: string;
+      createdFrom?: Date;
+      createdTo?: Date;
       pagination: Pagination;
 }) => {
       return searchAuditLogs({
