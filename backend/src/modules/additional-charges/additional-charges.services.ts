@@ -25,8 +25,8 @@ import type {
       CustomChargeRequestDTO,
       ApproveChargeRequestDTO,
       RejectChargeRequestDTO,
-      WithdrawChargeRequestDTO,
       AddChargeCorrectionDTO,
+      WithActor,
 } from "./repository/additional-charge.schema";
 import type { Pagination } from "../../utils/pagination";
 
@@ -34,7 +34,7 @@ import type { Pagination } from "../../utils/pagination";
 
 // Checked
 export const createCatalogItemService = async (
-      data: CreateCatalogItemDTO,
+      data: WithActor<CreateCatalogItemDTO>,
 ) => {
       return createCatalogItem(data);
 };
@@ -67,7 +67,7 @@ export const getCatalogItemByIdService = async (catalogId: string) => {
 // Checked
 export const updateCatalogItemService = async (
       catalogId: string,
-      data: UpdateCatalogItemDTO,
+      data: WithActor<UpdateCatalogItemDTO>,
 ) => {
       const item = await getCatalogItemById(catalogId);
       if (!item) {
@@ -94,7 +94,7 @@ export const deleteCatalogItemService = async (
 
 export const applyCatalogChargeService = async (
       reservationId: string,
-      data: ApplyCatalogChargeDTO,
+      data: WithActor<ApplyCatalogChargeDTO>,
 ) => {
       return applyCatalogCharge(reservationId, data);
 };
@@ -149,7 +149,7 @@ export const deleteChargeService = async (
 
 export const addChargeCorrectionService = async (
       chargeId: string,
-      data: AddChargeCorrectionDTO,
+      data: WithActor<AddChargeCorrectionDTO>,
 ) => {
       const charge = await getChargeById(chargeId);
       if (!charge) {
@@ -160,7 +160,7 @@ export const addChargeCorrectionService = async (
 
 export const createChargeRequestService = async (
       reservationId: string,
-      data: CustomChargeRequestDTO,
+      data: WithActor<CustomChargeRequestDTO>,
 ) => {
       return createChargeRequest(reservationId, data);
 };
@@ -192,7 +192,7 @@ export const getChargeRequestByIdService = async (requestId: string) => {
 
 export const approveChargeRequestService = async (
       requestId: string,
-      data: ApproveChargeRequestDTO,
+      data: WithActor<ApproveChargeRequestDTO>,
 ) => {
       const request = await getChargeRequestById(requestId);
       if (!request) {
@@ -203,7 +203,7 @@ export const approveChargeRequestService = async (
 
 export const rejectChargeRequestService = async (
       requestId: string,
-      data: RejectChargeRequestDTO,
+      data: WithActor<RejectChargeRequestDTO>,
 ) => {
       const request = await getChargeRequestById(requestId);
       if (!request) {
@@ -214,11 +214,11 @@ export const rejectChargeRequestService = async (
 
 export const withdrawChargeRequestService = async (
       requestId: string,
-      data: WithdrawChargeRequestDTO,
+      employeeId: string,
 ) => {
       const request = await getChargeRequestById(requestId);
       if (!request) {
             throw new AppError(404, "Charge request not found");
       }
-      return withdrawChargeRequest(requestId, data);
+      return withdrawChargeRequest(requestId, employeeId);
 };

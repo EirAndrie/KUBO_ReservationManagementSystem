@@ -12,12 +12,13 @@ import type {
       CreatePaymentDTO,
       RefundPaymentDTO,
       UpdatePaymentStatusDTO,
+      WithActor,
 } from "./repository/payment.schema";
 import type { Pagination } from "../../utils/pagination";
 
 export const createPaymentService = async (
       reservationId: string,
-      data: CreatePaymentDTO,
+      data: WithActor<CreatePaymentDTO>,
 ) => {
       return createPayment(reservationId, data);
 };
@@ -38,7 +39,7 @@ export const getPaymentByIdService = async (paymentId: string) => {
 
 export const updatePaymentStatusService = async (
       paymentId: string,
-      data: UpdatePaymentStatusDTO,
+      data: WithActor<UpdatePaymentStatusDTO>,
 ) => {
       const payment = await getPaymentById(paymentId);
       if (!payment) {
@@ -49,7 +50,7 @@ export const updatePaymentStatusService = async (
 
 export const refundPaymentService = async (
       reservationId: string,
-      data: RefundPaymentDTO,
+      data: WithActor<RefundPaymentDTO>,
 ) => {
       return recordRefund(reservationId, data);
 };

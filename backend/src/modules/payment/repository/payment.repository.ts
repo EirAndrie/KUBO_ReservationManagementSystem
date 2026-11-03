@@ -3,6 +3,7 @@ import type {
       RefundPaymentDTO,
       UpdatePaymentStatusDTO,
       PaymentResponseDTO,
+      WithActor,
 } from "./payment.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -12,7 +13,7 @@ const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 
 export const createPayment = async (
       reservationId: string,
-      data: CreatePaymentDTO,
+      data: WithActor<CreatePaymentDTO>,
 ): Promise<PaymentResponseDTO> => {
       try {
             const result = await db.query(
@@ -94,7 +95,7 @@ export const getPaymentById = async (
 
 export const updatePaymentStatus = async (
       paymentId: string,
-      data: UpdatePaymentStatusDTO,
+      data: WithActor<UpdatePaymentStatusDTO>,
 ): Promise<PaymentResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -120,7 +121,7 @@ export const updatePaymentStatus = async (
 
 export const recordRefund = async (
       reservationId: string,
-      data: RefundPaymentDTO,
+      data: WithActor<RefundPaymentDTO>,
 ): Promise<PaymentResponseDTO> => {
       try {
             const result = await db.query(

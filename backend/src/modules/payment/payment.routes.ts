@@ -14,12 +14,14 @@ import {
       UpdatePaymentStatusSchema,
 } from "./repository/payment.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
+import { authorizeRoles } from "../auth/auth.middleware";
 
 const router = Router();
 
 // Payments scoped under a reservation
 router.post(
       "/reservations/:reservationId/payments",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       validateBody(CreatePaymentSchema),
       createPaymentController,
@@ -31,6 +33,7 @@ router.get(
 ); // Checked
 router.post(
       "/reservations/:reservationId/payments/refund",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       validateBody(RefundPaymentSchema),
       refundPaymentController,
@@ -45,12 +48,14 @@ router.get(
 ); // Checked
 router.patch(
       "/payments/:paymentId/status",
+      authorizeRoles("Staff"),
       requireUuidParam("paymentId"),
       validateBody(UpdatePaymentStatusSchema),
       updatePaymentStatusController,
 ); // Checked
 router.delete(
       "/payments/:paymentId",
+      authorizeRoles("Administrator"),
       requireUuidParam("paymentId"),
       deletePaymentCleanupController,
 ); 

@@ -70,7 +70,6 @@ const normalizeCatalog = (value: unknown) => {
             description: input.description,
             unitPrice: input.unitPrice ?? input.unit_price,
             isActive: input.isActive ?? input.is_active,
-            employeeId: input.employeeId ?? input.employee_id,
       };
 };
 
@@ -82,7 +81,6 @@ const normalizeApplyCharge = (value: unknown) => {
       const input = value as Record<string, unknown>;
 
       return {
-            employeeId: input.employeeId ?? input.employee_id,
             catalogId: input.catalogId ?? input.catalog_id,
             quantity: input.quantity,
       };
@@ -96,7 +94,6 @@ const normalizeCustomRequest = (value: unknown) => {
       const input = value as Record<string, unknown>;
 
       return {
-            employeeId: input.employeeId ?? input.employee_id,
             description: input.description,
             quantity: input.quantity,
             proposedUnitAmount:
@@ -112,7 +109,6 @@ const normalizeCorrection = (value: unknown) => {
       const input = value as Record<string, unknown>;
 
       return {
-            employeeId: input.employeeId ?? input.employee_id,
             chargeType: input.chargeType ?? input.charge_type,
             quantity: input.quantity,
             unitAmount: input.unitAmount ?? input.unit_amount,
@@ -120,12 +116,15 @@ const normalizeCorrection = (value: unknown) => {
       };
 };
 
+/**
+ * Internal wrapper adding the acting employee (sourced from the access token,
+ * never from the client) to a validated mutation payload.
+ */
+export type WithActor<T> = T & { employeeId: string };
+
 export const CreateCatalogItemSchema = z.preprocess(
       normalizeCatalog,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             chargeType: ChargeTypeSchema,
             name: z.string().trim().min(1).max(100),
             description: optionalText(255),
@@ -145,9 +144,6 @@ export const UpdateCatalogItemSchema = z.preprocess(
       normalizeCatalog,
       z
             .object({
-                  employeeId: z.string().uuid({
-                        message: "Employee ID is required",
-                  }),
                   chargeType: ChargeTypeSchema.optional(),
                   name: z.string().trim().min(1).max(100).optional(),
                   description: optionalText(255).nullable(),
@@ -192,20 +188,9 @@ export const CatalogFilterSchema = z.object({
 
 export type CatalogFilterDTO = z.infer<typeof CatalogFilterSchema>;
 
-export const DeleteActorSchema = z.object({
-      employeeId: z.string().uuid({
-            message: "Employee ID is required",
-      }),
-});
-
-export type DeleteActorDTO = z.infer<typeof DeleteActorSchema>;
-
 export const ApplyCatalogChargeSchema = z.preprocess(
       normalizeApplyCharge,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             catalogId: z.string().uuid({
                   message: "Catalog ID is required",
             }),
@@ -220,9 +205,6 @@ export type ApplyCatalogChargeDTO = z.infer<
 export const CustomChargeRequestSchema = z.preprocess(
       normalizeCustomRequest,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             description: z.string().trim().min(1).max(255),
             quantity: z.number().int().positive().default(1),
             proposedUnitAmount: z
@@ -240,9 +222,6 @@ export type CustomChargeRequestDTO = z.infer<
 >;
 
 export const ApproveChargeRequestSchema = z.object({
-      employeeId: z.string().uuid({
-            message: "Reviewer employee ID is required",
-      }),
       approvedUnitAmount: z
             .number()
             .nonnegative()
@@ -259,24 +238,11 @@ export type ApproveChargeRequestDTO = z.infer<
 >;
 
 export const RejectChargeRequestSchema = z.object({
-      employeeId: z.string().uuid({
-            message: "Reviewer employee ID is required",
-      }),
       reason: z.string().trim().min(1).max(255),
 });
 
 export type RejectChargeRequestDTO = z.infer<
       typeof RejectChargeRequestSchema
->;
-
-export const WithdrawChargeRequestSchema = z.object({
-      employeeId: z.string().uuid({
-            message: "Employee ID is required",
-      }),
-});
-
-export type WithdrawChargeRequestDTO = z.infer<
-      typeof WithdrawChargeRequestSchema
 >;
 
 export const ChargeRequestFilterSchema = z.object({
@@ -302,9 +268,6 @@ export type ChargeFilterDTO = z.infer<typeof ChargeFilterSchema>;
 export const AddChargeCorrectionSchema = z.preprocess(
       normalizeCorrection,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Administrator employee ID is required",
-            }),
             chargeType: ChargeTypeSchema,
             quantity: z.number().int().positive().default(1),
             unitAmount: z

@@ -5,11 +5,11 @@ import type {
       CustomChargeRequestDTO,
       ApproveChargeRequestDTO,
       RejectChargeRequestDTO,
-      WithdrawChargeRequestDTO,
       AddChargeCorrectionDTO,
       AdditionalChargeCatalogResponseDTO,
       AdditionalChargeResponseDTO,
       AdditionalChargeRequestResponseDTO,
+      WithActor,
 } from "./additional-charge.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -18,7 +18,7 @@ import logger from "../../../utils/logger";
 const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 
 export const createCatalogItem = async (
-      data: CreateCatalogItemDTO,
+      data: WithActor<CreateCatalogItemDTO>,
 ): Promise<AdditionalChargeCatalogResponseDTO> => {
       try {
             const result = await db.query(
@@ -117,7 +117,7 @@ export const getCatalogItemById = async (
 
 export const updateCatalogItem = async (
       catalogId: string,
-      data: UpdateCatalogItemDTO,
+      data: WithActor<UpdateCatalogItemDTO>,
 ): Promise<AdditionalChargeCatalogResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -182,7 +182,7 @@ export const deleteCatalogItem = async (
 
 export const applyCatalogCharge = async (
       reservationId: string,
-      data: ApplyCatalogChargeDTO,
+      data: WithActor<ApplyCatalogChargeDTO>,
 ): Promise<AdditionalChargeResponseDTO> => {
       try {
             const result = await db.query(
@@ -316,7 +316,7 @@ export const deleteCharge = async (
 
 export const addChargeCorrection = async (
       chargeId: string,
-      data: AddChargeCorrectionDTO,
+      data: WithActor<AddChargeCorrectionDTO>,
 ): Promise<AdditionalChargeResponseDTO> => {
       try {
             const result = await db.query(
@@ -352,7 +352,7 @@ export const addChargeCorrection = async (
 
 export const createChargeRequest = async (
       reservationId: string,
-      data: CustomChargeRequestDTO,
+      data: WithActor<CustomChargeRequestDTO>,
 ): Promise<AdditionalChargeRequestResponseDTO> => {
       try {
             const result = await db.query(
@@ -452,7 +452,7 @@ export const getChargeRequestById = async (
 
 export const approveChargeRequest = async (
       requestId: string,
-      data: ApproveChargeRequestDTO,
+      data: WithActor<ApproveChargeRequestDTO>,
 ): Promise<AdditionalChargeRequestResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -487,7 +487,7 @@ export const approveChargeRequest = async (
 
 export const rejectChargeRequest = async (
       requestId: string,
-      data: RejectChargeRequestDTO,
+      data: WithActor<RejectChargeRequestDTO>,
 ): Promise<AdditionalChargeRequestResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -512,7 +512,7 @@ export const rejectChargeRequest = async (
 
 export const withdrawChargeRequest = async (
       requestId: string,
-      data: WithdrawChargeRequestDTO,
+      employeeId: string,
 ): Promise<AdditionalChargeRequestResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -520,7 +520,7 @@ export const withdrawChargeRequest = async (
                   SELECT *
                   FROM kubo_additional_charges_management.fn_withdraw_charge_request($1, $2)
                   `,
-                  [requestId, data.employeeId],
+                  [requestId, employeeId],
             );
             return result.rows[0] ?? null;
       } catch (error: any) {
