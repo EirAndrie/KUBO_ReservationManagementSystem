@@ -35,14 +35,12 @@ previous one.
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role matching is case-insensitive (`ADMIN`/`Administrator`, `STAFF`/`Staff`). |
 | Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
-| Automated tests | Not configured | Verification is currently manual through TypeScript, database tests, and API calls. |
 
 ## Next up
 
 1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
 2. Implement the planned frontend login flow and token handling.
-3. Add automated regression coverage for the completed entities.
-4. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
+3. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
 
 ## Notes
 
@@ -89,13 +87,11 @@ previous one.
   `docs/additional-charge-hybrid-change-tracker.md`.
 - Administrator increase corrections are implemented. Reductions remain pending until
   Adjustment/Reversal payment support is implemented (G-07).
-- Audit writes are implemented for additional-charge and payment mutations. The audit
-  read API includes general search, single-log reads, employee-scoped logs, and
-  entity-history reads.
-- The audit-history read API, the two audit migrations, and related documentation are
-  still uncommitted in the working tree. The SQL `42501` to HTTP `403` mapping,
-  authentication, route-level RBAC, the payment/additional-charge actor refactor, and
-  the reservation-creation actor migration are committed on `main`.
+- Audit writes are implemented for all tracked mutations plus successful login and
+  logout. The audit read API includes general search, single-log reads, employee-scoped
+  logs, and entity-history reads.
+- Authentication, route-level RBAC, the actor refactors, the audit migrations, and the
+  audit read/write wiring are committed on `main`.
 - The additional-charge migration expects the pre-existing
   `kubo_additional_charges_management` schema and skips its routines if that schema is
   absent. The payment migration creates `kubo_payment_management` itself.
