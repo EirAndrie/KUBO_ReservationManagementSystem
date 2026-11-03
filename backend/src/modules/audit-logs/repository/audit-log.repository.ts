@@ -1,6 +1,6 @@
 import type { AuditLogResponseDTO } from "./audit-log.schema";
 import { db } from "../../../config/connectDB";
-import { AppError } from "../../../utils/http";
+import { AppError, mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
 
 /**
@@ -77,5 +77,39 @@ export const searchAuditLogs = async (params: {
             });
             if (error instanceof AppError) throw error;
             throw new AppError(500, "Failed to search audit logs");
+      }
+};
+
+/**
+ * Returns the audit history for one entity, such as an employee or role.
+ *
+ * Results are newest first and paginated in the database.
+ */
+export const getAuditHistory = async (params: {
+      entityType: string;
+      entityId: string;
+      pagination: { limit: number; offset: number };
+}): Promise<AuditLogResponseDTO[]> => {
+      const { entityType, entityId, pagination } = params;
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo.get_audit_history($1, $2, $3, $4)
+                  `,
+                  [
+                        entityType,
+                        entityId,
+                        pagination.limit,
+                        pagination.offset,
+                  ],
+            );
+            return result.rows;
+      } catch (error: any) {
+            logger.error("Failed to get audit history", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to get audit history");
       }
 };

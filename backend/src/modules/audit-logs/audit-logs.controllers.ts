@@ -1,10 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
-import { handleControllerError } from "../../utils/http";
+import { getPagination, getStringParam, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { getPagination } from "../../utils/http";
 import {
       getAuditLogByIdService,
       searchAuditLogsService,
+      getAuditHistoryService,
 } from "./audit-logs.services";
 
 // GET /audit-logs/:auditId – single log
@@ -82,6 +82,39 @@ export const searchAuditLogsController = async (
             });
       } catch (error: any) {
             logger.error("Failed to search audit logs", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+// GET /audit-logs/history/:entityType/:entityId – entity history
+export const getAuditHistoryController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const pagination = getPagination(req.query);
+            const entityType = getStringParam(
+                  req.params.entityType,
+                  "entityType",
+            );
+            const entityId = String(req.params.entityId);
+
+            const auditLogs = await getAuditHistoryService({
+                  entityType,
+                  entityId,
+                  pagination,
+            });
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully fetched Audit Log history",
+                  auditLogs,
+            });
+      } catch (error: any) {
+            logger.error("Failed to get audit history", {
                   message: error.message,
                   stack: error.stack,
             });
