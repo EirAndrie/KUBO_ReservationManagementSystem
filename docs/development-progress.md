@@ -18,7 +18,7 @@ previous one.
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
 | 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds with net-paid limits, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Cumulative refunds are linked through audit descriptions. Adjustment/Reversal balance effects remain. |
-| 12 | `audit_log` | In progress | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All tracked mutations (additional charges, payments, reservations, assignments, roles, employees, guests, kubo types, and kubos) write audit rows. Login/logout audit remains. |
+| 12 | `audit_log` | Complete | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All BR-067 events are audited: every tracked mutation plus successful login and logout. |
 
 ## Status legend
 
@@ -34,16 +34,15 @@ previous one.
 |---|---|---|
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role matching is case-insensitive (`ADMIN`/`Administrator`, `STAFF`/`Staff`). |
-| Audit writes | Partial | All tracked mutations (additional charges, payments, reservations, assignments, roles, employees, guests, kubo types, and kubos) write audit rows. Login/logout audit remains. |
+| Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
 | Automated tests | Not configured | Verification is currently manual through TypeScript, database tests, and API calls. |
 
 ## Next up
 
 1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
-2. Add login and logout audit events (Phase 4).
-3. Implement the planned frontend login flow and token handling.
-4. Add automated regression coverage for the completed entities.
-5. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
+2. Implement the planned frontend login flow and token handling.
+3. Add automated regression coverage for the completed entities.
+4. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
 
 ## Notes
 
@@ -74,6 +73,8 @@ previous one.
 - Authentication uses JWT bearer tokens issued by `POST /auth/login`; `GET /auth/me`
   returns the current profile. The token identifies the employee only, and the role and
   status are re-read from the database on every request.
+- `POST /auth/logout` records an audit-only `Logout` event and returns `204`. JWTs are
+  stateless and are not revoked, so the token remains valid until its expiry.
 - RBAC is enforced at the route level. Reads require an authenticated employee;
   administrative and operational writes are separated according to the permission
   matrix. The seeded role names are `ADMIN` and `STAFF`, and matching is

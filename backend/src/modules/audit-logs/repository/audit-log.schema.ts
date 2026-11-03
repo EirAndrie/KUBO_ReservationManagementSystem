@@ -76,6 +76,20 @@ export const AuditLogFilterSchema = z
 
 export type AuditLogFilterDTO = z.infer<typeof AuditLogFilterSchema>;
 
+/**
+ * Payload for the application-level audit writer, used for events (login and
+ * logout) that have no database mutation routine to write the row themselves.
+ */
+export type WriteAuditLogParams = {
+      employeeId: string;
+      action: (typeof AUDIT_ACTIONS)[number];
+      entityType: string;
+      entityId: string;
+      description?: string | null;
+      oldValues?: Record<string, unknown> | null;
+      newValues?: Record<string, unknown> | null;
+};
+
 /** Shape of a row returned by the audit read routines (snake_case). */
 export type AuditLogResponseDTO = {
       audit_id: string;

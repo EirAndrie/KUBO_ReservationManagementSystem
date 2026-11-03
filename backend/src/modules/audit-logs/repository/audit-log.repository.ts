@@ -1,7 +1,54 @@
-import type { AuditLogResponseDTO } from "./audit-log.schema";
+import type {
+      AuditLogResponseDTO,
+      WriteAuditLogParams,
+} from "./audit-log.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
 import logger from "../../../utils/logger";
+
+/**
+ * Writes a single audit row. Intended for events without their own database
+ * mutation routine (login and logout), which call the shared
+ * `kubo_audit_management.write_audit_log` routine directly.
+ */
+export const writeAuditLog = async (
+      params: WriteAuditLogParams,
+): Promise<void> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_audit_management.write_audit_log(
+                        $1,
+                        $2::kubo.audit_action,
+                        $3,
+                        $4,
+                        $5,
+                        $6::json,
+                        $7::json
+                  )
+                  `,
+                  [
+                        params.employeeId,
+                        params.action,
+                        params.entityType,
+                        params.entityId,
+                        params.description ?? null,
+                        params.oldValues
+                              ? JSON.stringify(params.oldValues)
+                              : null,
+                        params.newValues
+                              ? JSON.stringify(params.newValues)
+                              : null,
+                  ],
+            );
+      } catch (error: any) {
+            logger.error("Failed to write audit log", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to write audit log");
+      }
+};
 
 /**
  * Retrieve a single audit log by its ID.

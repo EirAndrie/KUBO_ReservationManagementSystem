@@ -77,13 +77,13 @@ mutation routines (BR-071), except login/logout which use an application helper.
 - [x] Verify: `fn_guest_audit_json` masks `id_number`; `fn_create_kubo_type`
       writes a `Create`/`kubo_type` row with `price_per_night` (manual rollback test)
 
-## Phase 4 — Login and logout
+## Phase 4 — Login and logout ✅
 
-- [ ] Add `writeAuditLog` helper to the audit repository
-- [ ] Successful login writes a `Login` audit row (`entity_type = employee`)
-- [ ] Add `POST /auth/logout` (authenticated, audit-only, returns `204`)
-- [ ] Logout writes a `Logout` audit row
-- [ ] Verify: login/logout rows have correct actor and action
+- [x] Add `writeAuditLog` helper to the audit repository
+- [x] Successful login writes a `Login` audit row (`entity_type = employee`)
+- [x] Add `POST /auth/logout` (authenticated, audit-only, returns `204`)
+- [x] Logout writes a `Logout` audit row
+- [x] Verify: `write_audit_log` with `Login` action writes a correct row (manual rollback test)
 
 ## Phase 5 — Documentation and verification
 

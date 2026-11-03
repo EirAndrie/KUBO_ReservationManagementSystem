@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { LoginDTO } from "./repository/auth.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { loginService, getMeService } from "./auth.services";
+import { loginService, getMeService, logoutService } from "./auth.services";
 
 /** POST /auth/login – verify credentials and issue an access token. */
 export const loginController = async (req: Request, res: Response) => {
@@ -19,6 +19,21 @@ export const loginController = async (req: Request, res: Response) => {
             });
       } catch (error: any) {
             logger.error("Login failed", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+/** POST /auth/logout – record a logout audit event (stateless, audit-only). */
+export const logoutController = async (req: Request, res: Response) => {
+      try {
+            await logoutService(req.auth!.employeeId);
+
+            res.status(204).json();
+      } catch (error: any) {
+            logger.error("Logout failed", {
                   message: error.message,
                   stack: error.stack,
             });

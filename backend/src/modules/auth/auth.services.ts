@@ -5,6 +5,7 @@ import {
       getLoginCredentials,
       getAuthenticatedEmployee,
 } from "./repository/auth.repository";
+import { writeAuditLog } from "../audit-logs/repository/audit-log.repository";
 import { signAccessToken } from "../../utils/auth";
 
 /**
@@ -52,10 +53,34 @@ export const loginService = async (data: LoginDTO): Promise<LoginResult> => {
             status: credentials.status,
       };
 
+      // BR-067: successful login must be audited. Fail closed so a login is
+      // never silently recorded without its audit row.
+      await writeAuditLog({
+            employeeId: credentials.employeeId,
+            action: "Login",
+            entityType: "employee",
+            entityId: credentials.employeeId,
+            description: `Successful login for ${credentials.username}`,
+      });
+
       return {
             accessToken: signAccessToken(employee),
             employee,
       };
+};
+
+/**
+ * Records a logout audit event. JWTs are stateless (no revocation), so this
+ * is audit-only; the token remains valid until its expiry.
+ */
+export const logoutService = async (employeeId: string): Promise<void> => {
+      await writeAuditLog({
+            employeeId,
+            action: "Logout",
+            entityType: "employee",
+            entityId: employeeId,
+            description: "Successful logout",
+      });
 };
 
 /**
