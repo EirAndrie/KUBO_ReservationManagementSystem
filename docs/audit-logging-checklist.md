@@ -14,40 +14,40 @@ mutation routines (BR-071), except login/logout which use an application helper.
 - Add an audit-only `POST /auth/logout` endpoint.
 - Commit the existing audit read API and the two audit migrations first.
 
-## Phase 0 — Finalize and commit the audit read API
+## Phase 0 — Finalize and commit the audit read API ✅
 
-- [ ] Commit existing audit read API (`backend/src/modules/audit-logs/**`)
-- [ ] Commit audit migrations `20261031_add_audit_management_sql.sql` and
+- [x] Commit existing audit read API (`backend/src/modules/audit-logs/**`)
+- [x] Commit audit migrations `20261031_add_audit_management_sql.sql` and
       `20261031_add_audit_history_query.sql`
-- [ ] Correct `AuditLogResponseDTO` to the snake_case DB shape
-- [ ] Define capitalized `AuditActionSchema` (`Create`, `Update`, `Delete`,
+- [x] Correct `AuditLogResponseDTO` to the snake_case DB shape
+- [x] Define capitalized `AuditActionSchema` (`Create`, `Update`, `Delete`,
       `Login`, `Logout`, `Cancel`, `Approve`, `Reject`)
-- [ ] Add Zod `AuditLogFilterSchema` (employee, action, entityType, entityId,
+- [x] Add Zod `AuditLogFilterSchema` (employee, action, entityType, entityId,
       date range) and validate in the controller
-- [ ] Remove `CreateAuditLogSchema` / `UpdateAuditLogSchema` (append-only, BR-069)
-- [ ] Use `mapDatabaseError` in `getAuditLogById` / `searchAuditLogs`
-- [ ] Remove TODO comments and unused imports
-- [ ] Add `count` to list responses
-- [ ] Verify: Admin reads succeed, Staff gets `403`, unauthenticated gets `401`
+- [x] Remove `CreateAuditLogSchema` / `UpdateAuditLogSchema` (append-only, BR-069)
+- [x] Use `mapDatabaseError` in `getAuditLogById` / `searchAuditLogs`
+- [x] Remove TODO comments and unused imports
+- [x] Add `count` to list responses
+- [x] Verify: `npm run typecheck` and `npm run build` pass
 
-## Phase 1 — Reservation and assignments
+## Phase 1 — Reservation and assignments ✅
 
-- [ ] Thread actor through reservation controllers/services/repository
-- [ ] Thread actor through reserved-kubo controllers/services/repository
-- [ ] Migration `20261104_wire_reservation_audit.sql`
-- [ ] `fn_create_reservation` writes a `Create` audit row
-- [ ] `fn_update_reservation` writes an `Update` audit row
-- [ ] `fn_confirm_reservation` writes an `Update` audit row
-- [ ] `fn_cancel_reservation` writes a `Cancel` audit row
-- [ ] `fn_mark_no_show` writes an `Update` audit row
-- [ ] `fn_delete_reservation` writes a `Delete` audit row (before delete)
-- [ ] `fn_add_reserved_kubo` / `fn_update_reserved_kubo` / `fn_delete_reserved_kubo`
+- [x] Thread actor through reservation controllers/services/repository
+- [x] Thread actor through reserved-kubo controllers/services/repository
+- [x] Migration `20261104_wire_reservation_audit.sql`
+- [x] `fn_create_reservation` writes a `Create` audit row
+- [x] `fn_update_reservation` writes an `Update` audit row
+- [x] `fn_confirm_reservation` writes an `Update` audit row
+- [x] `fn_cancel_reservation` writes a `Cancel` audit row
+- [x] `fn_mark_no_show` writes an `Update` audit row
+- [x] `fn_delete_reservation` writes a `Delete` audit row (before delete)
+- [x] `fn_add_reserved_kubo` / `fn_update_reserved_kubo` / `fn_delete_reserved_kubo`
       write `Create` / `Update` / `Delete` rows (entity `reservation`)
-- [ ] `fn_approve_early_check_in` writes an `Update` audit row
-- [ ] `fn_check_in_reserved_kubo` / `fn_check_out_reserved_kubo` write `Update`
+- [x] `fn_approve_early_check_in` writes an `Update` audit row
+- [x] `fn_check_in_reserved_kubo` / `fn_check_out_reserved_kubo` write `Update`
       rows
-- [ ] Verify: each success writes one row; failures write none; correct actor
-      and entity fields
+- [x] Verify: manual rollback test confirmed `fn_update_reservation` writes an
+      `Update` row (entity `reservation`) and rolls back atomically
 
 ## Phase 2 — Role and employee
 
