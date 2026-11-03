@@ -14,11 +14,14 @@ import {
       UpdateReservedKuboSchema,
 } from "./repository/reserved-kubo.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
+import { authorizeRoles } from "../auth/auth.middleware";
 
 const router = Router();
 
+// Assignment and check-in/check-out are Staff-only operations.
 router.post(
       "/:reservationId/kubos",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       validateBody(CreateReservedKuboSchema),
       assignKuboController,
@@ -36,6 +39,7 @@ router.get(
 );
 router.patch(
       "/:reservationId/kubos/:kuboId",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       validateBody(UpdateReservedKuboSchema),
@@ -43,24 +47,28 @@ router.patch(
 );
 router.delete(
       "/:reservationId/kubos/:kuboId",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       deleteReservedKuboController,
 );
 router.patch(
       "/:reservationId/kubos/:kuboId/check-in",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       checkInReservedKuboController,
 );
 router.patch(
       "/:reservationId/kubos/:kuboId/check-out",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       checkOutReservedKuboController,
 );
 router.patch(
       "/:reservationId/kubos/:kuboId/early-check-in",
+      authorizeRoles("Staff"),
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       approveEarlyCheckInController,

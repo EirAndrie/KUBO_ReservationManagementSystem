@@ -11,10 +11,16 @@ import {
       UpdateKuboTypeSchema,
 } from "./repository/kubo-type.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
+import { authorizeRoles } from "../auth/auth.middleware";
 
 const router = Router();
 
-router.post("/", validateBody(CreateKuboTypeSchema), createKuboTypeController);
+router.post(
+      "/",
+      authorizeRoles("Administrator"),
+      validateBody(CreateKuboTypeSchema),
+      createKuboTypeController,
+);
 router.get("/", getAllKuboTypesController);
 router.get(
       "/:kuboTypeId",
@@ -23,12 +29,14 @@ router.get(
 );
 router.patch(
       "/:kuboTypeId",
+      authorizeRoles("Administrator"),
       requireUuidParam("kuboTypeId"),
       validateBody(UpdateKuboTypeSchema),
       updateKuboTypeController,
 );
 router.delete(
       "/:kuboTypeId",
+      authorizeRoles("Administrator"),
       requireUuidParam("kuboTypeId"),
       deleteKuboTypeController,
 );
