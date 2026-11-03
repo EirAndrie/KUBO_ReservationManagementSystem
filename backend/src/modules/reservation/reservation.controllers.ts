@@ -28,7 +28,10 @@ export const createReservationController = async (
 ) => {
       try {
             const data = req.body as CreateReservationDTO;
-            const reservations = await createReservationService(data);
+            const reservations = await createReservationService({
+                  ...data,
+                  employeeId: req.auth!.employeeId,
+            });
 
             res.status(201).json({
                   success: true,

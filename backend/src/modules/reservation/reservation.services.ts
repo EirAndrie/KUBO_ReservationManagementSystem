@@ -12,12 +12,13 @@ import { AppError } from "../../utils/http";
 import type {
       CreateReservationDTO,
       UpdateReservationDTO,
+      WithActor,
 } from "./repository/reservation.schema";
 import type { Pagination } from "../../utils/pagination";
 
 // Checked
 export const createReservationService = async (
-      data: CreateReservationDTO,
+      data: WithActor<CreateReservationDTO>,
 ) => {
       return createReservation(data);
 };

@@ -2,6 +2,7 @@ import type {
       CreateReservationDTO,
       UpdateReservationDTO,
       ReservationResponseDTO,
+      WithActor,
 } from "./reservation.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -25,7 +26,7 @@ const buildAssignmentsPayload = (
       );
 
 export const createReservation = async (
-      data: CreateReservationDTO,
+      data: WithActor<CreateReservationDTO>,
 ): Promise<ReservationResponseDTO> => {
       try {
             const created = await db.query(

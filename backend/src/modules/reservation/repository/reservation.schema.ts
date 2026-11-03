@@ -80,11 +80,16 @@ const normalizeReservationInput = (value: unknown) => {
 
       return {
             guestId: input.guestId ?? input.guest_id,
-            employeeId: input.employeeId ?? input.employee_id,
             bookingSource: input.bookingSource ?? input.booking_source,
             assignments: input.assignments,
       };
 };
+
+/**
+ * Internal wrapper adding the acting employee (sourced from the access token,
+ * never from the client) to a validated mutation payload.
+ */
+export type WithActor<T> = T & { employeeId: string };
 
 export const ReservationAssignmentSchema = z.preprocess(
       normalizeAssignment,
@@ -129,10 +134,6 @@ export const CreateReservationSchema = z.preprocess(
       z.object({
             guestId: z.string().uuid({
                   message: "Guest ID is required",
-            }),
-            // Temporary until authentication provides the acting employee.
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
             }),
             bookingSource: BookingSourceSchema,
             assignments: z
