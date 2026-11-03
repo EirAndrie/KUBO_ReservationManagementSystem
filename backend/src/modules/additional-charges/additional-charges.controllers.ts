@@ -6,18 +6,15 @@ import type {
       CustomChargeRequestDTO,
       ApproveChargeRequestDTO,
       RejectChargeRequestDTO,
-      WithdrawChargeRequestDTO,
       AddChargeCorrectionDTO,
       CatalogFilterDTO,
       ChargeFilterDTO,
       ChargeRequestFilterDTO,
-      DeleteActorDTO,
 } from "./repository/additional-charge.schema";
 import {
       CatalogFilterSchema,
       ChargeFilterSchema,
       ChargeRequestFilterSchema,
-      DeleteActorSchema,
 } from "./repository/additional-charge.schema";
 import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
@@ -63,7 +60,10 @@ export const createCatalogItemController = async (
 ) => {
       try {
             const data = req.body as CreateCatalogItemDTO;
-            const additionalChargeCatalog = await createCatalogItemService(data);
+            const additionalChargeCatalog = await createCatalogItemService({
+                  ...data,
+                  employeeId: req.auth!.employeeId,
+            });
             res.status(201).json({
                   success: true,
                   message: "Successfully created additional-charge catalog item",
@@ -143,7 +143,7 @@ export const updateCatalogItemController = async (
             const data = req.body as UpdateCatalogItemDTO;
             const additionalChargeCatalog = await updateCatalogItemService(
                   catalogId,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(200).json({
                   success: true,
@@ -164,12 +164,9 @@ export const deleteCatalogItemController = async (
       res: Response,
 ) => {
       try {
-            const actor = parseOrThrow<DeleteActorDTO>(
-                  DeleteActorSchema.safeParse(req.query),
-            );
             await deleteCatalogItemService(
                   req.params.catalogId as string,
-                  actor.employeeId,
+                  req.auth!.employeeId,
             );
             res.status(204).json();
       } catch (error: any) {
@@ -189,7 +186,7 @@ export const applyCatalogChargeController = async (
             const data = req.body as ApplyCatalogChargeDTO;
             const additionalCharges = await applyCatalogChargeService(
                   req.params.reservationId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(201).json({
                   success: true,
@@ -290,12 +287,9 @@ export const deleteChargeController = async (
       res: Response,
 ) => {
       try {
-            const actor = parseOrThrow<DeleteActorDTO>(
-                  DeleteActorSchema.safeParse(req.query),
-            );
             await deleteChargeService(
                   req.params.chargeId as string,
-                  actor.employeeId,
+                  req.auth!.employeeId,
             );
             res.status(204).json();
       } catch (error: any) {
@@ -315,7 +309,7 @@ export const addChargeCorrectionController = async (
             const data = req.body as AddChargeCorrectionDTO;
             const additionalCharges = await addChargeCorrectionService(
                   req.params.chargeId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(201).json({
                   success: true,
@@ -339,7 +333,7 @@ export const createChargeRequestController = async (
             const data = req.body as CustomChargeRequestDTO;
             const additionalChargeRequests = await createChargeRequestService(
                   req.params.reservationId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(201).json({
                   success: true,
@@ -420,7 +414,7 @@ export const approveChargeRequestController = async (
             const data = req.body as ApproveChargeRequestDTO;
             const additionalChargeRequests = await approveChargeRequestService(
                   req.params.requestId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(200).json({
                   success: true,
@@ -444,7 +438,7 @@ export const rejectChargeRequestController = async (
             const data = req.body as RejectChargeRequestDTO;
             const additionalChargeRequests = await rejectChargeRequestService(
                   req.params.requestId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
             res.status(200).json({
                   success: true,
@@ -465,10 +459,9 @@ export const withdrawChargeRequestController = async (
       res: Response,
 ) => {
       try {
-            const data = req.body as WithdrawChargeRequestDTO;
             const additionalChargeRequests = await withdrawChargeRequestService(
                   req.params.requestId as string,
-                  data,
+                  req.auth!.employeeId,
             );
             res.status(200).json({
                   success: true,

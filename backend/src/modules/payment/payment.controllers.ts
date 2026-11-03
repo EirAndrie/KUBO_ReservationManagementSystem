@@ -4,12 +4,8 @@ import type {
       RefundPaymentDTO,
       UpdatePaymentStatusDTO,
       PaymentFilterDTO,
-      DeletePaymentActorDTO,
 } from "./repository/payment.schema";
-import {
-      PaymentFilterSchema,
-      DeletePaymentActorSchema,
-} from "./repository/payment.schema";
+import { PaymentFilterSchema } from "./repository/payment.schema";
 import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
 import {
@@ -44,7 +40,7 @@ export const createPaymentController = async (req: Request, res: Response) => {
             const data = req.body as CreatePaymentDTO;
             const payments = await createPaymentService(
                   req.params.reservationId as string,
-                  data,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
 
             res.status(201).json({
@@ -113,9 +109,10 @@ export const updatePaymentStatusController = async (
       res: Response,
 ) => {
       try {
+            const data = req.body as UpdatePaymentStatusDTO;
             const payments = await updatePaymentStatusService(
                   req.params.paymentId as string,
-                  req.body as UpdatePaymentStatusDTO,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
 
             res.status(200).json({
@@ -135,9 +132,10 @@ export const updatePaymentStatusController = async (
 // POST /reservations/:reservationId/payments/refund – record a refund
 export const refundPaymentController = async (req: Request, res: Response) => {
       try {
+            const data = req.body as RefundPaymentDTO;
             const payments = await refundPaymentService(
                   req.params.reservationId as string,
-                  req.body as RefundPaymentDTO,
+                  { ...data, employeeId: req.auth!.employeeId },
             );
 
             res.status(201).json({
@@ -190,19 +188,15 @@ export const getPaymentsController = async (req: Request, res: Response) => {
       }
 };
 
-// DELETE /payments/:paymentId?employeeId=... – cleanup-only, Administrator only
+// DELETE /payments/:paymentId – cleanup-only, Administrator only
 export const deletePaymentCleanupController = async (
       req: Request,
       res: Response,
 ) => {
       try {
-            const actor = parseOrThrow<DeletePaymentActorDTO>(
-                  DeletePaymentActorSchema.safeParse(req.query),
-            );
-
             await deletePaymentCleanupService(
                   req.params.paymentId as string,
-                  actor.employeeId,
+                  req.auth!.employeeId,
             );
 
             res.status(204).json();

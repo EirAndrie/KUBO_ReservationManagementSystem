@@ -76,7 +76,6 @@ const normalizePayment = (value: unknown) => {
       const input = value as Record<string, unknown>;
 
       return {
-            employeeId: input.employeeId ?? input.employee_id,
             paymentAmount: input.paymentAmount ?? input.payment_amount,
             paymentType: input.paymentType ?? input.payment_type,
             paymentMethod: input.paymentMethod ?? input.payment_method,
@@ -86,12 +85,15 @@ const normalizePayment = (value: unknown) => {
       };
 };
 
+/**
+ * Internal wrapper adding the acting employee (sourced from the access token,
+ * never from the client) to a validated mutation payload.
+ */
+export type WithActor<T> = T & { employeeId: string };
+
 export const CreatePaymentSchema = z.preprocess(
       normalizePayment,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             paymentAmount: z
                   .number()
                   .nonnegative({
@@ -111,9 +113,6 @@ export type CreatePaymentDTO = z.infer<typeof CreatePaymentSchema>;
 export const RefundPaymentSchema = z.preprocess(
       normalizePayment,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             originalPaymentId: z.string().uuid({
                   message: "Original payment ID is required",
             }),
@@ -136,9 +135,6 @@ export type RefundPaymentDTO = z.infer<typeof RefundPaymentSchema>;
 export const UpdatePaymentStatusSchema = z.preprocess(
       normalizePayment,
       z.object({
-            employeeId: z.string().uuid({
-                  message: "Employee ID is required",
-            }),
             status: PaymentStatusSchema,
       }),
 );
@@ -158,16 +154,6 @@ export const PaymentFilterSchema = z.object({
 });
 
 export type PaymentFilterDTO = z.infer<typeof PaymentFilterSchema>;
-
-export const DeletePaymentActorSchema = z.object({
-      employeeId: z.string().uuid({
-            message: "Administrator employee ID is required",
-      }),
-});
-
-export type DeletePaymentActorDTO = z.infer<
-      typeof DeletePaymentActorSchema
->;
 
 export type PaymentResponseDTO = {
       payment_id: string;
