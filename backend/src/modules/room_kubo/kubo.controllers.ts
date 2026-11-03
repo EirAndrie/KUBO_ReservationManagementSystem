@@ -26,7 +26,7 @@ const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
 export const createKuboController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateKuboDTO;
-            const kubos = await createKuboService(data);
+            const kubos = await createKuboService(data, req.auth!.employeeId);
 
             res.status(201).json({
                   success: true,
@@ -116,7 +116,11 @@ export const updateKuboController = async (req: Request, res: Response) => {
       try {
             const kuboId = String(req.params.kuboId);
             const data = req.body as UpdateKuboDTO;
-            const kubos = await updateKuboService(kuboId, data);
+            const kubos = await updateKuboService(
+                  kuboId,
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(200).json({
                   success: true,
@@ -139,7 +143,11 @@ export const changeKuboStatusController = async (
       try {
             const kuboId = String(req.params.kuboId);
             const data = req.body as ChangeKuboStatusDTO;
-            const kubos = await changeKuboStatusService(kuboId, data.status);
+            const kubos = await changeKuboStatusService(
+                  kuboId,
+                  data.status,
+                  req.auth!.employeeId,
+            );
 
             res.status(200).json({
                   success: true,
@@ -157,7 +165,10 @@ export const changeKuboStatusController = async (
 
 export const deleteKuboController = async (req: Request, res: Response) => {
       try {
-            await deleteKuboService(req.params.kuboId as string);
+            await deleteKuboService(
+                  req.params.kuboId as string,
+                  req.auth!.employeeId,
+            );
 
             res.status(204).json();
       } catch (error: any) {

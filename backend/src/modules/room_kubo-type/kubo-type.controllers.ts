@@ -18,7 +18,10 @@ import {
 export const createKuboTypeController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateKuboTypeDTO;
-            const kuboTypes = await createKuboTypeService(data);
+            const kuboTypes = await createKuboTypeService(
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(201).json({
                   success: true,
@@ -114,7 +117,11 @@ export const updateKuboTypeController = async (req: Request, res: Response) => {
       try {
             const kuboTypeId = String(req.params.kuboTypeId);
             const data = req.body as UpdateKuboTypeDTO;
-            const kuboTypes = await updateKuboTypeService(kuboTypeId, data);
+            const kuboTypes = await updateKuboTypeService(
+                  kuboTypeId,
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(200).json({
                   success: true,
@@ -132,7 +139,10 @@ export const updateKuboTypeController = async (req: Request, res: Response) => {
 
 export const deleteKuboTypeController = async (req: Request, res: Response) => {
       try {
-            await deleteKuboTypeService(req.params.kuboTypeId as string);
+            await deleteKuboTypeService(
+                  req.params.kuboTypeId as string,
+                  req.auth!.employeeId,
+            );
 
             res.status(204).json();
       } catch (error: any) {

@@ -15,7 +15,7 @@ import {
 export const createGuestController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateGuestDTO;
-            const result = await createGuestService(data);
+            const result = await createGuestService(data, req.auth!.employeeId);
 
             res.status(result.reused ? 200 : 201).json({
                   success: true,
@@ -104,7 +104,11 @@ export const updateGuestController = async (req: Request, res: Response) => {
       try {
             const guestId = String(req.params.guestId);
             const data = req.body as UpdateGuestDTO;
-            const guests = await updateGuestService(guestId, data);
+            const guests = await updateGuestService(
+                  guestId,
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(200).json({
                   success: true,
@@ -124,6 +128,7 @@ export const deleteGuestController = async (req: Request, res: Response) => {
       try {
             const guests = await deleteGuestService(
                   req.params.guestId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(204).json({

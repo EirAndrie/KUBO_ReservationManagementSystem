@@ -9,6 +9,7 @@ import logger from "../../../utils/logger";
 
 export const createKubo = async (
       data: CreateKuboDTO,
+      actorEmployeeId: string,
 ): Promise<KuboResponseDTO> => {
       try {
             const result = await db.query(
@@ -17,10 +18,11 @@ export const createKubo = async (
                   FROM kubo_management.fn_create_kubo(
                         p_number => $1,
                         p_type_id => $2,
-                        p_status => $3::kubo.kubo_status
+                        p_status => $3::kubo.kubo_status,
+                        p_actor_employee_id => $4
                   )
                   `,
-                  [data.kuboNumber, data.kuboTypeId, data.status],
+                  [data.kuboNumber, data.kuboTypeId, data.status, actorEmployeeId],
             );
             return result.rows[0];
       } catch (error: any) {
@@ -86,6 +88,7 @@ export const getKuboById = async (
 export const updateKubo = async (
       kuboId: string,
       data: UpdateKuboDTO,
+      actorEmployeeId: string,
 ): Promise<KuboResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -94,13 +97,15 @@ export const updateKubo = async (
                   FROM kubo_management.fn_update_kubo(
                         p_kubo_id => $1,
                         p_kubo_number => $2,
-                        p_kubo_type_id => $3
+                        p_kubo_type_id => $3,
+                        p_actor_employee_id => $4
                   )
                   `,
                   [
                         kuboId,
                         data.kuboNumber ?? null,
                         data.kuboTypeId ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0] ?? null;
@@ -116,6 +121,7 @@ export const updateKubo = async (
 export const changeKuboStatus = async (
       kuboId: string,
       status: string,
+      actorEmployeeId: string,
 ): Promise<KuboResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -123,10 +129,11 @@ export const changeKuboStatus = async (
                   SELECT *
                   FROM kubo_management.fn_change_kubo_status(
                         p_kubo_id => $1,
-                        p_status => $2::kubo.kubo_status
+                        p_status => $2::kubo.kubo_status,
+                        p_actor_employee_id => $3
                   )
                   `,
-                  [kuboId, status],
+                  [kuboId, status, actorEmployeeId],
             );
             return result.rows[0] ?? null;
       } catch (error: any) {
@@ -141,13 +148,16 @@ export const changeKuboStatus = async (
       }
 };
 
-export const deleteKubo = async (kuboId: string): Promise<boolean> => {
+export const deleteKubo = async (
+      kuboId: string,
+      actorEmployeeId: string,
+): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_management.fn_delete_unused_kubo($1) AS deleted
+                  SELECT kubo_management.fn_delete_unused_kubo($1, $2) AS deleted
                   `,
-                  [kuboId],
+                  [kuboId, actorEmployeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {

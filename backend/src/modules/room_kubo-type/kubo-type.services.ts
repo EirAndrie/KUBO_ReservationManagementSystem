@@ -14,8 +14,11 @@ import type {
 import type { Pagination } from "../../utils/pagination";
 
 // Checked
-export const createKuboTypeService = async (data: CreateKuboTypeDTO) => {
-      return createKuboType(data);
+export const createKuboTypeService = async (
+      data: CreateKuboTypeDTO,
+      actorEmployeeId: string,
+) => {
+      return createKuboType(data, actorEmployeeId);
 };
 
 // Checked
@@ -41,22 +44,26 @@ export const getKuboTypeByIdService = async (kuboTypeId: string) => {
 export const updateKuboTypeService = async (
       kuboTypeId: string,
       data: UpdateKuboTypeDTO,
+      actorEmployeeId: string,
 ) => {
       const existing = await getKuboTypeById(kuboTypeId);
       if (!existing) {
             throw new AppError(404, "Kubo type not found");
       }
-      return updateKuboType(kuboTypeId, data);
+      return updateKuboType(kuboTypeId, data, actorEmployeeId);
 };
 
 // Checked
-export const deleteKuboTypeService = async (kuboTypeId: string) => {
+export const deleteKuboTypeService = async (
+      kuboTypeId: string,
+      actorEmployeeId: string,
+) => {
       const existing = await getKuboTypeById(kuboTypeId);
       if (!existing) {
             throw new AppError(404, "Kubo type not found");
       }
 
-      const deleted = await deleteKuboType(kuboTypeId);
+      const deleted = await deleteKuboType(kuboTypeId, actorEmployeeId);
       if (!deleted) {
             throw new AppError(404, "Kubo type not found");
       }

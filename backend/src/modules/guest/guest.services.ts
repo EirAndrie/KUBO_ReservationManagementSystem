@@ -20,7 +20,10 @@ import type { Pagination } from "../../utils/pagination";
  * 
  * STATUS: CHECKED
  */
-export const createGuestService = async (data: CreateGuestDTO) => {
+export const createGuestService = async (
+      data: CreateGuestDTO,
+      actorEmployeeId: string,
+) => {
       const existingByEmail = await getGuestByEmail(data.email);
       if (existingByEmail) {
             return { guest: existingByEmail, reused: true };
@@ -35,7 +38,7 @@ export const createGuestService = async (data: CreateGuestDTO) => {
             return { guest: existingById, reused: true };
       }
 
-      const guest = await createGuest(data);
+      const guest = await createGuest(data, actorEmployeeId);
       return { guest, reused: false };
 };
 
@@ -62,23 +65,27 @@ export const getGuestByIdService = async (guestId: string) => {
 export const updateGuestService = async (
       guestId: string,
       data: UpdateGuestDTO,
+      actorEmployeeId: string,
 ) => {
       const existing = await getGuestById(guestId);
       if (!existing) {
             throw new AppError(404, "Guest not found");
       }
 
-      return updateGuest(guestId, data);
+      return updateGuest(guestId, data, actorEmployeeId);
 };
 
 // Checked
-export const deleteGuestService = async (guestId: string) => {
+export const deleteGuestService = async (
+      guestId: string,
+      actorEmployeeId: string,
+) => {
       const existing = await getGuestById(guestId);
       if (!existing) {
             throw new AppError(404, "Guest not found");
       }
 
-      const deleted = await deleteGuest(guestId);
+      const deleted = await deleteGuest(guestId, actorEmployeeId);
       if (!deleted) {
             throw new AppError(404, "Guest not found");
       }

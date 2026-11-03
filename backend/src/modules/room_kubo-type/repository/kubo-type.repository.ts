@@ -9,6 +9,7 @@ import logger from "../../../utils/logger";
 
 export const createKuboType = async (
       data: CreateKuboTypeDTO,
+      actorEmployeeId: string,
 ): Promise<KuboTypeResponseDTO> => {
       try {
             const result = await db.query(
@@ -18,7 +19,8 @@ export const createKuboType = async (
                         p_type_name => $1,
                         p_capacity => $2,
                         p_price_per_night => $3,
-                        p_description => $4
+                        p_description => $4,
+                        p_actor_employee_id => $5
                   )
                   `,
                   [
@@ -26,6 +28,7 @@ export const createKuboType = async (
                         data.kuboTypeCapacity,
                         data.pricePerNight,
                         data.kuboTypeDescription ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0];
@@ -95,6 +98,7 @@ export const getKuboTypeById = async (
 export const updateKuboType = async (
       kuboTypeId: string,
       data: UpdateKuboTypeDTO,
+      actorEmployeeId: string,
 ): Promise<KuboTypeResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -105,7 +109,8 @@ export const updateKuboType = async (
                         p_type_name => $2,
                         p_capacity => $3,
                         p_price_per_night => $4,
-                        p_description => $5
+                        p_description => $5,
+                        p_actor_employee_id => $6
                   )
                   `,
                   [
@@ -114,6 +119,7 @@ export const updateKuboType = async (
                         data.kuboTypeCapacity ?? null,
                         data.pricePerNight ?? null,
                         data.kuboTypeDescription ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0] ?? null;
@@ -128,13 +134,14 @@ export const updateKuboType = async (
 
 export const deleteKuboType = async (
       kuboTypeId: string,
+      actorEmployeeId: string,
 ): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_kubo_type_management.fn_delete_unused_kubo_type($1) AS deleted
+                  SELECT kubo_kubo_type_management.fn_delete_unused_kubo_type($1, $2) AS deleted
                   `,
-                  [kuboTypeId],
+                  [kuboTypeId, actorEmployeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {

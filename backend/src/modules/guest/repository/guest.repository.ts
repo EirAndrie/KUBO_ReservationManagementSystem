@@ -9,6 +9,7 @@ import logger from "../../../utils/logger";
 
 export const createGuest = async (
       data: CreateGuestDTO,
+      actorEmployeeId: string,
 ): Promise<GuestResponseDTO> => {
       try {
             const result = await db.query(
@@ -25,7 +26,8 @@ export const createGuest = async (
                         p_city => $8,
                         p_state_province => $9,
                         p_zip_postal_code => $10,
-                        p_country => $11
+                        p_country => $11,
+                        p_actor_employee_id => $12
                   )
                   `,
                   [
@@ -40,6 +42,7 @@ export const createGuest = async (
                         data.stateProvince ?? null,
                         data.zipPostalCode ?? null,
                         data.country ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0];
@@ -152,6 +155,7 @@ export const getGuestByIdNumber = async (
 export const updateGuest = async (
       guestId: string,
       data: UpdateGuestDTO,
+      actorEmployeeId: string,
 ): Promise<GuestResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -169,7 +173,8 @@ export const updateGuest = async (
                         p_city => $9,
                         p_state_province => $10,
                         p_zip_postal_code => $11,
-                        p_country => $12
+                        p_country => $12,
+                        p_actor_employee_id => $13
                   )
                   `,
                   [
@@ -185,6 +190,7 @@ export const updateGuest = async (
                         data.stateProvince ?? null,
                         data.zipPostalCode ?? null,
                         data.country ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0] ?? null;
@@ -197,13 +203,16 @@ export const updateGuest = async (
       }
 };
 
-export const deleteGuest = async (guestId: string): Promise<boolean> => {
+export const deleteGuest = async (
+      guestId: string,
+      actorEmployeeId: string,
+): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_guest_management.fn_delete_unused_guest($1) AS deleted
+                  SELECT kubo_guest_management.fn_delete_unused_guest($1, $2) AS deleted
                   `,
-                  [guestId],
+                  [guestId, actorEmployeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {

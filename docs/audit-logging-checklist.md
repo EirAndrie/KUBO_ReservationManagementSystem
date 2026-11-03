@@ -62,19 +62,20 @@ mutation routines (BR-071), except login/logout which use an application helper.
 - [x] Verify: `fn_employee_audit_json` omits `password_hash`; `create_role`
       writes a `Create`/`role` row (manual rollback test)
 
-## Phase 3 — Guest, kubo type, and kubo
+## Phase 3 — Guest, kubo type, and kubo ✅
 
-- [ ] Thread actor through guest controllers/services/repository
-- [ ] Thread actor through kubo-type controllers/services/repository
-- [ ] Thread actor through kubo controllers/services/repository
-- [ ] Migration `20261104_wire_guest_kubo_audit.sql`
-- [ ] `fn_create_guest` / `fn_update_guest` / `fn_delete_unused_guest` audit
+- [x] Thread actor through guest controllers/services/repository
+- [x] Thread actor through kubo-type controllers/services/repository
+- [x] Thread actor through kubo controllers/services/repository
+- [x] Migration `20261104_wire_guest_kubo_audit.sql`
+- [x] `fn_create_guest` / `fn_update_guest` / `fn_delete_unused_guest` audit
       `guest` (mask `id_number`)
-- [ ] `fn_create_kubo_type` / `fn_update_kubo_type` /
+- [x] `fn_create_kubo_type` / `fn_update_kubo_type` /
       `fn_delete_unused_kubo_type` audit `kubo_type` (include `price_per_night`)
-- [ ] `fn_create_kubo` / `fn_update_kubo` / `fn_change_kubo_status` /
+- [x] `fn_create_kubo` / `fn_update_kubo` / `fn_change_kubo_status` /
       `fn_delete_unused_kubo` audit `kubo`
-- [ ] Verify: rate changes and status changes produce audit rows
+- [x] Verify: `fn_guest_audit_json` masks `id_number`; `fn_create_kubo_type`
+      writes a `Create`/`kubo_type` row with `price_per_night` (manual rollback test)
 
 ## Phase 4 — Login and logout
 

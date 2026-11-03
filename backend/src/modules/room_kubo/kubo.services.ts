@@ -16,8 +16,11 @@ import type {
 import type { Pagination } from "../../utils/pagination";
 
 // Checked
-export const createKuboService = async (data: CreateKuboDTO) => {
-      return createKubo(data);
+export const createKuboService = async (
+      data: CreateKuboDTO,
+      actorEmployeeId: string,
+) => {
+      return createKubo(data, actorEmployeeId);
 };
 
 // Checked
@@ -43,24 +46,26 @@ export const getKuboByIdService = async (kuboId: string) => {
 export const updateKuboService = async (
       kuboId: string,
       data: UpdateKuboDTO,
+      actorEmployeeId: string,
 ) => {
       const existing = await getKuboById(kuboId);
       if (!existing) {
             throw new AppError(404, "Kubo not found");
       }
-      return updateKubo(kuboId, data);
+      return updateKubo(kuboId, data, actorEmployeeId);
 };
 
 // Checked
 export const changeKuboStatusService = async (
       kuboId: string,
       status: string,
+      actorEmployeeId: string,
 ) => {
       const existing = await getKuboById(kuboId);
       if (!existing) {
             throw new AppError(404, "Kubo not found");
       }
-      return changeKuboStatus(kuboId, status);
+      return changeKuboStatus(kuboId, status, actorEmployeeId);
 };
 
 // To be checked: Prevent deletion of kubo if it is currently 
@@ -68,13 +73,16 @@ export const changeKuboStatusService = async (
 // This can be done by checking the status of the kubo before deletion.
 
 // Checked:
-export const deleteKuboService = async (kuboId: string) => {
+export const deleteKuboService = async (
+      kuboId: string,
+      actorEmployeeId: string,
+) => {
       const existing = await getKuboById(kuboId);
       if (!existing) {
             throw new AppError(404, "Kubo not found");
       }
 
-      const deleted = await deleteKubo(kuboId);
+      const deleted = await deleteKubo(kuboId, actorEmployeeId);
       if (!deleted) {
             throw new AppError(404, "Kubo not found");
       }

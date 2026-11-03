@@ -9,16 +9,16 @@ previous one.
 |---:|---|---|---|
 | 1 | `role` | Complete | CRUD, validation, reference-safe deletion, and audit writes are in place. |
 | 2 | `employee` | In progress | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced and mutations write audit rows without exposing `password_hash`. |
-| 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes remain. |
-| 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit wiring remains. |
-| 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Writes are Administrator-only. Audit wiring remains. |
+| 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes are in place (`id_number` masked). |
+| 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). |
+| 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Writes are Administrator-only. Audit writes are in place. |
 | 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Charge application and payment settlement are available, so checkout can reach zero. Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
 | 7 | `reserved_kubo` | In progress | Add/update/remove assignments and per-assignment check-in/check-out are wired under `/reservations/:id/kubos`. Assignment writes are Staff-only and audited under the parent reservation. |
 | 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, and Administrator increase corrections are implemented with audit writes and role enforcement. Reduction via Adjustment/Reversal remains pending G-07. |
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
 | 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds with net-paid limits, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Cumulative refunds are linked through audit descriptions. Adjustment/Reversal balance effects remain. |
-| 12 | `audit_log` | In progress | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. Additional-charge, payment, reservation, assignment, role, and employee mutations write audit rows; guest, kubo, and kubo-type mutations still need wiring. |
+| 12 | `audit_log` | In progress | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All tracked mutations (additional charges, payments, reservations, assignments, roles, employees, guests, kubo types, and kubos) write audit rows. Login/logout audit remains. |
 
 ## Status legend
 
@@ -34,13 +34,13 @@ previous one.
 |---|---|---|
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role matching is case-insensitive (`ADMIN`/`Administrator`, `STAFF`/`Staff`). |
-| Audit writes | Partial | Additional-charge, payment, reservation, assignment, role, and employee mutations write audit rows. Guest, kubo, and kubo-type mutations still need wiring. |
+| Audit writes | Partial | All tracked mutations (additional charges, payments, reservations, assignments, roles, employees, guests, kubo types, and kubos) write audit rows. Login/logout audit remains. |
 | Automated tests | Not configured | Verification is currently manual through TypeScript, database tests, and API calls. |
 
 ## Next up
 
 1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
-2. Wire audit writes into guest, kubo, and kubo-type mutations (reservation, role, and employee done).
+2. Add login and logout audit events (Phase 4).
 3. Implement the planned frontend login flow and token handling.
 4. Add automated regression coverage for the completed entities.
 5. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
