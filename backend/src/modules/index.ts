@@ -18,7 +18,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 
 // Every route below requires a valid, active access token.
-//router.use(authenticate);
+router.use(authenticate);
 
 router.use("/roles", roleRoutes);
 router.use("/guests", guestRoutes);
