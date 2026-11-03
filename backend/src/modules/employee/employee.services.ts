@@ -20,14 +20,17 @@ import bcrypt from "bcrypt";
 const SALT_ROUNDS = 12;
 
 // Checked
-export const createEmployeeService = async (data: CreateEmployeeDTO) => {
+export const createEmployeeService = async (
+      data: CreateEmployeeDTO,
+      actorEmployeeId: string,
+) => {
       const usernameExists = await getEmployeeByUsername(data.username);
       if (usernameExists) {
             throw new AppError(400, "Username already exists, try another username");
       }
 
       const hashedPassword = await bcrypt.hash(data.passwordHash, SALT_ROUNDS);
-      return createEmployee({ ...data, passwordHash: hashedPassword });
+      return createEmployee({ ...data, passwordHash: hashedPassword }, actorEmployeeId);
 };
 
 // Checked
@@ -59,6 +62,7 @@ export const getEmployeeByIdService = async (employeeId: string) => {
 export const updateEmployeeService = async (
       employeeId: string,
       data: UpdateEmployeeDTO,
+      actorEmployeeId: string,
 ) => {
       // Check employee existence
       const doesExist = await getEmployeeById(employeeId);
@@ -80,7 +84,7 @@ export const updateEmployeeService = async (
             }
       }
 
-      return updateEmployee(employeeId, data);
+      return updateEmployee(employeeId, data, actorEmployeeId);
 };
 
 /**
@@ -92,6 +96,7 @@ export const updateEmployeeService = async (
 export const resetEmployeePasswordService = async (
       employeeId: string,
       password: string,
+      actorEmployeeId: string,
 ) => {
       const existing = await getEmployeeById(employeeId);
       if (!existing) {
@@ -99,14 +104,17 @@ export const resetEmployeePasswordService = async (
       }
 
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-      return resetEmployeePassword(employeeId, hashedPassword);
+      return resetEmployeePassword(employeeId, hashedPassword, actorEmployeeId);
 };
 
 // Checked
-export const deleteEmployeeService = async (employeeId: string) => {
+export const deleteEmployeeService = async (
+      employeeId: string,
+      actorEmployeeId: string,
+) => {
       const existing = await getEmployeeById(employeeId);
       if (!existing) {
             throw new AppError(404, "Employee not found");
       }
-      await deleteEmployee(employeeId);
+      await deleteEmployee(employeeId, actorEmployeeId);
 };

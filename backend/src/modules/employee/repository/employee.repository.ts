@@ -11,12 +11,13 @@ import logger from "../../../utils/logger";
 // Checked
 export const createEmployee = async (
       data: CreateEmployeeDTO,
+      actorEmployeeId: string,
 ): Promise<EmployeeResponseDTO> => {
       try {
             const result = await db.query(
                   `
                   SELECT *
-                  FROM kubo_employee_management.create_employee($1, $2, $3, $4, $5, $6)
+                  FROM kubo_employee_management.create_employee($1, $2, $3, $4, $5, $6, $7)
                   `,
                   [
                         data.roleId,
@@ -25,6 +26,7 @@ export const createEmployee = async (
                         data.username,
                         data.passwordHash,
                         data.status,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0];
@@ -140,6 +142,7 @@ export const getEmployeeByUsername = async (
 export const updateEmployee = async (
       employeeId: string,
       data: UpdateEmployeeDTO,
+      actorEmployeeId: string,
 ): Promise<EmployeeResponseDTO | null> => {
       try {
             const result = await db.query(
@@ -151,7 +154,8 @@ export const updateEmployee = async (
                         p_first_name => $3,
                         p_last_name => $4,
                         p_username => $5,
-                        p_status => $6
+                        p_status => $6,
+                        p_actor_employee_id => $7
                   )
                   `,
                   [
@@ -161,6 +165,7 @@ export const updateEmployee = async (
                         data.lastName ?? null,
                         data.username ?? null,
                         data.status ?? null,
+                        actorEmployeeId,
                   ],
             );
             return result.rows[0] ?? null;
@@ -174,13 +179,16 @@ export const updateEmployee = async (
 };
 
 // Checked
-export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
+export const deleteEmployee = async (
+      employeeId: string,
+      actorEmployeeId: string,
+): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_employee_management.delete_unused_employee($1) AS deleted
+                  SELECT kubo_employee_management.delete_unused_employee($1, $2) AS deleted
                   `,
-                  [employeeId],
+                  [employeeId, actorEmployeeId],
             );
             return result.rows[0]?.deleted === true;
       } catch (error: any) {
@@ -201,14 +209,15 @@ export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
 export const resetEmployeePassword = async (
       employeeId: string,
       passwordHash: string,
+      actorEmployeeId: string,
 ): Promise<EmployeeResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
                   SELECT *
-                  FROM kubo_employee_management.reset_employee_password($1, $2)
+                  FROM kubo_employee_management.reset_employee_password($1, $2, $3)
                   `,
-                  [employeeId, passwordHash],
+                  [employeeId, passwordHash, actorEmployeeId],
             );
             return result.rows[0] ?? null;
       } catch (error: any) {

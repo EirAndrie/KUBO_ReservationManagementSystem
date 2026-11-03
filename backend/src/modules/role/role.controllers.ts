@@ -2,8 +2,6 @@ import type { Request, Response } from "express";
 import type { CreateRoleDTO, UpdateRoleDTO } from "./repository/role.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
-import { AppError } from "../../utils/http";
-import { getPagination } from "../../utils/http";
 import {
       createRoleService,
       deleteRoleService,
@@ -18,7 +16,7 @@ export const createRoleController = async (
 ) => {
       try {
             const data = req.body as CreateRoleDTO;
-            const roles = await createRoleService(data);
+            const roles = await createRoleService(data, req.auth!.employeeId);
 
             res.status(201).json({
                   success: true,
@@ -82,7 +80,11 @@ export const updateRoleController = async (
             const roleId = String(req.params.roleId);
             const data = req.body as UpdateRoleDTO;
 
-            const roles = await updateRoleService(roleId, data);
+            const roles = await updateRoleService(
+                  roleId,
+                  data,
+                  req.auth!.employeeId,
+            );
             res.status(200).json({
                   success: true,
                   message: `Role: ${roles?.roleName} updated successfully`,
@@ -102,7 +104,10 @@ export const deleteRoleController = async (
       res: Response,
 ) => {
       try {
-            await deleteRoleService(req.params.roleId as string);
+            await deleteRoleService(
+                  req.params.roleId as string,
+                  req.auth!.employeeId,
+            );
 
             res.status(204).json();
       } catch (error: any) {

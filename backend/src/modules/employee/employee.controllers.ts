@@ -19,7 +19,10 @@ import {
 export const createEmployeeController = async (req: Request, res: Response) => {
       try {
             const data = req.body as CreateEmployeeDTO;
-            const employees = await createEmployeeService(data);
+            const employees = await createEmployeeService(
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(201).json({
                   success: true,
@@ -107,7 +110,11 @@ export const updateEmployeeController = async (req: Request, res: Response) => {
       try {
             const employeeId = String(req.params.employeeId);
             const data = req.body as UpdateEmployeeDTO;
-            const employees = await updateEmployeeService(employeeId, data);
+            const employees = await updateEmployeeService(
+                  employeeId,
+                  data,
+                  req.auth!.employeeId,
+            );
 
             res.status(200).json({
                   success: true,
@@ -133,6 +140,7 @@ export const resetEmployeePasswordController = async (
             const employees = await resetEmployeePasswordService(
                   employeeId,
                   data.password,
+                  req.auth!.employeeId,
             );
 
             res.status(200).json({
@@ -153,6 +161,7 @@ export const deleteEmployeeController = async (req: Request, res: Response) => {
       try {
             const employees = await deleteEmployeeService(
                   req.params.employeeId as string,
+                  req.auth!.employeeId,
             );
 
             res.status(204).json({

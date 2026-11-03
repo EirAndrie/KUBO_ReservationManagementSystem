@@ -7,8 +7,8 @@ previous one.
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
-| 1 | `role` | Complete | CRUD, validation, and reference-safe deletion are in place. |
-| 2 | `employee` | In progress | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced. Audit wiring remains. |
+| 1 | `role` | Complete | CRUD, validation, reference-safe deletion, and audit writes are in place. |
+| 2 | `employee` | In progress | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced and mutations write audit rows without exposing `password_hash`. |
 | 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes remain. |
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit wiring remains. |
 | 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Writes are Administrator-only. Audit wiring remains. |
@@ -18,7 +18,7 @@ previous one.
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
 | 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds with net-paid limits, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Cumulative refunds are linked through audit descriptions. Adjustment/Reversal balance effects remain. |
-| 12 | `audit_log` | In progress | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. Additional-charge, payment, reservation, and assignment mutations write audit rows; role, employee, guest, kubo, and kubo-type mutations still need wiring. |
+| 12 | `audit_log` | In progress | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. Additional-charge, payment, reservation, assignment, role, and employee mutations write audit rows; guest, kubo, and kubo-type mutations still need wiring. |
 
 ## Status legend
 
@@ -34,13 +34,13 @@ previous one.
 |---|---|---|
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role matching is case-insensitive (`ADMIN`/`Administrator`, `STAFF`/`Staff`). |
-| Audit writes | Partial | Additional-charge, payment, reservation, and assignment mutations write audit rows. Role, employee, guest, kubo, and kubo-type mutations still need wiring. |
+| Audit writes | Partial | Additional-charge, payment, reservation, assignment, role, and employee mutations write audit rows. Guest, kubo, and kubo-type mutations still need wiring. |
 | Automated tests | Not configured | Verification is currently manual through TypeScript, database tests, and API calls. |
 
 ## Next up
 
 1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
-2. Wire audit writes into role, employee, guest, kubo, and kubo-type mutations (reservation done).
+2. Wire audit writes into guest, kubo, and kubo-type mutations (reservation, role, and employee done).
 3. Implement the planned frontend login flow and token handling.
 4. Add automated regression coverage for the completed entities.
 5. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.

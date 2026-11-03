@@ -49,17 +49,18 @@ mutation routines (BR-071), except login/logout which use an application helper.
 - [x] Verify: manual rollback test confirmed `fn_update_reservation` writes an
       `Update` row (entity `reservation`) and rolls back atomically
 
-## Phase 2 — Role and employee
+## Phase 2 — Role and employee ✅
 
-- [ ] Thread actor through role controllers/services/repository
-- [ ] Thread actor through employee controllers/services/repository
-- [ ] Migration `20261104_wire_identity_audit.sql`
-- [ ] `create_role` / `update_role` / `delete_unused_role` audit `role`
-- [ ] `create_employee` audits `employee` (no `password_hash` in values)
-- [ ] `update_employee_role_status` audits `employee` (old/new safe fields)
-- [ ] `reset_employee_password` audits `employee` (no `password_hash`)
-- [ ] `delete_unused_employee` audits `employee` (before delete)
-- [ ] Verify: no credentials in any audit row
+- [x] Thread actor through role controllers/services/repository
+- [x] Thread actor through employee controllers/services/repository
+- [x] Migration `20261104_wire_identity_audit.sql`
+- [x] `create_role` / `update_role` / `delete_unused_role` audit `role`
+- [x] `create_employee` audits `employee` (no `password_hash` in values)
+- [x] `update_employee_role_status` audits `employee` (old/new safe fields)
+- [x] `reset_employee_password` audits `employee` (no `password_hash`)
+- [x] `delete_unused_employee` audits `employee` (before delete)
+- [x] Verify: `fn_employee_audit_json` omits `password_hash`; `create_role`
+      writes a `Create`/`role` row (manual rollback test)
 
 ## Phase 3 — Guest, kubo type, and kubo
 

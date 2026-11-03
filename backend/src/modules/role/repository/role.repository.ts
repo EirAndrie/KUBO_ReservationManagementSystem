@@ -9,14 +9,15 @@ import logger from "../../../utils/logger";
 
 export const createRole = async (
       data: CreateRoleDTO,
+      actorEmployeeId: string,
 ): Promise<RoleResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
                   SELECT *
-                  FROM kubo_role_management.create_role($1, $2)
+                  FROM kubo_role_management.create_role($1, $2, $3)
                   `,
-                  [data.roleName, data.description],
+                  [data.roleName, data.description, actorEmployeeId],
             );
 
             return result.rows[0];
@@ -110,17 +111,19 @@ export const getRoleByName = async (
 export const updateRole = async (
       roleId: string,
       data: UpdateRoleDTO,
+      actorEmployeeId: string,
 ): Promise<RoleResponseDTO | null> => {
       try {
             const result = await db.query(
                   `
                   SELECT *
-                  FROM kubo_role_management.update_role($1, $2, $3)
+                  FROM kubo_role_management.update_role($1, $2, $3, $4)
                   `,
                   [
                         roleId,
                         data.roleName ?? null,
                         data.description ?? null,
+                        actorEmployeeId,
                   ],
             );
 
@@ -135,13 +138,16 @@ export const updateRole = async (
       }
 };
 
-export const deleteRole = async (roleId: string): Promise<boolean> => {
+export const deleteRole = async (
+      roleId: string,
+      actorEmployeeId: string,
+): Promise<boolean> => {
       try {
             const result = await db.query(
                   `
-                  SELECT kubo_role_management.delete_unused_role($1) AS deleted
+                  SELECT kubo_role_management.delete_unused_role($1, $2) AS deleted
                   `,
-                  [roleId],
+                  [roleId, actorEmployeeId],
             );
 
             return result.rows[0]?.deleted === true;
