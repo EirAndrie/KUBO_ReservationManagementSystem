@@ -37,6 +37,27 @@ export function validateFrontendOrigin(frOrigin: string | undefined): string {
       return frOrigin;
 }
 
+// Validate the JWT signing secret. Fails fast when absent, and enforces a
+// minimum length in production so a weak secret cannot reach a live host.
+export function validateJwtSecret(
+      secret: string | undefined,
+      isProduction: boolean,
+): string {
+      if (!secret) {
+            logger.info("Error: JWT_SECRET is not defined in environment variables.");
+            process.exit(1);
+      }
+
+      if (isProduction && secret.length < 32) {
+            logger.info(
+                  "Error: JWT_SECRET must be at least 32 characters in production.",
+            );
+            process.exit(1);
+      }
+
+      return secret;
+}
+
 // Check if server is in production mode
 export function validateProductionMode(mode: string | undefined): boolean {
       if (!mode) {
