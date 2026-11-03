@@ -6,6 +6,7 @@ import {
       validateServerPort,
       validateFrontendOrigin,
       validateProductionMode,
+      validateJwtSecret,
       configureCors,
       configureEnvironmentRoutes,
 } from "./utils/serverValidation";
@@ -16,6 +17,10 @@ const app = express();
 const PORT = validateServerPort(ENV.PORT);
 const FR_ORIGIN = validateFrontendOrigin(ENV.FR_ORIGIN);
 const isProduction = validateProductionMode(ENV.NODE_ENV);
+
+// Validate authentication configuration before wiring routes. The token
+// helpers in `utils/auth.ts` rely on the same values being present.
+validateJwtSecret(ENV.JWT_SECRET, isProduction);
 
 // --- MIDDLEWARE ---
 app.use(express.json());

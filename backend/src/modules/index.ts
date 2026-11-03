@@ -9,8 +9,16 @@ import reservedRoomsRoutes from "../modules/reserved-room_kubo/reserved-room_kub
 import paymentRoutes from "../modules/payment/payment.routes";
 import additinalChargesRoutes from "../modules/additional-charges/additional-charges.routes";
 import auditLogsRoutes from "../modules/audit-logs/audit-logs.routes";
+import authRoutes from "./auth/auth.routes";
+import { authenticate } from "./auth/auth.middleware";
 
 const router = Router();
+
+// Authentication is public; it is mounted before the global auth guard.
+router.use("/auth", authRoutes);
+
+// Every route below requires a valid, active access token.
+//router.use(authenticate);
 
 router.use("/roles", roleRoutes);
 router.use("/guests", guestRoutes);

@@ -18,6 +18,7 @@
             "cors": "^2.8.5",
             "dotenv": "^17.2.3",
             "express": "^5.2.1",
+            "jsonwebtoken": "^9.0.3",
             "pg": "^8.23.0",
             "winston": "^3.19.0",
             "zod": "^4.6.2"
@@ -26,6 +27,7 @@
             "@types/bcrypt": "^6.0.0",
             "@types/cors": "^2.8.19",
             "@types/express": "^5.0.6",
+            "@types/jsonwebtoken": "^9.0.10",
             "@types/pg": "^8.15.6",
             "nodemon": "^3.1.11",
             "ts-node": "^10.9.2",

@@ -57,6 +57,11 @@ export const mapDatabaseError = (
                         404,
                         databaseError.message ?? "Record not found",
                   );
+            case "42501":
+                  return new AppError(
+                        403,
+                        databaseError.message ?? "Insufficient privileges",
+                  );
             default:
                   return new AppError(500, fallbackMessage);
       }
