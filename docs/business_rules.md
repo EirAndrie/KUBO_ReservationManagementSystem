@@ -39,8 +39,9 @@ The system covers:
 - Audit logging of significant operations.
 
 The system does **not** include, because the schema has no supporting tables or
-columns: shift scheduling, attendance tracking, a service catalog, seasonal or
-date-based rates, tax rules, discounts, party-size storage, or persisted report tables.
+columns: shift scheduling, attendance tracking, a generic service catalog beyond the
+additional-charge catalog, seasonal or date-based rates, tax rules, discounts,
+party-size storage, or persisted report tables.
 These limitations are detailed in Section 14.
 
 ---
@@ -76,8 +77,8 @@ restrict the values. The business defines two operational roles:
 
 | `role_name` | Purpose |
 |---|---|
-| **Administrator** | Administration and oversight: employees and roles, kubo types and kubos, rates, read-only reservation review, audit-log review, and additional-charge corrections. |
-| **Staff** | Daily operational transactions: guests, reservations, kubos assignments, charges, payments, and check-in/check-out. |
+| **Administrator** | Administration and oversight: employees and roles, kubo types and kubos, rates, additional-charge catalog, custom-charge approvals, read-only reservation review, audit-log review, and additional-charge corrections. |
+| **Staff** | Daily operational transactions: guests, reservations, kubos assignments, catalog charge application, custom-charge requests, payments, and check-in/check-out. |
 
 ### 3.2 Permission matrix
 
@@ -88,12 +89,15 @@ restrict the values. The business defines two operational roles:
 | Register or update guests | No | Yes |
 | Create, modify, or cancel reservations | No (view-only) | Yes |
 | Check availability and assign kubos | No | Yes |
-| Record operational additional charges | No | Yes |
+| Manage the additional-charge catalog | Yes | No |
+| Apply catalog additional charges to reservations | No | Yes |
+| Submit custom additional-charge requests | No | Yes |
+| Review, approve, reject, or adjust custom charge requests | Yes | No |
 | Record payments and refunds | No | Yes |
 | Check in and check out guests | No | Yes |
 | Manage employees and roles | Yes | No |
 | Manage kubo types, kubos, and rates | Yes | No |
-| Review and correct additional charges | Yes, as audited corrections (BR-081) | No |
+| Review and correct applied additional charges | Yes, as audited corrections (BR-081) | No |
 | Approve audited corrections and settlement exceptions | Yes | No |
 | View the audit log | Yes | No |
 
@@ -143,12 +147,13 @@ The DDL has no permission table, so this matrix is enforced by the application.
 - **Rule:** Every protected operation checks the employee's role before executing.
   The roles are disjoint:
   - **Staff** perform operational transactions: guest registration, reservation
-    creation and management, availability checks and kubo assignment, operational
-    additional-charge entry, payments and refunds, and check-in/check-out.
+    creation and management, availability checks and kubo assignment, catalog
+    additional-charge application, custom-charge requests, payments and refunds, and
+    check-in/check-out.
   - **Administrators** perform administrative functions: employee and role
-    management, kubo type/kubo/rate configuration, read-only reservation review,
-    audit-log review, and additional-charge management (review and audited
-    corrections).
+    management, kubo type/kubo/rate configuration, additional-charge catalog
+    management, custom-charge approvals, read-only reservation review, audit-log
+    review, and additional-charge corrections.
 
   An Administrator must not perform Staff operations, and Staff must not perform
   Administrator operations. Administrative approvals required by BR-053, BR-057, and
@@ -529,43 +534,70 @@ instead (retained from old rule `l`).
 - **Enforcement:** Schema limitation; application must not invent unsupported pricing
   components.
 
-#### BR-042 — Required additional-charge data
-- **Rule:** An additional charge must have a `reservation_id`, an `employee_id`, a
-  `charge_type`, and an `amount` greater than or equal to zero. `description` is
+#### BR-042 — Applied additional-charge data and catalog reference
+- **Rule:** An applied additional charge must have a `reservation_id`, an `employee_id`,
+  a `charge_type`, a `quantity` greater than zero, a `unit_amount` greater than or
+  equal to zero, and an `amount` greater than or equal to zero. `description` is
   optional. `charge_date` defaults to the current timestamp.
-- **Entities:** `additional_charge`
-- **Enforcement:** `NOT NULL` and `CHECK (amount >= 0)` in the DDL.
+  `catalog_id` is optional and identifies the predefined catalog item used.
+  `request_id` is optional and identifies the approved custom request that produced
+  the charge.
+- **Rule:** A catalog item must have a `charge_type`, a unique display name, an optional
+  description, a `unit_price` greater than or equal to zero, and an `is_active` flag.
+- **Rule:** A custom additional-charge request must have a `reservation_id`, a
+  `requested_by` employee, a description, a `quantity` greater than zero, a
+  `proposed_unit_amount` greater than or equal to zero, and a status of `Pending`,
+  `Approved`, `Rejected`, or `Withdrawn`. Rejection and adjustment require a reason.
+- **Entities:** `additional_charge`, `additional_charge_catalog`,
+  `additional_charge_request`
+- **Enforcement:** `NOT NULL`, `CHECK (quantity > 0)`, and
+  `CHECK (unit_amount >= 0)`, `CHECK (amount >= 0)` in the DDL.
 
-#### BR-043 — When charges may be recorded
-- **Rule:** Additional charges may be recorded for a reservation that is `Pending`,
+#### BR-043 — When charges may be recorded or requested
+- **Rule:** Staff may apply an active catalog charge to a reservation that is `Pending`,
   `Confirmed`, `CheckedIn`, or `CheckedOut` while the account is still being settled.
-  Charges must not be added to a `Cancelled` or `NoShow` reservation except to correct
-  an amount already owed before cancellation/no-show, and such a case must be audited.
-  Operational charge entry is a Staff operation (BR-005). Administrators handle
-  disputed or incorrect charges through the administrative correction path in BR-081.
-- **Entities:** `additional_charge`, `reservation`
-- **Enforcement:** Application-level status check.
+  Charges must not be added to a `Cancelled` or `NoShow` reservation except as an
+  audited Administrator correction of an amount already owed before cancellation or
+  no-show.
+- **Rule:** If the guest requests a charge that does not exist in the active catalog,
+  Staff must submit a custom request using `charge_type = 'Other'`. The request is
+  `Pending` and does **not** affect the reservation balance.
+- **Rule:** Only an Administrator may approve, reject, or adjust a custom request. On
+  approval, the system creates the applied `additional_charge`; on rejection or
+  withdrawal, no charge is created.
+- **Rule:** Operational catalog selection and custom-request submission are Staff
+  operations. Administrators manage the catalog, review requests, and record audited
+  corrections.
+- **Entities:** `additional_charge`, `additional_charge_catalog`,
+  `additional_charge_request`, `reservation`
+- **Enforcement:** Application-level status and role checks.
 
-#### BR-044 — Charge types
+#### BR-044 — Charge types and catalog labels
 - **Rule:** `charge_type` must be one of: `ExtraBed`, `ExtraPerson`, `LateCheckOut`,
   `EarlyCheckIn`, `RoomService`, `FoodAndBeverage`, `Laundry`, `CleaningFee`,
   `Damage`, `LostKey`, `LostItem`, `Transportation`, `Minibar`, or `Other`.
-  There is no service catalog or service table; `description` carries any detail.
-- **Entities:** `additional_charge`
-- **Enforcement:** `charge_type` enum; `description` is free text.
+  A catalog item may provide a more specific display name, such as “Extra Pillow”,
+  while still using an allowed `charge_type`. Custom requests use `Other`.
+  There is no generic service catalog beyond the managed additional-charge catalog.
+- **Entities:** `additional_charge`, `additional_charge_catalog`
+- **Enforcement:** `charge_type` enum and catalog validation.
 
 #### BR-045 — Charges do not alter the booked rate
 - **Rule:** Adding an additional charge must not modify `reserved_kubo.price_at_booking`
-  or the kubo type rate. Charges are separate bill items.
-- **Entities:** `additional_charge`, `reserved_kubo`
+  or the kubo type rate. Charges are separate bill items. Updating a catalog unit price
+  does not change previously applied charges or booked rates.
+- **Entities:** `additional_charge`, `additional_charge_catalog`,
+  `reserved_kubo`
 - **Enforcement:** Application-level separation of concerns.
 
 #### BR-046 — Charges are append-only after settlement
-- **Rule:** Once a charge has been included in a completed payment or the reservation is
-  checked out, it must not be silently edited or deleted. Corrections must be recorded
-  as a new, audited charge/payment adjustment. The DDL has no charge status or void
-  flag, so this is an operational control.
-- **Entities:** `additional_charge`, `payment`, `audit_log`
+- **Rule:** Once an applied charge has been included in a completed payment or the
+  reservation is checked out, it must not be silently edited or deleted. Corrections
+  must be recorded as a new, audited charge/payment adjustment. Pending, rejected, or
+  withdrawn custom requests are not applied charges and do not affect the bill.
+  The DDL has no charge status or void flag, so this is an operational control.
+- **Entities:** `additional_charge`, `additional_charge_request`, `payment`,
+  `audit_log`
 - **Enforcement:** Application policy and audit trail.
 
 #### BR-047 — Derived billing amounts
@@ -576,6 +608,7 @@ instead (retained from old rule `l`).
                         for non-cancelled assignments
 
   charges_total       = accommodation_total + Σ additional_charge.amount
+                        for applied charges only
 
   net_paid            = Σ payment_amount where transaction_type = 'Payment'
                         and payment_status = 'Completed'
@@ -585,18 +618,23 @@ instead (retained from old rule `l`).
   outstanding_balance = charges_total − net_paid
   ```
 
+  Pending, rejected, and withdrawn custom requests are excluded from billing.
   `Adjustment` and `Reversal` transactions do not alter `net_paid` until their
   semantics are confirmed (see gap G-07).
-- **Entities:** `reserved_kubo`, `additional_charge`, `payment`
+- **Entities:** `reserved_kubo`, `additional_charge`,
+  `additional_charge_request`, `payment`
 - **Enforcement:** Application/reporting-level aggregation. No stored totals.
 
-#### BR-048 — Currency and precision
+#### BR-048 — Currency, quantity, and precision
 - **Rule:** Monetary amounts are in Philippine pesos (PHP), with at most two decimal
-  places. All amounts must be non-negative in storage; a refund is represented by its
-  `transaction_type`, not by a negative amount.
-- **Entities:** `kubo_type`, `reserved_kubo`, `payment`, `additional_charge`
-- **Enforcement:** `DECIMAL(10,2)` columns and `CHECK (>= 0)` constraints. The currency
-  is not stored in the schema; PHP is an assumption (A-03).
+  places. `unit_amount` and `amount` must be non-negative. `quantity` must be a
+  positive integer. `amount = quantity × unit_amount`, rounded to two decimals.
+  A refund or reduction is represented by its `transaction_type`, not by a negative
+  amount.
+- **Entities:** `kubo_type`, `reserved_kubo`, `additional_charge`,
+  `additional_charge_catalog`, `additional_charge_request`, `payment`
+- **Enforcement:** `DECIMAL(10,2)` columns, integer quantity checks, and non-negative
+  constraints. The currency is not stored in the schema; PHP is an assumption (A-03).
 
 ---
 
@@ -777,7 +815,9 @@ instead (retained from old rule `l`).
   - employee account creation, updates (names, username, password reset, status, and
     role assignment), and role changes;
   - payment and refund creation or status changes;
-  - additional-charge creation and corrections;
+  - additional-charge catalog creation/updates/deactivation, applied-charge creation
+    and corrections, and custom-charge request submission, withdrawal, approval,
+    rejection, and adjustment;
   - successful login and logout; and
   - administrative deletions or corrections.
 - **Entities:** `audit_log`
@@ -870,22 +910,23 @@ instead (retained from old rule `l`).
 ## 11. Administrative Functions and Reporting
 
 #### BR-076 — Administrator scope
-- **Rule:** Administrators manage employees and roles, kubo types, kubos, and rates;
-  review reservations read-only; review the audit log; and manage additional charges
-  through review and audited corrections. They do **not** create or modify
-  reservations, record operational charges or payments/refunds, or check guests in or
-  out. Administrative changes must be audited.
+- **Rule:** Administrators manage employees and roles, kubo types, kubos, rates, and
+  the additional-charge catalog; approve/reject/adjust custom charge requests; review
+  reservations read-only; review the audit log; and correct applied additional charges
+  through audited corrections. They do **not** create or modify reservations, apply
+  routine operational charges or payments/refunds, or check guests in or out.
+  Administrative changes must be audited.
 - **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `additional_charge`,
-  `audit_log`
+  `additional_charge_catalog`, `additional_charge_request`, `audit_log`
 - **Enforcement:** Authorization layer.
 
 #### BR-077 — Staff cannot perform administrative actions
-- **Rule:** Staff must not create or modify employees, roles, kubo types, kubos, or
-  rates; must not view the audit log; and must not record administrative
-  charge corrections. Attempts must be rejected and may be audited. Conversely,
-  Administrators must not perform Staff operations (BR-005).
+- **Rule:** Staff must not create or modify employees, roles, kubo types, kubos, rates,
+  or the additional-charge catalog; must not view the audit log; and must not approve,
+  reject, adjust, or correct charges. Attempts must be rejected and may be audited.
+  Conversely, Administrators must not perform Staff operations (BR-005).
 - **Entities:** `employee`, `role`, `kubo_type`, `kubo`, `additional_charge`,
-  `audit_log`
+  `additional_charge_catalog`, `additional_charge_request`, `audit_log`
 - **Enforcement:** Authorization layer.
 
 #### BR-078 — Administrative review uses the audit log
@@ -926,10 +967,22 @@ instead (retained from old rule `l`).
   credential, and separation rules are application-level.
 
 #### BR-081 — Administrative additional-charge management
-- **Rule:** Administrators may view all additional charges and record audited
-  corrections when a charge is disputed, mis-keyed, or must be adjusted. Existing
-  charge rows must not be edited or deleted by an Administrator; every correction is
-  a new record (BR-046). Specifically:
+- **Rule:** Administrators manage the predefined additional-charge catalog and
+  review custom charge requests. This is configuration and oversight, not routine
+  operational charge entry (BR-005).
+- **Rule:** Administrators may:
+  - create catalog items with an allowed `charge_type`, unique display name,
+    optional description, non-negative unit price, and active status;
+  - update catalog names, descriptions, and standard prices;
+  - deactivate used catalog items and hard-delete only unused items;
+  - approve, reject, or adjust pending custom charge requests;
+  - view all applied charges and their usage.
+- **Rule:** Approving a custom request creates an applied `additional_charge` with
+  the requesting Staff employee as `employee_id`, the approved unit amount, the
+  requested quantity, and the request description. Rejecting or withdrawing a request
+  creates no charge.
+- **Rule:** Existing applied charge rows must not be edited or deleted by an
+  Administrator; every correction is a new record (BR-046). Specifically:
   - an **increase** in the amount owed is recorded as a new `additional_charge` with
     a reason in `description`;
   - a **reduction** cannot be stored as a negative `additional_charge` because
@@ -939,11 +992,14 @@ instead (retained from old rule `l`).
     unresolved (G-07); and
   - the correction must be attributable to the Administrator through `employee_id`
     and must be audited (BR-067, BR-068).
-
-  Routine operational charge entry remains a Staff operation (BR-042–BR-046).
-- **Entities:** `additional_charge`, `payment`, `audit_log`
-- **Enforcement:** Application authorization, append-only policy, and audit trail.
-  The DDL has no charge status or approval field (G-16).
+- **Rule:** Rejecting a custom request and adjusting its approved amount require a
+  reason. Approval may omit a reason.
+- **Rule:** Routine catalog charge application and custom-request submission remain
+  Staff operations (BR-042–BR-046).
+- **Entities:** `additional_charge`, `additional_charge_catalog`,
+  `additional_charge_request`, `payment`, `audit_log`
+- **Enforcement:** Application authorization, catalog validation, append-only policy,
+  and audit trail.
 
 #### BR-082 — Administrator reservation review is read-only
 - **Rule:** Administrators may retrieve and view reservations, assignments, charges,
@@ -968,7 +1024,9 @@ instead (retained from old rule `l`).
 | `reservation` | Booking header | BR-024–BR-028, BR-033–BR-038 |
 | `reserved_kubo` | Kubo assignments, dates, price snapshot, per-kubo status | BR-029–BR-032, BR-058–BR-066 |
 | `payment` | Payments, refunds, adjustments, reversals | BR-049–BR-057 |
-| `additional_charge` | Extra bill items | BR-042–BR-046, BR-081 |
+| `additional_charge` | Applied extra bill items | BR-042–BR-046, BR-081 |
+| `additional_charge_catalog` | Predefined additional-charge items and standard prices | BR-042–BR-044, BR-081 |
+| `additional_charge_request` | Pending/approved/rejected/withdrawn custom charge requests | BR-042–BR-043, BR-081 |
 | `audit_log` | Append-only activity trail | BR-067–BR-070, BR-078 |
 
 ---
@@ -1004,13 +1062,13 @@ instead (retained from old rule `l`).
 | **G-07** | `payment` has no reference to an original payment, no description, and `Adjustment`/`Reversal` semantics are undefined. | Refund/reversal traceability is limited to the audit log; balance effects cannot be computed reliably. |
 | **G-08** | No party-size/guest-count column on `reservation` or `reserved_kubo`. | The system cannot validate occupancy against `kubo_type.capacity`; staff must do it manually. |
 | **G-09** | No shift schedule, attendance, `date_hired`, emergency-contact, or middle-initial fields (removed from the DDL). | Old staff-scheduling and attendance rules cannot be implemented. |
-| **G-10** | No service/catalog table. | Old "Services" and `Reservation_Service` rules are unsupported; only free-form additional charges exist. |
+| **G-10** | Additional charges now use a managed catalog plus custom requests. | There is still no generic service catalog beyond `additional_charge_catalog`; free-form services remain unsupported. |
 | **G-11** | No Schedule table; availability is derived from `reserved_kubo`. | The old real-time schedule table rule cannot be implemented as described. |
 | **G-12** | No separate cancellation table; cancellation is stored on `reservation`. | Old `Cancellation` entity rules are replaced by BR-035. |
 | **G-13** | `audit_log.employee_id` is `NOT NULL`, so failed login attempts by unknown users cannot be recorded. | Authentication-failure auditing needs a schema change or a designated system employee. |
 | **G-14** | No database triggers enforce status-transition or timestamp-consistency rules. | All lifecycle rules depend on the application/procedure layer. |
 | **G-15** | No explicit `updated_at` trigger. | `updated_at` will be stale unless the application sets it on every update. |
-| **G-16** | `additional_charge` has no status, void flag, approval field, or link to a correcting record. | Administrative corrections must be new audited records; reductions rely on `Adjustment`/`Reversal` transactions, whose balance effect is unresolved (G-07). |
+| **G-16** | Applied `additional_charge` rows have no status/void flag; approval status lives in `additional_charge_request`. | Applied charges remain append-only after settlement; corrections are new records or payment adjustments. |
 
 ---
 
@@ -1051,6 +1109,7 @@ The companion diagrams are:
 | Manage Employees and Roles Flow (Administrator) | BR-001–BR-008, BR-080 |
 | Payment and Refund Flow (Staff) | BR-047–BR-057 |
 | Additional Charge Flow (Staff) | BR-042–BR-048 |
+| Additional Charge Catalog and Custom Request Flow (Administrator) | BR-042–BR-044, BR-081 |
 | Additional Charge Management Flow (Administrator) | BR-046, BR-057, BR-081 |
 | Check-in and Check-out Flow (Staff) | BR-058–BR-066 |
 | Status Lifecycles | BR-021, BR-033, BR-051 |

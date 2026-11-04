@@ -30,12 +30,12 @@ flowchart TD
     ADM --> ADM2["Manage kubo types, kubos, rates<br/>(BR-016–BR-023)"]
     ADM --> ADM3["Review reservations (read-only)<br/>(BR-082)"]
     ADM --> ADM4["Review audit log<br/>(BR-078)"]
-    ADM --> ADM5["Manage additional charges:<br/>review and audited corrections<br/>(BR-081)"]
+    ADM --> ADM5["Manage charge catalog,<br/>approve custom requests,<br/>review and correct charges<br/>(BR-081)"]
 
     STF --> STF1["Register or retrieve guests<br/>(BR-009–BR-015)"]
     STF --> STF2["Create and manage reservations<br/>(BR-024–BR-038)"]
     STF --> STF3["Check availability and assign kubos<br/>(BR-031–BR-032)"]
-    STF --> STF4["Record additional charges<br/>(BR-042–BR-046)"]
+    STF --> STF4["Apply catalog charges or<br/>submit custom requests<br/>(BR-042–BR-046)"]
     STF --> STF5["Process payments and refunds<br/>(BR-047–BR-057)"]
     STF --> STF6["Check-in and check-out<br/>(BR-058–BR-066)"]
 
@@ -318,35 +318,45 @@ flowchart TD
 
 ## 8. Additional Charge Flow (Staff)
 
-Records extra bill items (extra bed, damage, late check-out, etc.) against an existing
-reservation. Charges are stored in `additional_charge` and are separate from `payment`
-transactions (BR-042–BR-047). The charge insert, balance recomputation, and audit write
-must run in one transaction (BR-071). Operational charge entry is performed by Staff;
-Administrators handle corrections through the next flow (BR-005, BR-081).
+Staff apply predefined charges from the active additional-charge catalog, or submit a
+custom request when the guest asks for something that is not in the catalog. Catalog
+charges are applied immediately. Custom requests are `Pending` and do not affect the
+bill until an Administrator approves them (BR-042–BR-048, BR-081).
 
 ```mermaid
 flowchart TD
     S([Start]) --> P1["Staff retrieves the reservation<br/>(BR-043)"]
-    P1 --> P2["Display accommodation total,<br/>existing charges, net paid,<br/>and outstanding balance<br/>(BR-047)"]
+    P1 --> P2["Display active catalog charges,<br/>applied charges, charges total,<br/>net paid, and outstanding balance<br/>(BR-042, BR-047)"]
     P2 --> D1{"Reservation status allows<br/>a new charge?<br/>(BR-043)"}
-    D1 -->|No| E1["Reject new charge<br/>Cancelled/NoShow: only an audited<br/>correction of an existing amount<br/>already owed is allowed<br/>(BR-043)"]
-    D1 -->|Yes| P3["Select charge_type; enter<br/>amount and optional description<br/>(BR-042, BR-044)"]
-    P3 --> D2{"charge_type valid,<br/>amount >= 0 and<br/>at most 2 decimals?<br/>(BR-042, BR-048)"}
-    D2 -->|No| E2["Reject and show<br/>validation error"]
-    D2 -->|Yes| P4["Insert additional_charge with<br/>reservation_id, employee_id,<br/>and charge_date<br/>(BR-042)"]
-    P4 --> P5["Accommodation price and kubo rate<br/>remain unchanged<br/>(BR-045)"]
-    P5 --> P6["Recompute charges_total =<br/>accommodation_total + charges<br/>and outstanding_balance<br/>(BR-047)"]
-    P6 --> P7["Audit the charge<br/>(BR-067)"]
-    P7 --> D3{"Collect payment<br/>for the charge now?"}
-    D3 -->|Yes| P8["Record the payment;<br/>payment_type may be<br/>AdditionalCharge<br/>(BR-050)"]
-    D3 -->|No| E3([End: charge recorded])
-    P8 --> E4([Continue in Payment and Refund Flow])
+    D1 -->|No| E1["Reject<br/>Cancelled/NoShow: only an audited<br/>Administrator correction of an<br/>amount already owed is allowed<br/>(BR-043)"]
+    D1 -->|Yes| D2{"Requested charge exists<br/>in the active catalog?<br/>(BR-044)"}
 
-    P4 -.-> N1["Charges are append-only after settlement.<br/>Correct a settled charge with a new audited<br/>charge or payment adjustment, not by editing<br/>or deleting the original (BR-046)."]
-    P3 -.-> N2["No service catalog exists. charge_type<br/>comes from the charge_type enum and<br/>description carries any detail (BR-044, G-10)."]
+    D2 -->|Yes| C1["Select catalog item;<br/>enter quantity<br/>(BR-042, BR-048)"]
+    C1 --> V1{"Item active, quantity > 0,<br/>unit price valid?<br/>(BR-042, BR-048)"}
+    V1 -->|No| E2["Reject and show<br/>validation error"]
+    V1 -->|Yes| C2["Insert applied additional_charge:<br/>catalog_id, quantity, unit_amount,<br/>amount, employee_id, charge_date<br/>(BR-042)"]
+    C2 --> P3["Copy catalog values into the charge;<br/>booked kubo rate remains unchanged<br/>(BR-045)"]
+    P3 --> P4["Recompute charges_total and<br/>outstanding_balance<br/>(BR-047)"]
+    P4 --> P5["Audit the applied charge<br/>(BR-067)"]
+    P5 --> D3{"Collect payment<br/>for the charge now?"}
+    D3 -->|Yes| P6["Record the payment;<br/>payment_type may be<br/>AdditionalCharge<br/>(BR-050)"]
+    D3 -->|No| E3([End: charge applied])
+    P6 --> E4([Continue in Payment and Refund Flow])
+
+    D2 -->|No, use Other| R1["Select charge_type Other;<br/>enter description, quantity,<br/>and proposed unit amount<br/>(BR-043, BR-044)"]
+    R1 --> V2{"Description present, quantity > 0,<br/>proposed amount >= 0 and<br/>at most 2 decimals?<br/>(BR-042, BR-048)"}
+    V2 -->|No| E5["Reject and show<br/>validation error"]
+    V2 -->|Yes| R2["Create additional_charge_request<br/>with status Pending<br/>(BR-043, BR-081)"]
+    R2 --> P7["Do not add to charges_total or<br/>outstanding balance yet<br/>(BR-047)"]
+    P7 --> P8["Audit the request submission<br/>(BR-067)"]
+    P8 --> E6([End: pending Administrator review])
+
+    C2 -.-> N1["Applied charges are append-only after<br/>settlement. Correct them with a new audited<br/>record, not by editing or deleting the original<br/>(BR-046)."]
+    R2 -.-> N2["Custom requests are not applied charges.<br/>Only an approved request creates an<br/>additional_charge (BR-043, BR-081)."]
 
     style E1 fill:#f8cecc,stroke:#b85450
     style E2 fill:#f8cecc,stroke:#b85450
+    style E5 fill:#f8cecc,stroke:#b85450
     style N1 fill:#fff2cc,stroke:#d6b656
     style N2 fill:#fff2cc,stroke:#d6b656
 ```
@@ -355,46 +365,62 @@ flowchart TD
 
 ## 9. Additional Charge Management Flow (Administrator)
 
-Administrators review charges across reservations and record audited corrections.
-Existing charges are append-only: an increase is a new `additional_charge`, while a
-reduction must use an `Adjustment` or `Reversal` payment transaction (BR-046, BR-057,
-BR-081). Administrative corrections do not replace Staff operational charge entry.
+Administrators manage the predefined catalog, review custom requests, and review
+applied charges. They do not perform routine operational charge application. Existing
+applied charges are append-only; corrections are new records (BR-046, BR-081).
 
 ```mermaid
 flowchart TD
-    S([Start]) --> P1["Administrator opens additional<br/>charge management<br/>(BR-081)"]
-    P1 --> P2["Select a reservation or filter<br/>charges by date, employee,<br/>charge type, or reservation<br/>(BR-042, BR-047)"]
-    P2 --> P3["Display charges, accommodation total,<br/>charges total, net paid,<br/>and outstanding balance<br/>(BR-047)"]
-    P3 --> D1{"Select action"}
+    S([Start]) --> P1["Administrator opens additional-charge<br/>management<br/>(BR-081)"]
+    P1 --> D1{"Select area"}
 
-    D1 -->|View| V1["Read-only review"] --> E1([End: review complete])
-    D1 -->|Edit or delete charge| E2["Block: charges are append-only;<br/>record a new audited correction<br/>(BR-046, BR-081)"]
-    D1 -->|Record correction| D2{"Correction relates to an amount owed<br/>before cancellation/no-show, or the<br/>reservation is still Pending, Confirmed,<br/>CheckedIn, or CheckedOut?<br/>(BR-043, BR-081)"}
+    D1 -->|Catalog| C1["List catalog items"]
+    C1 --> C2{"Create, update,<br/>deactivate, or delete?"}
+    C2 -->|Create/update| C3["Enter charge_type, name, description,<br/>unit price, active status<br/>(BR-042, BR-044, BR-048)"]
+    C2 -->|Deactivate| C4["Set is_active = false"]
+    C2 -->|Delete| C5{"Item used by any applied charge<br/>or request?<br/>(BR-081)"}
+    C5 -->|Yes| C6["Block deletion;<br/>deactivate instead"]
+    C5 -->|No| C7["Delete catalog item"]
+    C3 --> A1["Audit catalog change<br/>(BR-067)"]
+    C4 --> A1
+    C6 --> A1
+    C7 --> A1
 
-    D2 -->|No| R1["Reject correction"]
-    D2 -->|Yes| D3{"Type of correction"}
-    D3 -->|Increase amount owed| C1["Enter charge_type, amount,<br/>and reason in description<br/>(BR-042, BR-044, BR-048)"]
-    D3 -->|Reduce or reverse amount| C2["Record payment with transaction_type<br/>Adjustment or Reversal, plus the<br/>required payment_type and method<br/>(BR-049, BR-057, G-07)"]
+    D1 -->|Custom requests| R1["List Pending requests<br/>(BR-043, BR-081)"]
+    R1 --> R2["Review description, quantity,<br/>proposed unit amount, reservation<br/>balance and existing charges"]
+    R2 --> D2{"Decision"}
+    D2 -->|Approve| R3["Create applied additional_charge<br/>using approved unit amount and quantity;<br/>employee_id = requesting Staff<br/>(BR-042, BR-081)"]
+    D2 -->|Approve with adjustment| R4["Enter approved unit amount<br/>and reason"]
+    D2 -->|Reject| R5["Enter rejection reason<br/>(BR-081)"]
+    D2 -->|Withdraw| R6["Mark request Withdrawn;<br/>no charge created"]
+    R4 --> R3
+    R3 --> P2["Recompute charges_total and<br/>outstanding_balance<br/>(BR-047)"]
+    P2 --> A2["Audit approval/charge creation<br/>(BR-067)"]
+    R5 --> A3["Audit rejection;<br/>no charge"]
+    R6 --> A4["Audit withdrawal;<br/>no charge"]
+    A2 --> E1([End: request processed])
+    A3 --> E1
+    A4 --> E1
 
-    C1 --> V2{"charge_type valid, amount >= 0<br/>and at most 2 decimals?<br/>(BR-042, BR-048)"}
-    V2 -->|No| R2["Reject correction"]
-    V2 -->|Yes| C3["Insert a new additional_charge<br/>attributed to the Administrator<br/>(BR-081)"]
-    C3 --> P4["Recompute charges_total<br/>and outstanding_balance<br/>(BR-047)"]
-    P4 --> AUD["Audit the correction<br/>(BR-067, BR-068)"]
-    C2 --> AUD
-    E2 --> AUD
-    R1 --> E([End])
-    R2 --> E
-    AUD --> E
+    D1 -->|Applied charges| V1["Filter charges by reservation, guest,<br/>employee, charge type, or date<br/>(BR-042, BR-047)"]
+    V1 --> V2["Display applied charges and<br/>derived balances<br/>(BR-047)"]
+    V2 --> D3{"Select action"}
+    D3 -->|View| E2([End: read-only review])
+    D3 -->|Edit or delete charge| E3["Block: applied charges are append-only;<br/>record a new correction<br/>(BR-046, BR-081)"]
+    D3 -->|Increase correction| I1["Create a new additional_charge<br/>with reason in description<br/>(BR-042, BR-081)"]
+    D3 -->|Reduction/reversal| I2["Record Adjustment/Reversal payment<br/>with required payment type and method<br/>(BR-049, BR-057, G-07)"]
+    I1 --> A5["Audit correction<br/>(BR-067, BR-068)"]
+    I2 --> A5
+    E3 --> A5
 
-    N1["Administrators do not record operational charges,<br/>payments, or refunds; those remain Staff<br/>operations (BR-005). Balance effects of<br/>Adjustment/Reversal are unresolved (G-07)."]
+    N1["Administrators do not apply routine catalog charges,<br/>record operational payments/refunds, or edit/delete<br/>applied charges. Reduction semantics remain<br/>unresolved (G-07)."]
     style N1 fill:#fff2cc,stroke:#d6b656
-    style E2 fill:#f8cecc,stroke:#b85450
-    style R1 fill:#f8cecc,stroke:#b85450
-    style R2 fill:#f8cecc,stroke:#b85450
+    style E1 fill:#f8cecc,stroke:#b85450
+    style E3 fill:#f8cecc,stroke:#b85450
 ```
 
 ---
+
 
 ## 10. Check-in and Check-out Flow (Staff)
 
@@ -473,7 +499,20 @@ stateDiagram-v2
     NoShow --> [*]
 ```
 
-### 11.3 Payment status
+### 11.3 Additional-charge request status
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending : Staff submits custom request (BR-043)
+    Pending --> Approved : Admin approves or adjusts (BR-081)
+    Pending --> Rejected : Admin rejects (BR-081)
+    Pending --> Withdrawn : Staff withdraws
+    Approved --> [*] : applied charge created
+    Rejected --> [*] : no charge created
+    Withdrawn --> [*] : no charge created
+```
+
+### 11.4 Payment status
 
 ```mermaid
 stateDiagram-v2
@@ -493,7 +532,7 @@ stateDiagram-v2
     Refunded --> [*]
 ```
 
-### 11.4 Kubo operational status
+### 11.5 Kubo operational status
 
 ```mermaid
 stateDiagram-v2
