@@ -1,0 +1,52 @@
+.selectWrapper {
+  width: 100%;
+}
+
+.optionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.optionName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.optionMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.optionIdBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0 6px;
+  height: 18px;
+  font-size: 0.73rem;
+  color: #4b5563;
+}
+
+.emptyOption {
+  padding: 12px 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.registerLink {
+  color: #0369a1;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}

@@ -1,0 +1,60 @@
+.modalContent {
+  padding: 8px 0;
+}
+
+.balanceCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.balanceStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.balanceLabel {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.balanceValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.balanceOutstanding {
+  composes: balanceValue;
+  color: #dc2626;
+}
+
+.balanceSettled {
+  composes: balanceValue;
+  color: #16a34a;
+}
+
+.overpaymentAlert {
+  margin-bottom: 16px;
+}
+
+.policyNote {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border-radius: 6px;
+  border-left: 3px solid #f59e0b;
+}

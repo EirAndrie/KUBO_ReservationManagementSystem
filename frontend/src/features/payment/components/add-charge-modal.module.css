@@ -1,0 +1,17 @@
+.modalContent {
+  padding: 8px 0;
+}
+
+.appendOnlyNotice {
+  margin-bottom: 16px;
+}
+
+.policyNote {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fefce8;
+  border-radius: 6px;
+  border-left: 3px solid #eab308;
+}
