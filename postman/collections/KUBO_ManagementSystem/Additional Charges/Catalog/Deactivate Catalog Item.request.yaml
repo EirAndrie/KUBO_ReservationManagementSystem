@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-catalog/85aed326-562e-4ee6-bb19-626239aa6e02/status
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "isActive": true
+    }
+order: 5000

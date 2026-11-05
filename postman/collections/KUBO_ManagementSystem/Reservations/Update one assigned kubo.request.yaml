@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/57cef58b-85a0-4d70-9a52-92b8095b4268/kubos/911e5b93-93d1-4a70-aa28-c2b5ebdbad5f
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "checkInDate": "2026-11-01",
+        "checkOutDate": "2026-11-02"
+    }
+order: 8000

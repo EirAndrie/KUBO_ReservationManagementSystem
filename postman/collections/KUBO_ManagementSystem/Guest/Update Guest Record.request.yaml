@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/guests/4e2a3742-864e-4973-bdd0-95c9fecde9c3
+method: PATCH
+headers:
+  Authorization: "{{bearer_token_0lbs}}"
+body:
+  type: json
+  content: |-
+    {
+        "firstName": "Andrie",
+        "lastName": "Amores",
+        "email": "andrie.email.update.20261031@example.com",
+        "phone": "09692876057",
+        "validIdType": "DriverLicense",
+        "idNumber": "POSTMAN-TEMP-20261031"
+    }
+order: 3000

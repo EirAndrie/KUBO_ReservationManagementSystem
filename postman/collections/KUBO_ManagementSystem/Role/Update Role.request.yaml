@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/roles/7906930a-fbff-4484-b079-229e20720f12
+method: PATCH
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+        "roleName": "Staff"
+    }
+order: 2000

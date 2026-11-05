@@ -1,0 +1,30 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations
+method: POST
+headers:
+  Authorization: "{{bearer_token_17vt}}"
+body:
+  type: json
+  content: |-
+    {
+        "guestId": "6a58ed7a-5b27-44c9-80a7-17b30a5cc37e",
+        "bookingSource": "Online",
+        "assignments": [
+            {
+                "kuboId": "080664b5-05ca-43af-81dc-734c1f03a674",
+                "checkInDate": "2026-11-15",
+                "checkOutDate": "2026-11-20"
+            },
+            {
+                "kuboId": "020a2cd1-d9bd-47bf-a73e-758a796f6e67",
+                "checkInDate": "2026-11-18",
+                "checkOutDate": "2026-11-20"
+            },
+            {
+                "kuboId": "c4f6fff3-94fa-4820-88c8-d7d751ffc0dc",
+                "checkInDate": "2026-11-17",
+                "checkOutDate": "2026-11-20"
+            }
+        ]
+    }
+order: 1000

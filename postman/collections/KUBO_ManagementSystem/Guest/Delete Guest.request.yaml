@@ -1,0 +1,22 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/guests/f6025372-f36b-45c5-a1ac-f5ed1b693b8f
+method: DELETE
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: text
+  content: |-
+    {
+        "firstName": "TempTemp",
+        "lastName": "Postman",
+        "email": "temp.postman.guest.20261031@example.com",
+        "phone": "09171234567",
+        "validIdType": "NationalID",
+        "idNumber": "POSTMAN-TEMP-20261031",
+        "addressLinel": "1 Test St",
+        "city": "Manila",
+        "stateProvince": "Metro Manila",
+        "zipPostalCode": "1000",
+        "country": "Philippines"
+    }
+order: 4000

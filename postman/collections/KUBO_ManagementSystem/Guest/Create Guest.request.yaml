@@ -1,0 +1,22 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/guests
+method: POST
+headers:
+  Authorization: "{{bearer_token_0lbs}}"
+body:
+  type: json
+  content: |-
+    {
+        "firstName": "Adrian",
+        "lastName": "Morales",
+        "email": "adrian.morales.20261103@example.com",
+        "phone": "09321234567",
+        "validIdType": "NationalID",
+        "idNumber": "POSTMAN-GUEST-016",
+        "addressLinel": "12 Luna Street",
+        "city": "Cebu City",
+        "stateProvince": "Cebu",
+        "zipPostalCode": "6000",
+        "country": "Philippines"
+      }
+order: 1000

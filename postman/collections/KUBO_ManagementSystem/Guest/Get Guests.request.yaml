@@ -1,0 +1,26 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/guests?page=1&limit=100
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+queryParams:
+  page: "1"
+  limit: "100"
+body:
+  type: text
+  content: |-
+    {
+        "firstName": "TempTemp",
+        "lastName": "Postman",
+        "email": "temp.postman.guest.20261031@example.com",
+        "phone": "09171234567",
+        "validIdType": "NationalID",
+        "idNumber": "POSTMAN-TEMP-20261031",
+        "addressLinel": "1 Test St",
+        "city": "Manila",
+        "stateProvince": "Metro Manila",
+        "zipPostalCode": "1000",
+        "country": "Philippines"
+    }
+settings: {}
+order: 2000

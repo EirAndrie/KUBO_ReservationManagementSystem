@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/employees?role=staff
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+queryParams:
+  role: staff
+body:
+  type: text
+  content: ""
+settings: {}
+order: 2000

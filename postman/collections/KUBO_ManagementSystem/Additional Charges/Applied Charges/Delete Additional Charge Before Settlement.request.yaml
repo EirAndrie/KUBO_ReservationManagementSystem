@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charges/3af5f549-549a-46e8-bca8-5c831a2577a0?employeeId=b52b52f5-14a4-442e-b836-81f8f0e8c476
+method: DELETE
+queryParams:
+  employeeId: b52b52f5-14a4-442e-b836-81f8f0e8c476
+body:
+  type: text
+  content: |2-
+      {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "chargeType": "Laundry",
+        "name": "Laundry",
+        "description": "Laundry service for guest clothing.",
+        "unitPrice": 200.00,
+        "isActive": true
+      }
+order: 3000

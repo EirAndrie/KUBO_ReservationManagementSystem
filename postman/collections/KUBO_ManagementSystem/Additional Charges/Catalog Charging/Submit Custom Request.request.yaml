@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/a6ce695b-011d-436e-904a-66d472519f1c/charge-requests
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "b52b52f5-14a4-442e-b836-81f8f0e8c476",
+        "description": "Request to withdraw custom additional charge",
+        "proposedUnitAmount": 15000.00
+    }
+order: 4000

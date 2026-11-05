@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-requests/ba51ac24-5390-4fef-8e16-c1ebdb541d0d/approve
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "approvedUnitAmount": 1000.00,
+        "reason": "Adjusted to standard decoration rate"
+    }
+order: 2000

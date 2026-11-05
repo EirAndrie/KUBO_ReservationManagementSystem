@@ -1,0 +1,121 @@
+$kind: collection
+description: ""
+variables:
+  - key: bearer_token_1c7p
+    secret: true
+    disabled: false
+  - key: bearer_token_0lbs
+    secret: true
+    disabled: false
+  - key: bearer_token_06r9
+    secret: true
+    disabled: false
+  - key: bearer_token_17vt
+    secret: true
+    disabled: false
+  - key: bearer_token_05b7
+    secret: true
+    disabled: false
+  - key: base_url
+    value: 'http://localhost:8080/KUBO_Resort/Management-System/v0.0.1'
+    description: API base path used by the shared login script.
+  - key: admin_username
+    value: ''
+    description: Supply at run time (--env-var). Logs in for Administrator-only endpoints.
+  - key: admin_password
+    value: ''
+    secret: true
+    description: Supply at run time (--env-var). Never commit a value.
+  - key: staff_username
+    value: ''
+    description: Supply at run time (--env-var).
+  - key: staff_password
+    value: ''
+    secret: true
+    description: Supply at run time (--env-var). Never commit a value.
+  - key: new_employee_password
+    value: ''
+    secret: true
+    description: Password for the Create Employee request. Supply at run time; never commit a value.
+scripts:
+  - type: 'http:beforeRequest'
+    language: text/javascript
+    code: |-
+      // Logs in once per run and fills the bearer_token_* variables the requests use.
+      // bearer_token_1c7p is used by Administrator-only folders (Role, Employee, Audit),
+      // so it gets the Administrator token; the others get the Staff token.
+      // Requests with no Authorization header receive the Administrator token for
+      // Administrator-only modules and the Staff token otherwise.
+      const base = pm.variables.get('base_url');
+      const isLogin = pm.request.url.toString().includes('/auth/login');
+
+      function login(userKey, passKey, tokenKey, done) {
+        const username = pm.variables.get(userKey);
+        const password = pm.variables.get(passKey);
+        if (pm.collectionVariables.get(tokenKey) || !username || !password) return done();
+        pm.sendRequest({
+          url: base + '/auth/login',
+          method: 'POST',
+          header: { 'Content-Type': 'application/json' },
+          body: { mode: 'raw', raw: JSON.stringify({ username, password }) }
+        }, (err, res) => {
+          if (!err && res.code === 200) {
+            pm.collectionVariables.set(tokenKey, 'Bearer ' + res.json().accessToken);
+          } else {
+            console.warn('Login failed for ' + username + ': ' + (err || res.code));
+          }
+          done();
+        });
+      }
+
+      function applyTokens() {
+        const staff = pm.collectionVariables.get('staff_access_token') || '';
+        const admin = pm.collectionVariables.get('admin_access_token') || staff;
+        pm.collectionVariables.set('bearer_token_1c7p', admin);
+        ['bearer_token_0lbs', 'bearer_token_06r9', 'bearer_token_17vt', 'bearer_token_05b7']
+          .forEach((k) => pm.collectionVariables.set(k, staff));
+        // Roles, employees, and audit logs are Administrator-only modules.
+        const adminOnly = /\/(roles|employees|audit-logs)(\/|\?|$)/.test(pm.request.url.getPath());
+        const fallback = adminOnly ? admin : staff;
+        if (!pm.request.headers.has('Authorization') && fallback) {
+          pm.request.headers.upsert({ key: 'Authorization', value: fallback });
+        }
+      }
+
+      if (!isLogin) {
+        login('staff_username', 'staff_password', 'staff_access_token', () =>
+          login('admin_username', 'admin_password', 'admin_access_token', applyTokens));
+      }
+  - type: 'http:afterResponse'
+    language: text/javascript
+    code: |-
+      // Generic contract checks for read-only requests and login.
+      const method = pm.request.method;
+      const isLogin = pm.request.url.toString().includes('/auth/login');
+
+      // The write-test folder asserts its own status codes (including expected 403/404 GETs).
+      const inWriteTests = (pm.execution.location || []).includes('Write Tests (test DB only)');
+
+      if ((method === 'GET' || isLogin) && !inWriteTests) {
+        pm.test('Status is 200', () => pm.response.to.have.status(200));
+        pm.test('Response time under 2000 ms', () => pm.expect(pm.response.responseTime).to.be.below(2000));
+
+        let body;
+        pm.test('Body is JSON with success: true', () => {
+          body = pm.response.json();
+          pm.expect(body.success).to.eql(true);
+        });
+
+        pm.test('No password hash is exposed', () => {
+          const text = pm.response.text();
+          pm.expect(text).to.not.include('password_hash');
+          pm.expect(text).to.not.include('passwordHash');
+        });
+
+        if (isLogin && body) {
+          pm.test('Login returns a Bearer access token', () => {
+            pm.expect(body.tokenType).to.eql('Bearer');
+            pm.expect(body.accessToken).to.be.a('string').and.not.empty;
+          });
+        }
+      }

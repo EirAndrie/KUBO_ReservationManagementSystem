@@ -1,0 +1,13 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charges/8a92ab2e-6816-4f6a-9b57-aa12faf8cc32/corrections
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "chargeType": "Other",
+        "unitAmount": 880,
+        "reason": "Adjusted Special Anniversary Decoration since guest requested to simplify decorations"
+    }
+order: 4000

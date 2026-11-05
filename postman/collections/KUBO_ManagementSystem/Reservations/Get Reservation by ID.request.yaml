@@ -1,0 +1,20 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/a6ce695b-011d-436e-904a-66d472519f1c
+method: GET
+body:
+  type: text
+  content: |-
+    {
+        "guestId": "75b06f05-40f9-4bde-b578-0b2edcf0f41b",
+        "employeeId": "b52b52f5-14a4-442e-b836-81f8f0e8c476",
+        "bookingSource": "Online",
+        "assignments": [
+            {
+                "kuboId": "080664b5-05ca-43af-81dc-734c1f03a674",
+                "checkInDate": "2026-11-15",
+                "checkOutDate": "2026-11-20"
+            }
+        ]
+    }
+settings: {}
+order: 2000

@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/payments/2e9cdcfe-8924-40e5-9111-ef405b4d276f/status
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "b52b52f5-14a4-442e-b836-81f8f0e8c476",
+        "status": "Completed"
+    }
+order: 5000

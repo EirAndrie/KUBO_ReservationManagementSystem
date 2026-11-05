@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-catalog
+method: POST
+body:
+  type: json
+  content: |2-
+      {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "chargeType": "Laundry",
+        "name": "Laundry",
+        "description": "Laundry service for guest clothing.",
+        "unitPrice": 200.00,
+        "isActive": true
+      }
+order: 1000

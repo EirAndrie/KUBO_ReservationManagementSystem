@@ -1,0 +1,14 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/5be2d27d-a10e-440a-acab-95b8020bfecf/payments/refund
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "employeeId": "b52b52f5-14a4-442e-b836-81f8f0e8c476",
+      "originalPaymentId": "59b21305-2010-478a-a6e4-b655c883dc7b",
+      "paymentAmount": 1800,
+      "paymentType": "FullPayment",
+      "paymentMethod": "GCash"
+    }
+order: 6000

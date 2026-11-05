@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-requests/cd0df2fd-7506-4bcb-b12b-07441b046c62/reject
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5",
+        "reason": "Service not offered or is not applicable"
+    }
+order: 3000

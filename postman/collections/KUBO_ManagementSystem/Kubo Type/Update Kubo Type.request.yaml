@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubo-types/e9be5139-55a2-4421-bd85-40ad6f6fc2dd
+method: PATCH
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+        "price_per_night": 3600.00
+    }
+order: 4000

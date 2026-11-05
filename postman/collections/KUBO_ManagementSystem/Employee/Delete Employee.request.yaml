@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/employees/a8a7fde1-9479-4fbe-92f0-7932920beb10
+method: DELETE
+body:
+  type: text
+  content: |-
+    {
+      "roleId": "f5dc6e19-ce79-4b65-bfc5-069839020dc1",
+      "firstName": "Jane",
+      "lastName": "Dae",
+      "username": "johndoe",
+      "passwordHash": "Abc!1234566",
+      "status": "Inactive"
+    }
+order: 4000
