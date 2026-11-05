@@ -1,0 +1,18 @@
+.amountAlert {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.currencyInput {
+  width: 100%;
+}

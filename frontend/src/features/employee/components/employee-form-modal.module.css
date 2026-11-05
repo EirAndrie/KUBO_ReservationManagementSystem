@@ -1,0 +1,17 @@
+.modalContent {
+  padding: 8px 0;
+}
+
+.adminNotice {
+  margin-bottom: 16px;
+}
+
+.policyNote {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #0369a1;
+}

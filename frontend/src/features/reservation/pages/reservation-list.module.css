@@ -1,0 +1,160 @@
+.pageContainer {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.heroCard {
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: #ffffff;
+}
+
+.heroEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #bae6fd;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.heroTitle {
+  margin: 0 !important;
+  color: #ffffff !important;
+  font-size: 2.1rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.2 !important;
+}
+
+.heroSubtitle {
+  margin: 8px 0 0 0;
+  color: #e0f2fe;
+  font-size: 0.95rem;
+  max-width: 580px;
+}
+
+.newButton {
+  height: 46px;
+  padding: 0 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.toolbarContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.searchInput {
+  max-width: 280px;
+  width: 100%;
+}
+
+.filterSelect {
+  width: 160px;
+}
+
+.resultsBadge {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tableCard {
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.refCode {
+  font-family: monospace;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.guestCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guestName {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.kuboTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emptyStateCard {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px dashed #d1d5db;
+  padding: 64px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.errorBanner {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 16px;
+  }
+  .toolbarContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filterGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .searchInput,
+  .filterSelect {
+    max-width: 100%;
+    width: 100%;
+  }
+}

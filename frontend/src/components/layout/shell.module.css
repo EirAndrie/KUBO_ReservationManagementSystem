@@ -1,0 +1,334 @@
+/* Professional Enterprise Layout Shell for KUBO Resort RMS */
+
+.shellContainer {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  background-color: #f8fafc;
+}
+
+/* Sidebar Container */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  z-index: 30;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.08);
+  transition: background 0.2s ease;
+}
+
+.sidebarAdmin {
+  background: #072535;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebarStaff {
+  background: #072535;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Brand Header */
+.brandHeader {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brandLogoImage {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #7c4a27;
+  background-color: #faf6f0;
+  flex-shrink: 0;
+}
+
+.brandIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #ffffff;
+}
+
+.brandIconAdmin {
+  background: #9333ea;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.45);
+}
+
+.brandIconStaff {
+  background: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.45);
+}
+
+.brandTitleGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.brandSubtitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.brandSubtitleAdmin {
+  color: #7dd3fc;
+}
+
+.brandSubtitleStaff {
+  color: #7dd3fc;
+}
+
+/* Nav Menu */
+.navSection {
+  flex: 1;
+  padding: 18px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navSectionTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 12px 8px 12px;
+  margin: 0;
+}
+
+.navSectionTitleAdmin {
+  color: rgba(186, 230, 253, 0.65);
+}
+
+.navSectionTitleStaff {
+  color: rgba(186, 230, 253, 0.65);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.navItemAdmin {
+  color: rgba(224, 242, 254, 0.78);
+}
+
+.navItemAdmin:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.navItemAdminActive {
+  background: #0369a1 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+
+.navItemStaff {
+  color: rgba(224, 242, 254, 0.78);
+}
+
+.navItemStaff:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.navItemStaffActive {
+  background: #0369a1 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+
+.navItemIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Sidebar Footer */
+.sidebarFooter {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Main Content Area */
+.mainWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: #f8fafc;
+}
+
+/* Header / Navbar */
+.navbar {
+  height: 64px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.navbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.liveStatusPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.liveStatusPillStaff {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.liveStatusPillAdmin {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 1.8s infinite;
+}
+
+.pulseDotStaff {
+  background: #10b981;
+}
+
+.pulseDotAdmin {
+  background: #8b5cf6;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.todayDate {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navbarRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.userBadge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.userName {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.mainScrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  background-color: #f8fafc;
+}
+
+.mainContent {
+  padding: 24px 32px 56px 32px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
