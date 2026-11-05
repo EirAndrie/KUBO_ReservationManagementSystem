@@ -1,0 +1,8 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/0c7adeb6-485d-4c98-9a65-1f4bec4b0c1e/kubos/080664b5-05ca-43af-81dc-734c1f03a674
+method: GET
+body:
+  type: json
+  content: ""
+settings: {}
+order: 7000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{base_url}}/payments/{{wt_payment_id}}/status'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "status": "Completed"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can complete a payment (200)', () => pm.response.to.have.status(200));
+      pm.test('Payment is Completed', () => pm.expect(pm.response.json().payments.payment_status).to.eql('Completed'));
+order: 8000

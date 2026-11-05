@@ -1,0 +1,14 @@
+$kind: http-request
+url: '{{base_url}}/payments/{{wt_payment_id}}'
+method: GET
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json().payments;
+      const p = (Array.isArray(body) ? body[0] : body) || {};
+      pm.test('Original payment status is PartiallyRefunded', () => pm.expect(p.payment_status).to.eql('PartiallyRefunded'));
+order: 12000

@@ -1,0 +1,35 @@
+$kind: http-request
+url: '{{base_url}}/reservations'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "guestId": "{{wt_guest_id}}",
+        "bookingSource": "WalkIn",
+        "assignments": [
+            { "kuboId": "911e5b93-93d1-4a70-aa28-c2b5ebdbad5f", "checkInDate": "2099-01-11", "checkOutDate": "2099-01-13" }
+        ]
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Overlapping booking of the same kubo is rejected (400)', () => pm.response.to.have.status(400));
+      pm.test('Error says the kubo is unavailable', () => {
+        const body = pm.response.json();
+        pm.expect(body.success).to.eql(false);
+        pm.expect(body.message).to.match(/not available/i);
+      });
+      // Safety net: if the overlap was wrongly accepted, remove the extra booking.
+      if (pm.response.code === 201) {
+        pm.sendRequest({
+          url: pm.variables.get('base_url') + '/reservations/' + pm.response.json().reservations.reservation_id,
+          method: 'DELETE',
+          header: { Authorization: pm.variables.get('staff_access_token') }
+        }, () => {});
+      }
+order: 5000

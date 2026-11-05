@@ -1,0 +1,16 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubo-types
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: text
+  content: |-
+    {
+        "kuboTypeName": "Premium Kubo",
+        "kuboTypeCapacity": 8,
+        "pricePerNight": 6000.00,
+        "kuboTypeDescription": "Large Kubo with premium amenities and additional sleeping space."
+      }
+settings: {}
+order: 2000

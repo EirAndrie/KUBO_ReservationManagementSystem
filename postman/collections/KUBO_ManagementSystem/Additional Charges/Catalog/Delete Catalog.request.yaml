@@ -1,0 +1,9 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-catalog/769b21d2-5c66-46e5-a144-0670da41c0e0?employeeId=5efe3900-8a3c-4053-87f8-f6588257c7d5
+method: DELETE
+queryParams:
+  employeeId: 5efe3900-8a3c-4053-87f8-f6588257c7d5
+body:
+  type: json
+  content: ""
+order: 6000

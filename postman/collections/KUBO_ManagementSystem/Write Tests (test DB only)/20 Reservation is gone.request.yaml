@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}'
+method: GET
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('wt_reservation_id')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Deleted reservation returns 404', () => pm.response.to.have.status(404));
+order: 20000

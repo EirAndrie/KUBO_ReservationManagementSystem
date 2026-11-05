@@ -1,0 +1,22 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/payments/refund'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "originalPaymentId": "{{wt_payment_id}}",
+        "paymentAmount": 1000.01,
+        "paymentType": "Deposit",
+        "paymentMethod": "Cash"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Refund larger than net paid is rejected (400)', () => pm.response.to.have.status(400));
+      pm.test('Error mentions net amount paid', () => pm.expect(pm.response.json().message).to.match(/net amount paid/i));
+order: 10000

@@ -1,0 +1,6 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/roles
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+order: 3000

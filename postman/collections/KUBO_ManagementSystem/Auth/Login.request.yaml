@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/auth/login
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "username": "{{staff_username}}",
+        "password": "{{staff_password}}"
+    }
+order: 1000

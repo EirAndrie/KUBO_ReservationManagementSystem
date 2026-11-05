@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubo-types/0630beae-af48-4ddc-9884-a62a9c99f652
+method: DELETE
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: text
+  content: |-
+    {
+        "type_name": "Deluxe Kubo",
+        "capacity": 4,
+        "price_per_night": "3800.00",
+        "description": "Comfortable Kubo with upgraded furnishings and a private veranda."
+    }
+order: 5000

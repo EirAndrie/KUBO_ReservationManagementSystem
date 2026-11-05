@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubos/c4f6fff3-94fa-4820-88c8-d7d751ffc0dc
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: text
+  content: |-
+    {
+        "kuboNumber": "K-05",
+        "kuboTypeId": "e3405ca2-60b5-45b4-adc7-eead09601994",
+        "status": "Available"
+    }
+settings: {}
+order: 2000

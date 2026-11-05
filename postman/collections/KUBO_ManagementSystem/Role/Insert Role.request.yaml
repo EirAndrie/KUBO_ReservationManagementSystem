@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/roles
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "roleName": "Dummy_delete_test_role",
+        "description": "Oversees reservation operations of the resort"
+    }
+order: 1000

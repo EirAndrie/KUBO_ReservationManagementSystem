@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/roles/f5dc6e19-ce79-4b65-bfc5-069839020dc1
+method: GET
+order: 4000

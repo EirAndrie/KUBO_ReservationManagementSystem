@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/a6ce695b-011d-436e-904a-66d472519f1c/charges
+method: GET
+order: 2000

@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/roles/18f05300-7c74-4f79-a490-70626c867e86
+method: DELETE
+order: 5000

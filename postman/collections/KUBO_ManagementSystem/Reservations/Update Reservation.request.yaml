@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/f98e8a19-ab35-4c22-91ae-7ff1f6ef6f37
+method: PATCH
+headers:
+  Authorization: "{{bearer_token_17vt}}"
+body:
+  type: json
+  content: |-
+    {
+        "bookingSource": "TravelAgency"
+    }
+order: 4000

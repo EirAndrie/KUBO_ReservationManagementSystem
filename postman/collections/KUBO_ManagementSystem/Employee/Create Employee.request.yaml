@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/employees
+method: POST
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+      "roleId": "7906930a-fbff-4484-b079-229e20720f12",
+      "firstName": "Angel",
+      "lastName": "Baby",
+      "username": "baby.angle",
+      "passwordHash": "{{new_employee_password}}",
+      "status": "Active"
+    }
+order: 1000

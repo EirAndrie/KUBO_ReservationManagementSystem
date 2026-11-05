@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/payments/{{wt_refund_id}}'
+method: DELETE
+headers:
+  - key: Authorization
+    value: '{{admin_access_token}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('wt_refund_id')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Cleanup: refund deleted (204)', () => pm.response.to.have.status(204));
+order: 16000

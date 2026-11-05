@@ -1,0 +1,13 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/auth/me
+method: GET
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+        "employeeId": "5efe3900-8a3c-4053-87f8-f6588257c7d5"
+    }
+settings: {}
+order: 2000

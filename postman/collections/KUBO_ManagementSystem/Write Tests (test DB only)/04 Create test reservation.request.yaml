@@ -1,0 +1,35 @@
+$kind: http-request
+url: '{{base_url}}/reservations'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "guestId": "{{wt_guest_id}}",
+        "bookingSource": "WalkIn",
+        "assignments": [
+            { "kuboId": "911e5b93-93d1-4a70-aa28-c2b5ebdbad5f", "checkInDate": "2099-01-10", "checkOutDate": "2099-01-12" }
+        ]
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can create a reservation (201)', () => pm.response.to.have.status(201));
+      const r = pm.response.json().reservations || {};
+      pm.test('New reservation is Pending with nothing paid', () => {
+        pm.expect(r.status).to.eql('Pending');
+        pm.expect(Number(r.net_paid)).to.eql(0);
+      });
+      pm.test('Balance is derived from the accommodation total', () => {
+        pm.expect(Number(r.outstanding_balance)).to.be.above(0);
+        pm.expect(Number(r.outstanding_balance)).to.eql(Number(r.accommodation_total));
+      });
+      if (r.reservation_id) {
+        pm.collectionVariables.set('wt_reservation_id', r.reservation_id);
+        pm.collectionVariables.set('wt_balance', String(r.outstanding_balance));
+      }
+order: 4000

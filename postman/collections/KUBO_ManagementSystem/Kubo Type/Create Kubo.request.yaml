@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubo-types
+method: POST
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+        "kuboTypeName": "Kubo Test To Delet",
+        "kuboTypeCapacity": 2,
+        "pricePerNight": 3500.00,
+        "kuboTypeDescription": "Kubo For Deletion Testing"
+      }
+order: 1000

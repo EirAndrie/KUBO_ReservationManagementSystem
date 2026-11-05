@@ -1,0 +1,27 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/payments/refund'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "originalPaymentId": "{{wt_payment_id}}",
+        "paymentAmount": 400,
+        "paymentType": "Deposit",
+        "paymentMethod": "Cash"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can refund within net paid (201)', () => pm.response.to.have.status(201));
+      const f = pm.response.json().payments || {};
+      pm.test('Refund row is a completed Refund transaction', () => {
+        pm.expect(f.transaction_type).to.eql('Refund');
+        pm.expect(f.payment_status).to.eql('Completed');
+      });
+      if (f.payment_id) pm.collectionVariables.set('wt_refund_id', f.payment_id);
+order: 11000

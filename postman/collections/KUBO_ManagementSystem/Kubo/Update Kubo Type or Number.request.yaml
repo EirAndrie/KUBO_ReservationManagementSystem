@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubos/1d7da5f0-69bd-4862-a69c-99176755ee70
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "kuboNumber": "K-01",
+        "kuboTypeId": "da5ef856-be5f-4735-b3a9-0d4df9e084f7",
+        "status": "Available"
+    }
+order: 4000

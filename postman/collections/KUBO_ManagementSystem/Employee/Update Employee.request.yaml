@@ -1,0 +1,12 @@
+$kind: http-request
+url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/employees/13902c6b-46ae-41a4-95b1-7b0d5cac6cfa
+method: PATCH
+headers:
+  Authorization: "{{bearer_token_1c7p}}"
+body:
+  type: json
+  content: |-
+    {
+      "status": "Active"
+    }
+order: 5000

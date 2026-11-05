@@ -1,0 +1,12 @@
+name: local
+values:
+  - key: base_url
+    value: ''
+  - key: staff_username
+    value: ''
+  - key: staff_password
+    value: ''
+  - key: admin_username
+    value: ''
+  - key: admin_password
+    value: ''

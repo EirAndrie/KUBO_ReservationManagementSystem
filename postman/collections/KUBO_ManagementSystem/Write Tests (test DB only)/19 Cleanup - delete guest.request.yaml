@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/guests/{{wt_guest_id}}'
+method: DELETE
+headers:
+  - key: Authorization
+    value: '{{admin_access_token}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('wt_guest_id')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Cleanup: guest deleted (204)', () => pm.response.to.have.status(204));
+order: 19000
