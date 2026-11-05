@@ -17,29 +17,31 @@ variables:
     secret: true
     disabled: false
   - key: base_url
-    value: 'http://localhost:8080/KUBO_Resort/Management-System/v0.0.1'
-    description: API base path used by the shared login script.
+    value: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1
+    disabled: false
   - key: admin_username
-    value: ''
-    description: Supply at run time (--env-var). Logs in for Administrator-only endpoints.
+    value: ""
+    disabled: false
   - key: admin_password
-    value: ''
     secret: true
-    description: Supply at run time (--env-var). Never commit a value.
+    disabled: false
   - key: staff_username
-    value: ''
-    description: Supply at run time (--env-var).
+    value: ""
+    disabled: false
   - key: staff_password
-    value: ''
     secret: true
-    description: Supply at run time (--env-var). Never commit a value.
+    disabled: false
   - key: new_employee_password
-    value: ''
     secret: true
-    description: Password for the Create Employee request. Supply at run time; never commit a value.
+    disabled: false
+  - key: staff_access_token
+    value: ""
+    disabled: false
+  - key: admin_access_token
+    value: ""
+    disabled: false
 scripts:
-  - type: 'http:beforeRequest'
-    language: text/javascript
+  - type: http:beforeRequest
     code: |-
       // Logs in once per run and fills the bearer_token_* variables the requests use.
       // bearer_token_1c7p is used by Administrator-only folders (Role, Employee, Audit),
@@ -86,8 +88,8 @@ scripts:
         login('staff_username', 'staff_password', 'staff_access_token', () =>
           login('admin_username', 'admin_password', 'admin_access_token', applyTokens));
       }
-  - type: 'http:afterResponse'
     language: text/javascript
+  - type: http:afterResponse
     code: |-
       // Generic contract checks for read-only requests and login.
       const method = pm.request.method;
@@ -119,3 +121,4 @@ scripts:
           });
         }
       }
+    language: text/javascript
