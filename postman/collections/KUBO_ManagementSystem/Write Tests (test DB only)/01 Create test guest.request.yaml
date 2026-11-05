@@ -1,0 +1,32 @@
+$kind: http-request
+url: '{{base_url}}/guests'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "firstName": "Postman",
+        "lastName": "WriteTest",
+        "email": "postman.writetest.{{wt_suffix}}@example.com",
+        "phone": "09170000000",
+        "validIdType": "NationalID",
+        "idNumber": "PM-WT-{{wt_suffix}}"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      ['wt_guest_id', 'wt_reservation_id', 'wt_payment_id', 'wt_refund_id', 'wt_balance']
+        .forEach((k) => pm.collectionVariables.unset(k));
+      pm.collectionVariables.set('wt_suffix', String(Date.now()));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can create a guest (201)', () => pm.response.to.have.status(201));
+      const guest = pm.response.json().guests || {};
+      pm.test('Guest ID returned', () => pm.expect(guest.guest_id).to.be.a('string'));
+      if (guest.guest_id) pm.collectionVariables.set('wt_guest_id', guest.guest_id);
+order: 1000

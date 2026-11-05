@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{base_url}}/guests/{{wt_guest_id}}'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "phone": "09181112222"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can update a guest (200)', () => pm.response.to.have.status(200));
+      pm.test('Phone was updated', () => pm.expect(pm.response.json().guests.phone).to.eql('09181112222'));
+order: 2000

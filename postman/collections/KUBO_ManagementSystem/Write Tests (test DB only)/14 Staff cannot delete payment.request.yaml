@@ -1,0 +1,12 @@
+$kind: http-request
+url: '{{base_url}}/payments/{{wt_refund_id}}'
+method: DELETE
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Payment cleanup deletion is Administrator-only (403)', () => pm.response.to.have.status(403));
+order: 14000

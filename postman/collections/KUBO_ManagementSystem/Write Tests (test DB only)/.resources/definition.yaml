@@ -1,0 +1,22 @@
+$kind: collection
+description: |-
+  Self-contained create/update/delete flow that checks the key business rules:
+  no overbooking, no overpayment, refund limits, and Staff-only vs
+  Administrator-only actions. It creates its own guest, reservation, payment and
+  refund, then deletes them at the end.
+
+  Run ONLY against a disposable copy of the database, with
+  --env-var allow_writes=true and --env-var base_url=<test server base path>.
+  Without allow_writes=true every request in this folder is skipped.
+  Audit rows written during the run stay behind because the audit log is append-only.
+  The booking uses kubo K-01 (911e5b93-93d1-4a70-aa28-c2b5ebdbad5f) on 2099-01-10..12
+  so it never clashes with real reservations.
+scripts:
+  - type: 'http:beforeRequest'
+    language: text/javascript
+    code: |-
+      if (pm.variables.get('allow_writes') !== 'true') {
+        console.warn('Skipped "' + pm.info.requestName + '": write tests need --env-var allow_writes=true and a test database.');
+        pm.execution.skipRequest();
+      }
+order: 10000

@@ -1,0 +1,23 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/payments'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "paymentAmount": 1000,
+        "paymentType": "Deposit",
+        "paymentMethod": "Cash"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can record a payment (201)', () => pm.response.to.have.status(201));
+      const p = pm.response.json().payments || {};
+      pm.test('Server sets status to Pending', () => pm.expect(p.payment_status).to.eql('Pending'));
+      if (p.payment_id) pm.collectionVariables.set('wt_payment_id', p.payment_id);
+order: 7000

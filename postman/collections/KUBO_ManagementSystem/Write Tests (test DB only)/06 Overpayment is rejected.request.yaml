@@ -1,0 +1,26 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/payments'
+method: POST
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    {
+        "paymentAmount": {{wt_overpay}},
+        "paymentType": "FullPayment",
+        "paymentMethod": "Cash"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const balance = Number(pm.collectionVariables.get('wt_balance') || 0);
+      pm.collectionVariables.set('wt_overpay', (balance + 1).toFixed(2));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Payment above the outstanding balance is rejected (400)', () => pm.response.to.have.status(400));
+      pm.test('Error mentions the outstanding balance', () => pm.expect(pm.response.json().message).to.match(/outstanding balance/i));
+order: 6000

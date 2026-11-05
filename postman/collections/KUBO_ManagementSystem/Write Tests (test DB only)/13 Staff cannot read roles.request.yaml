@@ -1,0 +1,12 @@
+$kind: http-request
+url: '{{base_url}}/roles'
+method: GET
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Roles are Administrator-only (403)', () => pm.response.to.have.status(403));
+order: 13000
