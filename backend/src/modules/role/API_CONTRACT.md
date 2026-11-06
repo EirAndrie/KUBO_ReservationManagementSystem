@@ -2,7 +2,7 @@
 
 Role configuration endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/roles`
 - **Source files:** `role.routes.ts`, `role.controllers.ts`, `role.services.ts`, `repository/role.schema.ts`, `repository/role.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.

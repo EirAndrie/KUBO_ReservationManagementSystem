@@ -3,7 +3,7 @@
 Kubo assignment and check-in/check-out endpoints for the Kubo Reservation
 Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/reservations/:reservationId/kubos`
 - **Source files:** `reserved-room_kubo.routes.ts`, `reserved-room_kubo.controllers.ts`, `reserved-room_kubo.services.ts`, `repository/reserved-kubo.schema.ts`, `repository/reserved-kubo.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.

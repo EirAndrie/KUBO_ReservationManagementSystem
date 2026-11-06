@@ -29,6 +29,8 @@ npm run build       # tsc -> dist/
 - Create `backend/.env`. `dotenv` loads relative to the working directory, so start the server from `backend/`.
 - The PostgreSQL pool actually reads: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`.
 - `DB_URL` and `PASSWORD_LENGTH` are declared in `src/config/env.ts` but unused. Do not assume `DB_URL` configures the connection.
+- `API_BASE_PATH` (optional, default `/api`) sets the mount prefix for every API route. `backend/example.env` and this project's `.env` use `/KUBO_Resort/Management-System/v0.0.1`; the frontend `VITE_API_BASE_URL` must include the same path. Use a leading `/` and no trailing `/`.
+- With `NODE_ENV=production`, the backend serves the built SPA from `frontend/dist`; startup fails if `frontend/dist/index.html` is missing. Client routes fall back to `index.html`, while unknown paths under `API_BASE_PATH` return JSON `404`.
 - Startup requires a live database. It connects, then runs every `src/migrations/*.sql` in filename order, tracking applied files in `schema_migrations`. Migrations now cover role, employee, guest, kubo type, kubo, reservation, reserved kubo, additional charges/catalog/requests, payments, and audit infrastructure. The additional-charge migration expects the pre-existing `kubo_additional_charges_management` schema; the payment migration creates `kubo_payment_management`.
 - `src/utils/logger.ts` creates `logs/` relative to the working directory.
 
@@ -58,7 +60,7 @@ backend/src/modules/<feature>/
 ## API Wiring
 
 - `src/modules/index.ts` is the source of truth for mounted routes.
-- The real base path is `/KUBO_Resort/Management-System/v0.0.1`, not `/api` as the docs and frontend plan state.
+- The mount prefix comes from `API_BASE_PATH` (default `/api`). This project's env uses `/KUBO_Resort/Management-System/v0.0.1`, not the older `/api` examples in some docs and the frontend plan.
 - Mounted prefixes: `/roles`, `/guests`, `/kubo-types`, `/kubos`, `/employees`, `/reservations`, `/audit-logs`, plus root-mounted route groups for payments and additional charges.
 - Reservation assignment routes are under `/reservations/:reservationId/kubos`. Payments are under `/reservations/:reservationId/payments` and `/payments`. Additional-charge routes define their own full paths under `/additional-charge-catalog`, `/additional-charges`, `/additional-charge-requests`, and `/reservations/:reservationId/charges`.
 - Authentication (`authenticate`) and role-based access (`authorizeRoles`) are implemented and mounted in `src/modules/index.ts`. The acting employee is always `req.auth.employeeId`; clients cannot supply an `employeeId` to act on another employee's behalf.
@@ -204,7 +206,8 @@ The payment lifecycle is implemented in
 
 ### Route and response conventions
 
-- Base path: `/KUBO_Resort/Management-System/v0.0.1`.
+- Base path: `API_BASE_PATH` (default `/api`; this project uses
+  `/KUBO_Resort/Management-System/v0.0.1`).
 - Payment response key: `payments`.
 - Additional-charge response keys: `additionalChargeCatalog`,
   `additionalCharges`, and `additionalChargeRequests`.

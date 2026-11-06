@@ -15,6 +15,7 @@ import { runMigrations } from "./utils/migrate";
 
 const app = express();
 const PORT = validateServerPort(ENV.PORT);
+const API_BASE_PATH = ENV.API_BASE_PATH || "/api"; // Default to "/api" if not set in .env
 const FR_ORIGIN = validateFrontendOrigin(ENV.FR_ORIGIN);
 const isProduction = validateProductionMode(ENV.NODE_ENV);
 
@@ -27,7 +28,7 @@ app.use(express.json());
 configureCors(app, FR_ORIGIN, isProduction);
 
 // ROUTES SECTION
-app.use("/KUBO_Resort/Management-System/v0.0.1", apiRoutes);
+app.use(API_BASE_PATH, apiRoutes);
 configureEnvironmentRoutes(app, isProduction);
 
 connectDB()
