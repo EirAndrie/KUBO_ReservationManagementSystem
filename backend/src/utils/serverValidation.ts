@@ -1,7 +1,9 @@
 import express, { Express } from "express";
+import { existsSync } from "fs";
 import path from "path";
 import cors from "cors";
 import logger from "./logger";
+import ENV from "../config/env";
 
 // Check port validity
 export function validateServerPort(port: string | undefined): number {
@@ -95,17 +97,37 @@ export function configureEnvironmentRoutes(
       isProduction: boolean,
 ) {
       if (isProduction) {
-            const frontendPath = path.join(__dirname, "../../frontend");
+            // Resolves to <repo>/frontend/dist from both source (`src/utils`)
+            // and build (`dist/utils`) layouts.
+            const frontendPath = path.resolve(
+                  __dirname,
+                  "../../../frontend/dist",
+            );
+            const indexHtml = path.join(frontendPath, "index.html");
+
+            if (!existsSync(indexHtml)) {
+                  logger.error(
+                        `Production frontend build not found at ${indexHtml}. ` +
+                              `Run "npm run build" in frontend/ before starting the server.`,
+                  );
+                  process.exit(1);
+            }
+
             app.use(express.static(frontendPath));
 
             app.get(/.*/, (req, res) => {
-                  if (!req.url.startsWith("/api")) {
-                        res.sendFile(path.join(frontendPath, "index.html"));
-                  } else {
+                  const isApiRequest =
+                        req.path === ENV.API_BASE_PATH ||
+                        req.path.startsWith(`${ENV.API_BASE_PATH}/`);
+
+                  if (isApiRequest) {
                         res.status(404).json({
                               message: "API endpoint not found",
                         });
+                        return;
                   }
+
+                  res.sendFile(indexHtml);
             });
             return;
       }

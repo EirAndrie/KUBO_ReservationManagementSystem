@@ -2,7 +2,7 @@
 
 Read-only audit-log endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/audit-logs`
 - **Source files:** `audit-logs.routes.ts`, `audit-logs.controllers.ts`, `audit-logs.services.ts`, `repository/audit-log.schema.ts`, `repository/audit-log.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.

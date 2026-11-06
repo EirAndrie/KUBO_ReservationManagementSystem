@@ -1,5 +1,9 @@
 # API
 
+The mount prefix is configured by `API_BASE_PATH` (default `/api`). Examples below
+use `/api` for brevity; this repository's `backend/example.env` sets
+`/KUBO_Resort/Management-System/v0.0.1`.
+
 ## API Structure
 
 Use **RESTful** routes. Example for guests:

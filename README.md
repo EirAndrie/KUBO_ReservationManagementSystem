@@ -55,6 +55,7 @@ Copy `backend/example.env` to `backend/.env` and fill it in:
 
 ```env
 PORT=8080
+API_BASE_PATH=/KUBO_Resort/Management-System/v0.0.1
 NODE_ENV=development
 FR_ORIGIN=http://localhost:5173
 
@@ -71,6 +72,7 @@ JWT_EXPIRES_IN=8h
 | Variable                                                      | Required | Notes                                                                |
 | ------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
 | `PORT`                                                        | Yes      | API port.                                                            |
+| `API_BASE_PATH`                                               | No       | Mount prefix for every API route. Defaults to `/api`; this project uses `/KUBO_Resort/Management-System/v0.0.1`. Must start with `/` and have no trailing slash. |
 | `NODE_ENV`                                                    | Yes      | `development` or `production`.                                       |
 | `FR_ORIGIN`                                                   | Yes      | Allowed CORS origin for the frontend.                                |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Yes      | These are what the connection pool actually reads.                   |
@@ -93,6 +95,12 @@ npm run build       # tsc -> dist/
 On startup the server connects to PostgreSQL, applies pending migrations, and then listens on `PORT`. In development, `GET /` returns `API running successfully...`.
 
 > **Production build caveat:** `npm run build` does not copy `src/migrations/*.sql` into `dist/`. Copy them to `dist/migrations/` before running `node dist/server.js`, or startup will fail.
+
+> **Serving the frontend in production:** when `NODE_ENV=production`, the backend
+> serves the built SPA from `frontend/dist` and falls back to `index.html` for client
+> routes. Build the frontend first (`cd frontend && npm run build`). Startup fails
+> with a clear error when `frontend/dist/index.html` is missing, and unknown routes
+> under `API_BASE_PATH` return a JSON `404` instead of the SPA.
 
 ---
 
@@ -148,13 +156,15 @@ See [`docs/database.md`](docs/database.md) and [`docs/business_rules.md`](docs/b
 
 ## API
 
-All routes are mounted under:
+All routes are mounted under the path in `API_BASE_PATH` (default `/api`). This
+project's `backend/.env` uses:
 
 ```text
 /KUBO_Resort/Management-System/v0.0.1
 ```
 
-`backend/src/modules/index.ts` is the source of truth for mounted routes.
+The frontend's `VITE_API_BASE_URL` must include the same base path. `backend/src/modules/index.ts`
+is the source of truth for mounted routes.
 
 | Prefix                                                        | Purpose                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -198,7 +208,8 @@ There is no automated unit or integration test suite. Verification uses:
 - Read-only requests can run against your normal development database.
 - The `Write Tests (test DB only)` folder creates and cleans up its own data. It is skipped unless `allow_writes=true` is set. Run it only against a separate test database.
 
-Example (PowerShell, from the repository root):
+Example (PowerShell, from the repository root). Set `base_url` to
+`<host><API_BASE_PATH>` so it matches `backend/.env`:
 
 ```powershell
 postman collection run postman/collections/KUBO_ManagementSystem `

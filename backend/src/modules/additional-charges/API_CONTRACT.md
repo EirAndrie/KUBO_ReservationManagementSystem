@@ -3,7 +3,7 @@
 Charge catalog, applied charges, and custom charge-request endpoints for the Kubo
 Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** root-mounted route groups:
   - `/additional-charge-catalog`
   - `/reservations/:reservationId/charges`
