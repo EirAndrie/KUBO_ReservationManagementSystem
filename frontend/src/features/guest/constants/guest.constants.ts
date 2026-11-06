@@ -53,7 +53,7 @@ export const ID_TYPE_LABEL_MAP: Record<ValidIdType, string> = {
 
 export const GUEST_POLICIES = {
   REUSE_NOTICE:
-    'BR-013: Existing guest records matching this email or government ID pair will be automatically retrieved and linked to preserve booking continuity.',
+    'If a guest with this email or ID already exists, that profile is reused instead of creating a duplicate.',
   CANNOT_DELETE_WITH_RESERVATIONS:
-    'BR-015: Guests with active or historical reservations cannot be hard-deleted to preserve financial and operational audit records.',
+    'Guests with reservations can’t be deleted, so booking and payment records stay complete.',
 } as const;

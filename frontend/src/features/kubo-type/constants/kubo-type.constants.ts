@@ -1,6 +1,5 @@
 /**
  * Constants, limits, and policy notices for Kubo Types and Rates.
- * Enforces Zero Magic Strings and aligns with BR-016, BR-020, and BR-048.
  */
 
 export const KUBO_TYPE_LIMITS = {
@@ -19,8 +18,6 @@ export const CURRENCY = {
 } as const;
 
 export const KUBO_TYPE_POLICIES = {
-  RATE_CHANGE_NOTICE:
-    'Rate modifications apply strictly to new bookings. Existing reservations retain their booked rate snapshot (BR-020).',
-  CANNOT_DELETE_WITH_KUBOS:
-    'Kubo types referenced by existing kubos cannot be hard-deleted. Take referencing kubos Out of Service instead (BR-022).',
+  RATE_CHANGE_NOTICE: 'Rate changes apply to new reservations only. Existing bookings keep their rate.',
+  CANNOT_DELETE_WITH_KUBOS: 'Types with kubos can’t be deleted. Move or remove those kubos first.',
 } as const;

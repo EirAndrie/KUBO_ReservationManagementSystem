@@ -7,26 +7,33 @@ export const auditLogKeys = {
   lists: () => [...auditLogKeys.all, 'list'] as const,
   list: (filters?: AuditLogFilterParams) => [...auditLogKeys.lists(), filters ?? {}] as const,
   detail: (id: string) => [...auditLogKeys.all, 'detail', id] as const,
+  history: (entityType: string, entityId: string) => [...auditLogKeys.all, 'history', entityType, entityId] as const,
 };
 
-/**
- * Hook to retrieve the system audit logs ledger.
- */
-export function useAuditLogs(filters?: AuditLogFilterParams) {
+/** Audit log entries, newest first. */
+export function useAuditLogs(filters?: AuditLogFilterParams, enabled = true) {
   return useQuery<AuditLog[], Error>({
     queryKey: auditLogKeys.list(filters),
     queryFn: () => auditLogService.getAll(filters),
     staleTime: 1000 * 30,
+    enabled,
   });
 }
 
-/**
- * Hook to retrieve an individual audit log record with state diff.
- */
+/** A single audit entry with its before/after values. */
 export function useAuditLog(auditId: string) {
   return useQuery<AuditLog, Error>({
     queryKey: auditLogKeys.detail(auditId),
     queryFn: () => auditLogService.getById(auditId),
     enabled: Boolean(auditId),
+  });
+}
+
+/** Full history of one record (`/audit-logs/history/:entityType/:entityId`). */
+export function useAuditHistory(entityType?: string, entityId?: string) {
+  return useQuery<AuditLog[], Error>({
+    queryKey: auditLogKeys.history(entityType ?? '', entityId ?? ''),
+    queryFn: () => auditLogService.getHistory(entityType!, entityId!),
+    enabled: Boolean(entityType && entityId),
   });
 }

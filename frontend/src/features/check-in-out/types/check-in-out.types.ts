@@ -20,13 +20,8 @@ export interface DepartureRecord {
   canCheckOut: boolean;
 }
 
-export interface RecordPaymentPayload {
-  reservationId: string;
-  employeeId: string;
-  paymentAmount: number;
-  transactionType: 'payment';
-  paymentType: 'deposit' | 'partial' | 'full' | 'balance' | 'additional';
-  paymentMethod: 'cash' | 'credit card' | 'debit card' | 'gcash' | 'maya' | 'bank transfer' | 'online banking';
-  paymentStatus: 'completed';
-  paymentDate: string;
+export interface InHouseRecord {
+  reservation: Reservation;
+  assignment: ReservationAssignment;
+  outstandingBalance: number;
 }

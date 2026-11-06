@@ -1,29 +1,83 @@
+/*
+ * Design tokens (November 2026 refinement). Light values are the default; the
+ * dark set applies when <html data-theme="dark">. Components read these
+ * variables instead of hard-coded hex values, and the antd ConfigProvider in
+ * src/theme receives the same values.
+ */
 :root {
-  --color-ocean: #0c4a6e;
-  --color-ocean-light: #0369a1;
-  --color-ocean-dark: #082f49;
+  color-scheme: light;
 
-  --color-sand: #d4a574;
-  --color-sand-light: #e8c9a0;
-  --color-sand-dark: #b8844a;
+  --color-primary: #0c4a6e;
+  --color-primary-hover: #0e5a85;
+  --color-primary-soft: #eaf3f8;
+  --color-on-primary: #ffffff;
+  --color-sand: #c8956a;
+  --color-text: #1c1917;
+  --color-muted: #6b6660;
+  --color-border: #e8e6e1;
+  --color-border-strong: #d6d3cd;
+  --color-bg: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #fbfbfa;
+  --color-hover: #f3f2ef;
+  --color-overlay: rgba(28, 25, 23, 0.35);
 
-  --color-bamboo: #f5f0e8;
-  --color-bamboo-dark: #e8ddd0;
+  /* Status tints: text / soft background */
+  --status-green: #15803d;
+  --status-green-soft: #ecf8f0;
+  --status-blue: #0369a1;
+  --status-blue-soft: #e8f3fa;
+  --status-amber: #b45309;
+  --status-amber-soft: #fdf4e7;
+  --status-red: #b91c1c;
+  --status-red-soft: #fdeeee;
+  --status-violet: #7e22ce;
+  --status-violet-soft: #f4edfc;
+  --status-gray: #57534e;
+  --status-gray-soft: #f0efec;
 
-  --color-kubo-available: #10b981;
-  --color-kubo-reserved: #3b82f6;
-  --color-kubo-occupied: #f43f5e;
-  --color-kubo-maintenance: #a855f7;
-  --color-kubo-cleaning: #f59e0b;
-  --color-kubo-outofservice: #6b7280;
-  --color-kubo-underinspection: #f97316;
+  --radius-control: 7px;
+  --radius-card: 10px;
+  --control-height: 32px;
+  --row-height: 48px;
+  --shadow-menu: 0 8px 24px rgba(28, 25, 23, 0.12);
 
-  --color-reservation-pending: #eab308;
-  --color-reservation-confirmed: #2563eb;
-  --color-reservation-checkedin: #16a34a;
-  --color-reservation-checkedout: #7c3aed;
-  --color-reservation-cancelled: #ef4444;
-  --color-reservation-noshow: #6b7280;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-primary: #5ab0e0;
+  --color-primary-hover: #7cc2ea;
+  --color-primary-soft: #14334a;
+  --color-on-primary: #0b1a24;
+  --color-sand: #c8956a;
+  --color-text: #f2f1ee;
+  --color-muted: #a8a29e;
+  --color-border: #2f2d2a;
+  --color-border-strong: #3d3a36;
+  --color-bg: #141413;
+  --color-surface: #1e1d1b;
+  --color-surface-2: #22211f;
+  --color-hover: #282725;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  --status-green: #4ade80;
+  --status-green-soft: #14301f;
+  --status-blue: #5ab0e0;
+  --status-blue-soft: #132b3d;
+  --status-amber: #fbbf24;
+  --status-amber-soft: #352710;
+  --status-red: #f87171;
+  --status-red-soft: #3a1616;
+  --status-violet: #c084fc;
+  --status-violet-soft: #2c1a40;
+  --status-gray: #b5b0aa;
+  --status-gray-soft: #2a2927;
+
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 html,
@@ -34,30 +88,91 @@ body {
   padding: 0;
   overflow: hidden;
   overscroll-behavior: none;
-  overscroll-behavior-y: none;
   position: fixed;
   inset: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
-  background-color: #f8fafc;
+  background-color: var(--color-bg);
 }
 
 * {
   box-sizing: border-box;
-  scrollbar-width: none;
+}
+
+/* Thin, theme-aware scrollbars so long tables visibly scroll. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 ::-webkit-scrollbar {
-  display: none;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* antd tables: 48px rows, muted header, clickable rows. */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  height: var(--row-height);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.clickable-row {
+  cursor: pointer;
 }

@@ -10,7 +10,7 @@
 .sectionTitle {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -18,8 +18,8 @@
 }
 
 .guestCard {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 16px;
   margin-top: 16px;
@@ -38,7 +38,7 @@
 .guestName {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #0c4a6e;
+  color: var(--color-primary);
 }
 
 .guestMeta {
@@ -46,7 +46,7 @@
   align-items: center;
   gap: 12px;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--color-muted);
   flex-wrap: wrap;
 }
 
@@ -70,12 +70,12 @@
 }
 
 .kuboCard {
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   padding: 14px;
   cursor: pointer;
   transition: all 180ms ease;
-  background: #ffffff;
+  background: var(--color-surface);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -83,39 +83,39 @@
 }
 
 .kuboCard:hover {
-  border-color: #0284c7;
+  border-color: var(--color-primary);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
 }
 
 .kuboCardSelected {
-  border-color: #0284c7;
-  background: #f0f9ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
   box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
 }
 
 .kuboNumber {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0c4a6e;
+  color: var(--color-primary);
 }
 
 .kuboType {
   font-size: 0.82rem;
-  color: #475569;
+  color: var(--color-muted);
   font-weight: 500;
 }
 
 .kuboRate {
   font-size: 1rem;
   font-weight: 700;
-  color: #0369a1;
+  color: var(--color-primary);
   margin-top: auto;
 }
 
 .summaryBox {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -135,15 +135,15 @@
   justify-content: space-between;
   align-items: baseline;
   padding-top: 14px;
-  border-top: 1.5px dashed #cbd5e1;
+  border-top: 1.5px dashed var(--color-border);
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0c4a6e;
+  color: var(--color-primary);
 }
 
 .totalPrice {
   font-size: 1.5rem;
-  color: #0284c7;
+  color: var(--color-primary);
   font-weight: 800;
 }
 
@@ -153,7 +153,7 @@
   align-items: center;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-hover);
 }
 
 @media (max-width: 640px) {

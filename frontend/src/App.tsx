@@ -11,10 +11,9 @@ import { CheckInOutPage } from '@/features/check-in-out';
 import { AuthProvider, LoginPage, ProtectedRoute, useAuth } from '@/features/auth';
 import { AdminDashboardPage, StaffDashboardPage } from '@/features/dashboard';
 import { AuditLogListPage } from '@/features/audit-logs';
+import { ThemeProvider } from '@/theme';
 
-/**
- * Dynamically redirects root '/' based on the user's authenticated role (BR-005).
- */
+/** Sends `/` and unknown paths to the role's home page. */
 function HomeRedirect() {
   const { role } = useAuth();
   return <Navigate to={role === 'Administrator' ? '/admin' : '/staff'} replace />;
@@ -32,11 +31,12 @@ const queryClient = new QueryClient({
 
 export function App() {
   return (
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
         <Routes>
-          {/* Public Sign-In Portal (BR-003, BR-004) */}
+          {/* Public sign-in */}
           <Route path="/login" element={<LoginPage />} />
 
           {/* Authenticated Workspace with Role-Specific Navigation */}
@@ -72,10 +72,24 @@ export function App() {
 
             {/* Common & Operational Features */}
             <Route path="/kubos" element={<KuboListPage />} />
-            <Route path="/kubo-types" element={<KuboTypeListPage />} />
+            <Route
+              path="/kubo-types"
+              element={
+                <ProtectedRoute allowedRoles={['Administrator']}>
+                  <KuboTypeListPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/reservations" element={<ReservationListPage />} />
             <Route path="/reservations/:reservationId" element={<ReservationDetailPage />} />
-            <Route path="/check-in-out" element={<CheckInOutPage />} />
+            <Route
+              path="/check-in-out"
+              element={
+                <ProtectedRoute allowedRoles={['Staff']}>
+                  <CheckInOutPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/guests" element={<GuestListPage />} />
             <Route path="/guests/:guestId" element={<GuestDetailPage />} />
             <Route path="/payments" element={<PaymentListPage />} />
@@ -103,6 +117,7 @@ export function App() {
       </BrowserRouter>
     </AuthProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

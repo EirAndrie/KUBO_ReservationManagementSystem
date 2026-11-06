@@ -87,26 +87,29 @@ export interface SingleGuestApiResponse {
 }
 
 /**
- * Reservation record linked to a guest for history tracking.
+ * A reservation in a guest's history. Same shape as `GET /reservations` rows:
+ * stay dates live in `assignments[]` and the booking time is `reserved_at`
+ * (there are no top-level `check_in_date` / `created_at` fields).
  */
 export interface GuestReservationHistoryItem {
   reservation_id: string;
+  reference_code: string;
   guest_id: string;
-  employee_id: string;
   status: 'Pending' | 'Confirmed' | 'CheckedIn' | 'CheckedOut' | 'Cancelled' | 'NoShow';
   booking_source: string;
-  check_in_date: string;
-  check_out_date: string;
-  total_nights?: number;
-  created_at: string;
-  updated_at?: string;
-  reserved_kubos?: Array<{
-    reserved_kubo_id: string;
+  reserved_at: string;
+  accommodation_total: string;
+  charges_total: string;
+  net_paid: string;
+  outstanding_balance: string;
+  assignments: Array<{
     kubo_id: string;
     kubo_number?: string;
     type_name?: string;
+    check_in_date: string;
+    check_out_date: string;
     price_at_booking: number | string;
-    status: string;
+    status?: string;
   }>;
 }
 

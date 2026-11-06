@@ -1,6 +1,5 @@
 import { apiClient } from '@/lib/api';
 import { reservationService, type Reservation } from '@/features/reservation';
-import type { RecordPaymentPayload } from '../types/check-in-out.types';
 
 export const checkInOutService = {
   /**
@@ -27,16 +26,13 @@ export const checkInOutService = {
   },
 
   /**
-   * Records a payment transaction under a reservation (BR-064).
-   */
-  recordPayment: async (data: RecordPaymentPayload): Promise<void> => {
-    await apiClient.post(`/reservations/${data.reservationId}/payments`, data);
-  },
-
-  /**
    * Fetches active reservations for operational arrival/departure queue.
    */
   getActiveReservations: async (): Promise<Reservation[]> => {
-    return reservationService.getAll({ limit: 100 });
+    const [confirmed, checkedIn] = await Promise.all([
+      reservationService.getAll({ status: 'Confirmed', limit: 100 }),
+      reservationService.getAll({ status: 'CheckedIn', limit: 100 }),
+    ]);
+    return [...confirmed, ...checkedIn];
   },
 };

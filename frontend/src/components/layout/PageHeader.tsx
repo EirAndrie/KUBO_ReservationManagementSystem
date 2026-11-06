@@ -1,56 +1,31 @@
 import React from 'react';
+import styles from '../common/common.module.css';
 
 export interface PageHeaderProps {
-  title: string;
-  description?: string;
+  title: React.ReactNode;
+  /** One muted line under the title. */
+  description?: React.ReactNode;
+  /** Right-aligned actions: at most one primary button. */
   action?: React.ReactNode;
+  /** Rendered before the title (e.g. an avatar). */
+  leading?: React.ReactNode;
+  /** Rendered next to the title (e.g. a status badge). */
+  titleExtra?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({
-  title,
-  description,
-  action,
-}) => {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16,
-        marginBottom: 24,
-      }}
-    >
-      <div>
-        <h1
-          style={{
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            color: '#0f172a',
-            margin: 0,
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {title}
-        </h1>
-        {description && (
-          <p
-            style={{
-              fontSize: '0.875rem',
-              color: '#64748b',
-              margin: '4px 0 0 0',
-            }}
-          >
-            {description}
-          </p>
-        )}
-      </div>
-      {action && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {action}
+/** The single page header pattern: H1 22px/600, muted subtitle, actions on the right. */
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, action, leading, titleExtra }) => (
+  <div className={styles.pageHeader}>
+    <div className={styles.pageHeaderMain}>
+      {leading}
+      <div style={{ minWidth: 0 }}>
+        <div className={styles.pageTitleRow}>
+          <h1 className={styles.pageTitle}>{title}</h1>
+          {titleExtra}
         </div>
-      )}
+        {description && <p className={styles.pageSubtitle}>{description}</p>}
+      </div>
     </div>
-  );
-};
+    {action && <div className={styles.pageActions}>{action}</div>}
+  </div>
+);

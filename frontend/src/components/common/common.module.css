@@ -1,0 +1,348 @@
+/* Shared building blocks used by every page. Colors come from src/index.css tokens. */
+
+/* ---- Status badge: dot + label on a soft tint ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.green { color: var(--status-green); background: var(--status-green-soft); }
+.blue { color: var(--status-blue); background: var(--status-blue-soft); }
+.amber { color: var(--status-amber); background: var(--status-amber-soft); }
+.red { color: var(--status-red); background: var(--status-red-soft); }
+.violet { color: var(--status-violet); background: var(--status-violet-soft); }
+.gray { color: var(--status-gray); background: var(--status-gray-soft); }
+
+/* ---- Avatar ---- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Page header ---- */
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.pageHeaderMain {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pageTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.pageSubtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- Cards ---- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.cardBody {
+  padding: 16px;
+}
+
+.cardFlush {
+  padding: 0;
+}
+
+/* ---- KPI strip ---- */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.kpi {
+  padding: 14px 16px;
+  border-left: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.kpi:first-child {
+  border-left: none;
+}
+
+.kpiLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.kpiValue {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.kpiHint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* ---- States ---- */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.stateTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stateIcon {
+  font-size: 22px;
+  color: var(--color-muted);
+}
+
+.errorIcon {
+  font-size: 22px;
+  color: var(--status-red);
+}
+
+.skeletonWrap {
+  padding: 16px;
+}
+
+/* ---- Filter chips & toolbars ---- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chip:hover {
+  color: var(--color-text);
+  border-color: var(--color-muted);
+}
+
+.chipActive {
+  border-style: solid;
+  border-color: transparent;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.chipActive:hover {
+  color: var(--color-primary);
+  border-color: transparent;
+}
+
+.chipClear {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+/* ---- Count pill inside tabs ---- */
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--color-hover);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.countActive {
+  background: var(--color-text);
+  color: var(--color-surface);
+}
+
+/* ---- Misc table cells ---- */
+.twoLine {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.twoLineSub {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.personCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.footerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* ---- Info / warning callouts ---- */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.calloutInfo { background: var(--status-blue-soft); color: var(--status-blue); }
+.calloutWarn { background: var(--status-amber-soft); color: var(--status-amber); }
+.calloutDanger { background: var(--status-red-soft); color: var(--status-red); }
+
+/* ---- Definition list ---- */
+.dl {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: 10px;
+  column-gap: 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.dl dt {
+  color: var(--color-muted);
+}
+
+.dl dd {
+  margin: 0;
+  color: var(--color-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

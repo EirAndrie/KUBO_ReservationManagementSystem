@@ -83,10 +83,10 @@ export const KuboFormModal: React.FC<KuboFormModalProps> = ({ open, onClose, kub
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
-      okText={isEditing ? 'Save Changes' : 'Register Cottage'}
+      okText={isEditing ? 'Save changes' : 'Add kubo'}
       okButtonProps={{
         loading: isPending,
-        style: { background: '#0284c7', borderColor: '#0284c7' },
+        style: { background: 'var(--color-primary)', borderColor: 'var(--color-primary)' },
       }}
       cancelButtonProps={{ disabled: isPending }}
       destroyOnClose
@@ -113,7 +113,7 @@ export const KuboFormModal: React.FC<KuboFormModalProps> = ({ open, onClose, kub
           <Form.Item
             name="kuboTypeId"
             label="Cottage Category & Base Rate"
-            rules={[{ required: true, message: 'Category assignment is required (BR-017).' }]}
+            rules={[{ required: true, message: 'Choose a kubo type.' }]}
           >
             <Select
               placeholder="Select cottage category"
@@ -132,7 +132,7 @@ export const KuboFormModal: React.FC<KuboFormModalProps> = ({ open, onClose, kub
           )}
         </Form>
 
-        <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '12px 0 0' }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', margin: '12px 0 0' }}>
           {KUBO_POLICIES.UNIT_SPECIFICATION}
         </p>
       </div>

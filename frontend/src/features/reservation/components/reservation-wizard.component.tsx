@@ -44,6 +44,8 @@ export interface ReservationWizardProps {
   open: boolean;
   onCancel: () => void;
   onSuccess?: () => void;
+  /** Pre-selects this guest (e.g. "New reservation" from a guest profile). Read on mount. */
+  initialGuest?: Guest | null;
 }
 
 /**
@@ -60,11 +62,12 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
   open,
   onCancel,
   onSuccess,
+  initialGuest,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
 
   // Step 1: Guest Selection
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(initialGuest ?? null);
   const [isRegisterGuestOpen, setIsRegisterGuestOpen] = useState(false);
 
   // Step 2: Stay Dates & Source
@@ -187,9 +190,9 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
       footer={null}
       width={860}
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.2rem', fontWeight: 700, color: '#0c4a6e' }}>
-          <HomeOutlined style={{ color: '#0284c7' }} aria-hidden="true" />
-          <span>New Reservation Booking</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+          <HomeOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
+          <span>New reservation</span>
         </div>
       }
       destroyOnClose
@@ -207,10 +210,10 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
         {currentStep === 0 && (
           <div>
             <div className={styles.sectionTitle}>
-              <UserOutlined style={{ color: '#0284c7' }} aria-hidden="true" />
-              <span>Step 1: Select or Register Guest</span>
+              <UserOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
+              <span>Step 1: Choose or register a guest</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: '0.88rem', marginBottom: 16 }}>
+            <p style={{ color: 'var(--color-muted)', fontSize: '0.88rem', marginBottom: 16 }}>
               Search for an existing guest by full name, email, or Philippine phone number. An existing guest profile must be reused to maintain reservation history.
             </p>
 
@@ -258,14 +261,14 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
         {currentStep === 1 && (
           <div>
             <div className={styles.sectionTitle}>
-              <CalendarOutlined style={{ color: '#0284c7' }} aria-hidden="true" />
+              <CalendarOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
               <span>Step 2: Stay Dates & Booking Details</span>
             </div>
 
             <div className={styles.formGridTwoCols}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  Check-in to Check-out Dates <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                  Check-in to Check-out Dates <span style={{ color: 'var(--status-red)' }}>*</span>
                 </label>
                 <RangePicker
                   style={{ width: '100%', height: 40 }}
@@ -277,14 +280,14 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                   disabledDate={(current) => current && current < dayjs().startOf('day')}
                   allowClear={false}
                 />
-                <div style={{ marginTop: 6, fontSize: '0.8rem', color: '#0284c7', fontWeight: 600 }}>
+                <div style={{ marginTop: 6, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
                   Duration: {nightsCount} {nightsCount === 1 ? 'night' : 'nights'}
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  Booking Source <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                  Booking Source <span style={{ color: 'var(--status-red)' }}>*</span>
                 </label>
                 <Select
                   style={{ width: '100%', height: 40 }}
@@ -295,7 +298,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               </div>
 
               <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-                <p style={{ margin: 0, color: '#475569' }}>
+                <p style={{ margin: 0, color: 'var(--color-muted)' }}>
                   Booking recorded under <strong>{user?.fullName ?? 'the signed-in account'}</strong>.
                 </p>
               </div>
@@ -307,14 +310,14 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
         {currentStep === 2 && (
           <div>
             <div className={styles.sectionTitle}>
-              <HomeOutlined style={{ color: '#0284c7' }} aria-hidden="true" />
+              <HomeOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
               <span>Step 3: Available Kubos for {checkInStr} to {checkOutStr}</span>
             </div>
 
             {isLoadingKubos ? (
               <div style={{ textAlign: 'center', padding: '48px 0' }}>
                 <Spin size="large" />
-                <p style={{ marginTop: 12, color: '#64748b' }}>Checking real-time kubo availability...</p>
+                <p style={{ marginTop: 12, color: 'var(--color-muted)' }}>Checking real-time kubo availability...</p>
               </div>
             ) : isAvailabilityError ? (
               <Alert
@@ -328,10 +331,10 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               <Empty
                 description={
                   <div>
-                    <p style={{ fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>
+                    <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
                       No Kubos Available for Selected Dates
                     </p>
-                    <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>
                       All units are reserved, occupied, or out of service for this period. Try adjusting your stay dates.
                     </p>
                   </div>
@@ -339,7 +342,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               />
             ) : (
               <div>
-                <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 12 }}>
+                <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem', marginBottom: 12 }}>
                   Click to select one or multiple kubos to assign to this booking ({selectedKubos.length} selected):
                 </p>
                 <div className={styles.kuboCardGrid}>
@@ -364,13 +367,13 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                           )}
                         </div>
                         <span className={styles.kuboType}>{kubo.type_name}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: '#64748b' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--color-muted)' }}>
                           <TeamOutlined aria-hidden="true" />
                           <span>Up to {kubo.capacity} guests</span>
                         </div>
                         <div className={styles.kuboRate}>
                           {formatCurrency(Number(kubo.price_per_night))}
-                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#64748b' }}> / night</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-muted)' }}> / night</span>
                         </div>
                       </div>
                     );
@@ -385,7 +388,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
         {currentStep === 3 && (
           <div>
             <div className={styles.sectionTitle}>
-              <CheckCircleOutlined style={{ color: '#0284c7' }} aria-hidden="true" />
+              <CheckCircleOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
               <span>Step 4: Reservation Summary & Rate Review</span>
             </div>
 
@@ -400,24 +403,24 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
 
             <div className={styles.summaryBox}>
               <div className={styles.summaryRow}>
-                <span style={{ color: '#64748b' }}>Guest:</span>
-                <span style={{ fontWeight: 600, color: '#0c4a6e' }}>
+                <span style={{ color: 'var(--color-muted)' }}>Guest:</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
                   {selectedGuest?.first_name} {selectedGuest?.last_name} ({selectedGuest?.phone})
                 </span>
               </div>
               <div className={styles.summaryRow}>
-                <span style={{ color: '#64748b' }}>Stay Period:</span>
+                <span style={{ color: 'var(--color-muted)' }}>Stay:</span>
                 <span style={{ fontWeight: 600 }}>
                   {checkInStr} to {checkOutStr} ({nightsCount} {nightsCount === 1 ? 'night' : 'nights'})
                 </span>
               </div>
               <div className={styles.summaryRow}>
-                <span style={{ color: '#64748b' }}>Booking Source:</span>
+                <span style={{ color: 'var(--color-muted)' }}>Booking source:</span>
                 <span>{bookingSource}</span>
               </div>
 
-              <div style={{ marginTop: 8, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+              <div style={{ marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
+                <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-muted)', marginBottom: 8 }}>
                   Assigned Kubos & Nightly Breakdown:
                 </span>
                 {selectedKubos.map((kubo) => {
@@ -435,7 +438,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               </div>
 
               <div className={styles.summaryTotalRow}>
-                <span>Total Accommodation Charges:</span>
+                <span>Accommodation total:</span>
                 <span className={styles.totalPrice}>{formatCurrency(accommodationTotal)}</span>
               </div>
             </div>
@@ -471,9 +474,9 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               type="primary"
               loading={createMutation.isPending}
               onClick={handleFinishBooking}
-              style={{ background: '#0284c7', borderColor: '#0284c7', fontWeight: 600 }}
+              style={{ background: 'var(--color-primary)', borderColor: 'var(--color-primary)', fontWeight: 600 }}
             >
-              Confirm & Create Reservation
+              Create reservation
             </Button>
           )}
         </div>

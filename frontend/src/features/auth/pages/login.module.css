@@ -1,75 +1,142 @@
-.loginContainer {
-  min-height: 100vh;
-  width: 100%;
+.page {
+  --login-field-bg: #ffffff;
+  --login-field-border: #b9b4ac;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  height: 100vh;
+  padding: 16px;
+  background: var(--color-surface);
+  overflow: auto;
+}
+
+.formSide {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+  min-height: 0;
+}
+
+.topRow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: #0c4a6e;
-  padding: 24px;
-  box-sizing: border-box;
+  justify-content: space-between;
 }
 
-.loginCard {
-  width: 100%;
-  max-width: 440px;
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
-  padding: 40px 34px;
-  position: relative;
-  z-index: 10;
-}
-
-.brandHeader {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.brandLogoWrapper {
-  display: inline-flex;
+.brand {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.formWrap {
+  flex: 1;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  margin-bottom: 12px;
 }
 
-.brandLogoImage {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2.5px solid #7c4a27;
-  background-color: #faf6f0;
+/* 40px controls on the sign-in form only. */
+.formWrap :global(.ant-input-lg),
+.formWrap :global(.ant-input-affix-wrapper-lg),
+.formWrap :global(.ant-btn-lg) {
+  height: 40px;
+  font-size: 13px;
 }
 
-.brandTitle {
-  margin: 0 !important;
-  font-size: 1.65rem !important;
-  font-weight: 800 !important;
-  color: #4d290f !important;
-  letter-spacing: -0.02em;
+.formWrap :global(.ant-input-affix-wrapper-lg) :global(.ant-input) {
+  height: auto;
 }
 
-.brandSubtitle {
-  font-size: 0.78rem;
-  color: #7c6352;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-  margin-top: 4px;
+/* Fields need to stand out from the page in both themes. */
+.formWrap :global(.ant-input-outlined:not(.ant-input-status-error)),
+.formWrap :global(.ant-input-affix-wrapper.ant-input-outlined:not(.ant-input-affix-wrapper-status-error)) {
+  background: var(--login-field-bg);
+  border-color: var(--login-field-border);
 }
 
-.flowchartNote {
-  font-size: 0.78rem;
-  color: #0369a1;
-  background: rgba(240, 249, 255, 0.85);
-  border: 1px solid #bae6fd;
-  border-radius: 10px;
-  padding: 11px 14px;
-  margin-bottom: 20px;
-  line-height: 1.45;
+.formWrap :global(.ant-input-affix-wrapper) :global(.ant-input) {
+  background: transparent;
 }
 
-.errorMessage {
-  margin-bottom: 16px;
-  border-radius: 8px;
+.formWrap :global(.ant-input-outlined:not(.ant-input-status-error):hover),
+.formWrap :global(.ant-input-affix-wrapper.ant-input-outlined:not(.ant-input-affix-wrapper-status-error):hover) {
+  border-color: var(--color-muted);
+}
+
+.formWrap :global(.ant-input-outlined:focus),
+.formWrap :global(.ant-input-affix-wrapper.ant-input-outlined:focus-within) {
+  border-color: var(--color-primary);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.helper {
+  margin: 6px 0 24px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.footer {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.brandPanel {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 48px;
+}
+
+.waves {
+  position: absolute;
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 60%;
+}
+
+.tagline {
+  position: relative;
+  max-width: 420px;
+  margin: 0;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .brandPanel {
+    display: none;
+  }
+}
+
+:global(:root[data-theme='dark']) .page {
+  --login-field-bg: #141413;
+  --login-field-border: #57534e;
 }

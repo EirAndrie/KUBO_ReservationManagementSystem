@@ -14,7 +14,7 @@ export function useCreateGuest() {
     mutationFn: (data: CreateGuestDTO) => guestService.create(data),
     successMessage: (result) =>
       result.reused
-        ? `Existing profile for "${result.guest.first_name} ${result.guest.last_name}" found and reused (BR-013).`
+        ? `Existing profile for "${result.guest.first_name} ${result.guest.last_name}" found and reused.`
         : `Guest "${result.guest.first_name} ${result.guest.last_name}" registered successfully.`,
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: guestKeys.lists() });

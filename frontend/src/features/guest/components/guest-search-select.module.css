@@ -13,7 +13,7 @@
 
 .optionName {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
@@ -22,30 +22,30 @@
   align-items: center;
   gap: 8px;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--color-muted);
 }
 
 .optionIdBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #f3f4f6;
+  background: var(--color-hover);
   border-radius: 4px;
   padding: 0 6px;
   height: 18px;
   font-size: 0.73rem;
-  color: #4b5563;
+  color: var(--color-muted);
 }
 
 .emptyOption {
   padding: 12px 0;
-  color: #6b7280;
+  color: var(--color-muted);
   font-size: 0.875rem;
   text-align: center;
 }
 
 .registerLink {
-  color: #0369a1;
+  color: var(--color-primary);
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;

@@ -1,432 +1,281 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import {
-  Table,
-  Button,
-  Input,
-  Select,
-  Alert,
-  Tag,
-  Popconfirm,
-  Empty,
-  Typography,
-} from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { App, Button, Input, Table } from 'antd';
+import type { InputRef } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, EditOutlined, EyeOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { useAuth } from '@/features/auth';
+import { stayOf, useReservations } from '@/features/reservation';
 import {
-  SearchOutlined,
-  UserAddOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  EyeOutlined,
-  IdcardOutlined,
-  ReloadOutlined,
-  FilterOutlined,
-  QuestionCircleOutlined,
-  InboxOutlined,
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+  Avatar,
+  EmptyState,
+  ErrorState,
+  FilterChip,
+  ListSkeleton,
+  PageHeader,
+  RowMenu,
+  Section,
+  TwoLine,
+} from '@/components/common';
+import type { RowMenuItem } from '@/components/common';
+import { useDebouncedValue } from '@/hooks/use-debounced-value.hook';
+import { formatDate, label } from '@/lib/format';
 import { useGuests } from '../hooks/use-guests.hook';
-import { useCreateGuest, useUpdateGuest, useDeleteGuest } from '../hooks/use-guest-mutations.hook';
+import { useCreateGuest, useDeleteGuest, useUpdateGuest } from '../hooks/use-guest-mutations.hook';
 import { GuestForm } from '../components/guest-form.component';
-import { ID_TYPE_LABEL_MAP, ID_TYPE_OPTIONS } from '../constants/guest.constants';
-import type { Guest, CreateGuestDTO, UpdateGuestDTO, ValidIdType } from '../types/guest.types';
+import { VALID_ID_TYPES } from '../types/guest.types';
+import type { CreateGuestDTO, Guest, UpdateGuestDTO, ValidIdType } from '../types/guest.types';
 import styles from './guest-list.module.css';
 
-const { Text } = Typography;
+const PAGE_SIZE = 25;
+
+interface StayStats {
+  stays: number;
+  lastStay: string | null;
+  upcoming: boolean;
+}
 
 /**
- * Primary Guest Directory management page.
- *
- * Implements:
- * - BR-009/BR-012: Required guest contact fields shown in table columns.
- * - BR-013: "Register New Guest" primary action with inline search-first UX.
- * - BR-015: Destructive delete requires Popconfirm confirmation.
- * - WCAG 2.2 AA: Keyboard-navigable table, visible focus rings, non-color-only status indicators.
- * - Zero Emoji Policy: All iconography from @ant-design/icons.
+ * Guests: a large server-side search (debounced ~300ms, `/` focuses it),
+ * add-on filter chips, and one "Register guest" action. ID numbers are not
+ * shown in the list. Delete sits in `⋯`, only for Administrators and only
+ * for guests with no reservations.
  */
 export const GuestListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { modal } = App.useApp();
+  const { isAdmin, isStaff } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const searchRef = useRef<InputRef>(null);
 
-  // Filter/search state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [idTypeFilter, setIdTypeFilter] = useState<ValidIdType | 'all'>('all');
-  const [searchDebounceTimer, setSearchDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const searchInput = params.get('search') ?? '';
+  const search = useDebouncedValue(searchInput.trim(), 300);
+  const idType = (params.get('idType') as ValidIdType) || undefined;
+  const city = params.get('city') || undefined;
+  const upcomingOnly = params.get('upcoming') === '1';
+  const page = Math.max(1, Number(params.get('page')) || 1);
 
-  // Modal state
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const set = (patch: Record<string, string | undefined>, resetPage = true) => {
+    const next = new URLSearchParams(params);
+    Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    if (resetPage) next.delete('page');
+    setParams(next, { replace: true });
+  };
 
-  const queryParams = useMemo(() => ({
-    search: debouncedSearch || undefined,
-    validIdType: idTypeFilter !== 'all' ? idTypeFilter : undefined,
-    limit: 100,
-  }), [debouncedSearch, idTypeFilter]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.key !== '/' || el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
-  const { data: rawGuests, isLoading, isError, error, refetch } = useGuests(queryParams);
-  const createMutation = useCreateGuest();
-  const updateMutation = useUpdateGuest();
-  const deleteMutation = useDeleteGuest();
+  const guests = useGuests({ search: search || undefined, validIdType: idType, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE });
+  // Stays and last stay come from the latest reservations (one request, no new endpoint).
+  const reservations = useReservations({ limit: 100 });
+  const createGuest = useCreateGuest();
+  const updateGuest = useUpdateGuest();
+  const deleteGuest = useDeleteGuest();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Guest | null>(null);
 
-  const guests = useMemo(() => rawGuests ?? [], [rawGuests]);
+  const stats = useMemo(() => {
+    const map = new Map<string, StayStats>();
+    const today = dayjs().startOf('day');
+    (reservations.data ?? []).forEach((r) => {
+      const s = map.get(r.guest_id) ?? { stays: 0, lastStay: null, upcoming: false };
+      if (!['Cancelled', 'NoShow'].includes(r.status)) {
+        s.stays += 1;
+        const start = stayOf(r.assignments).checkIn;
+        if (start && (!s.lastStay || start > s.lastStay)) s.lastStay = start;
+        if (start && dayjs(start).isAfter(today) && ['Pending', 'Confirmed'].includes(r.status)) s.upcoming = true;
+      }
+      map.set(r.guest_id, s);
+    });
+    return map;
+  }, [reservations.data]);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer);
+  const hasReservations = (g: Guest) => (reservations.data ?? []).some((r) => r.guest_id === g.guest_id);
+
+  const rows = useMemo(() => {
+    let data = (guests.data ?? []).slice(0, PAGE_SIZE);
+    if (city) data = data.filter((g) => (g.city ?? '').toLowerCase() === city.toLowerCase());
+    if (upcomingOnly) data = data.filter((g) => stats.get(g.guest_id)?.upcoming);
+    return data;
+  }, [guests.data, city, upcomingOnly, stats]);
+
+  const cityOptions = useMemo(() => {
+    const set = new Set<string>();
+    (guests.data ?? []).forEach((g) => g.city && set.add(g.city));
+    if (city) set.add(city);
+    return [...set].sort().map((c) => ({ value: c, label: c }));
+  }, [guests.data, city]);
+
+  const hasNext = (guests.data?.length ?? 0) > PAGE_SIZE;
+  const fullName = (g: Guest) => `${g.first_name} ${g.last_name}`.trim();
+
+  const menuFor = (g: Guest): RowMenuItem[] => {
+    const items: RowMenuItem[] = [
+      { key: 'view', label: 'View profile', icon: <EyeOutlined />, onClick: () => navigate(`/guests/${g.guest_id}`) },
+    ];
+    if (isStaff) {
+      items.push({ key: 'edit', label: 'Edit details', icon: <EditOutlined />, onClick: () => { setEditing(g); setFormOpen(true); } });
     }
-    const timer = setTimeout(() => {
-      setDebouncedSearch(value.trim());
-    }, 350);
-    setSearchDebounceTimer(timer);
-  }, [searchDebounceTimer]);
-
-  const handleOpenCreate = () => {
-    setEditingGuest(null);
-    setIsFormOpen(true);
-  };
-
-  const handleOpenEdit = (guest: Guest) => {
-    setEditingGuest(guest);
-    setIsFormOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsFormOpen(false);
-    setEditingGuest(null);
-  };
-
-  const handleSubmitForm = async (values: CreateGuestDTO | UpdateGuestDTO) => {
-    if (editingGuest) {
-      await updateMutation.mutateAsync({ id: editingGuest.guest_id, data: values as UpdateGuestDTO });
-    } else {
-      await createMutation.mutateAsync(values as CreateGuestDTO);
+    if (isAdmin && !hasReservations(g)) {
+      items.push({ key: 'd', divider: true });
+      items.push({
+        key: 'delete',
+        label: 'Delete guest',
+        icon: <DeleteOutlined />,
+        danger: true,
+        onClick: () =>
+          modal.confirm({
+            title: `Delete ${fullName(g)}?`,
+            content: 'This guest has no reservations. Their profile is removed permanently. This can’t be undone.',
+            okText: 'Delete guest',
+            okButtonProps: { danger: true },
+            onOk: () => deleteGuest.mutateAsync(g.guest_id),
+          }),
+      });
     }
-    handleCloseModal();
+    return items;
   };
-
-  const handleDelete = async (guestId: string) => {
-    try {
-      setDeletingId(guestId);
-      await deleteMutation.mutateAsync(guestId);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const columns: ColumnsType<Guest> = [
     {
       title: 'Guest',
-      key: 'guest',
-      width: 240,
-      render: (_, record) => (
-        <div className={styles.guestNameCell}>
-          <span className={styles.guestNamePrimary}>
-            {record.first_name} {record.last_name}
-          </span>
-          <span className={styles.guestEmail}>{record.email}</span>
-        </div>
-      ),
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 160,
-      render: (phone: string) => (
-        <span className={styles.phoneText}>{phone}</span>
-      ),
-    },
-    {
-      title: 'Valid ID Type',
-      dataIndex: 'valid_id_type',
-      key: 'valid_id_type',
-      width: 180,
-      render: (idType: ValidIdType) => (
-        <span className={styles.idBadge}>
-          <IdcardOutlined style={{ fontSize: '0.75rem' }} aria-hidden="true" />
-          {ID_TYPE_LABEL_MAP[idType]}
+      render: (_, g) => (
+        <span className={styles.person}>
+          <Avatar name={fullName(g)} />
+          <TwoLine primary={fullName(g)} secondary={g.email} />
         </span>
       ),
     },
+    { title: 'Phone', dataIndex: 'phone', width: 160, render: (v: string) => <span className="tabular">{v}</span> },
+    { title: 'City', dataIndex: 'city', width: 150, render: (v?: string | null) => v || <span className="muted">—</span> },
     {
-      title: 'ID Number',
-      dataIndex: 'id_number',
-      key: 'id_number',
-      width: 160,
-      render: (idNum: string) => (
-        <Text copyable={{ text: idNum }} style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>
-          {idNum}
-        </Text>
-      ),
+      title: 'Stays',
+      width: 80,
+      align: 'right',
+      render: (_, g) => <span className="tabular">{stats.get(g.guest_id)?.stays ?? 0}</span>,
     },
     {
-      title: 'City',
-      key: 'city',
+      title: 'Last stay',
       width: 130,
-      render: (_, record) => (
-        <span style={{ color: record.city ? '#374151' : '#9ca3af', fontSize: '0.85rem' }}>
-          {record.city || <em>Not specified</em>}
-        </span>
-      ),
+      render: (_, g) => <span className="tabular">{formatDate(stats.get(g.guest_id)?.lastStay)}</span>,
     },
-    {
-      title: 'Registered',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 120,
-      render: (date: string) =>
-        date ? (
-          <Tag style={{ fontSize: '0.78rem', margin: 0 }}>
-            {new Date(date).toLocaleDateString('en-PH', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </Tag>
-        ) : (
-          <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Unknown</span>
-        ),
-    },
-    {
-      title: '',
-      key: 'actions',
-      width: 140,
-      fixed: 'right' as const,
-      align: 'right' as const,
-      render: (_, record) => (
-        <div className={styles.actionsCell}>
-          <Button
-            size="small"
-            icon={<EyeOutlined aria-hidden="true" />}
-            onClick={() => navigate(`/guests/${record.guest_id}`)}
-            aria-label={`View details for ${record.first_name} ${record.last_name}`}
-          >
-            View
-          </Button>
-          <Button
-            size="small"
-            icon={<EditOutlined aria-hidden="true" />}
-            onClick={() => handleOpenEdit(record)}
-            aria-label={`Edit ${record.first_name} ${record.last_name}`}
-          />
-          <Popconfirm
-            title="Remove guest record"
-            description={
-              <div style={{ maxWidth: 240 }}>
-                <div>
-                  Remove <strong>{record.first_name} {record.last_name}</strong>?
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 4 }}>
-                  Guests with existing reservations cannot be deleted (BR-015).
-                </div>
-              </div>
-            }
-            onConfirm={() => handleDelete(record.guest_id)}
-            okText="Remove"
-            cancelText="Keep"
-            okButtonProps={{ danger: true, loading: deletingId === record.guest_id }}
-            icon={<QuestionCircleOutlined style={{ color: '#ff4d4f' }} aria-hidden="true" />}
-          >
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined aria-hidden="true" />}
-              loading={deletingId === record.guest_id}
-              aria-label={`Delete ${record.first_name} ${record.last_name}`}
-            />
-          </Popconfirm>
-        </div>
-      ),
-    },
+    { key: 'menu', width: 48, align: 'center', render: (_, g) => <RowMenu items={menuFor(g)} label={`Actions for ${fullName(g)}`} /> },
   ];
 
-  const idTypeFilterOptions = [
-    { label: 'All ID Types', value: 'all' },
-    ...ID_TYPE_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
-  ];
+  const submitForm = async (values: CreateGuestDTO | UpdateGuestDTO) => {
+    if (editing) {
+      await updateGuest.mutateAsync({ id: editing.guest_id, data: values as UpdateGuestDTO });
+    } else {
+      await createGuest.mutateAsync(values as CreateGuestDTO);
+    }
+    setFormOpen(false);
+    setEditing(null);
+  };
+
+  const start = rows.length ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const end = (page - 1) * PAGE_SIZE + rows.length;
 
   return (
-    <main className={styles.pageContainer} aria-label="Guest Directory">
-      {/* Error Banner */}
-      {isError && (
-        <Alert
-          className={styles.errorBanner}
-          type="error"
-          showIcon
-          message="Failed to load guest records"
-          description={
-            error instanceof Error
-              ? error.message
-              : 'An unexpected error occurred while communicating with the server.'
-          }
-          action={
-            <Button
-              size="small"
-              danger
-              icon={<ReloadOutlined aria-hidden="true" />}
-              onClick={() => refetch()}
-            >
-              Retry
+    <div>
+      <PageHeader
+        title="Guests"
+        description={guests.isSuccess ? `${rows.length}${hasNext ? '+' : ''} guest profile${rows.length === 1 ? '' : 's'}` : undefined}
+        action={
+          isStaff && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setFormOpen(true); }}>
+              Register guest
             </Button>
-          }
-        />
-      )}
+          )
+        }
+      />
 
-      {/* Hero Header */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)',
-          borderRadius: 16,
-          padding: '28px 32px',
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#bae6fd', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-            <span>Resort Guest Management</span>
-          </div>
-          <h1 style={{ margin: 0, color: '#ffffff', fontSize: '2.1rem', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-            Guest Directory
-          </h1>
-          <p style={{ margin: '8px 0 0', color: '#e0f2fe', fontSize: '0.95rem', maxWidth: 520 }}>
-            Search, register, and manage resort guest profiles with government-issued ID verification and reservation history.
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined aria-hidden="true" />}
+      <div className={styles.toolbar}>
+        <Input
+          ref={searchRef}
           size="large"
-          onClick={handleOpenCreate}
-          style={{
-            height: 46,
-            padding: '0 24px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            background: '#3b82f6',
-            borderColor: '#3b82f6',
-          }}
-          aria-label="Register new guest"
-        >
-          Register Guest
-        </Button>
+          allowClear
+          className={styles.search}
+          prefix={<SearchOutlined className="muted" />}
+          suffix={<kbd className={styles.kbd}>/</kbd>}
+          placeholder="Search name, email or phone"
+          value={searchInput}
+          onChange={(e) => set({ search: e.target.value || undefined })}
+          aria-label="Search guests"
+        />
+        <FilterChip<ValidIdType>
+          name="ID type"
+          value={idType}
+          options={VALID_ID_TYPES.map((t) => ({ value: t, label: label(t) }))}
+          onChange={(v) => set({ idType: v })}
+        />
+        <FilterChip<string> name="City" value={city} options={cityOptions} onChange={(v) => set({ city: v })} />
+        <FilterChip<'1'>
+          name="Has upcoming stay"
+          value={upcomingOnly ? '1' : undefined}
+          options={[{ value: '1', label: 'Yes' }]}
+          onChange={(v) => set({ upcoming: v })}
+        />
       </div>
 
-      {/* Toolbar: Search + Filter */}
-      <section className={styles.toolbarContainer} aria-label="Search and filter controls">
-        <div className={styles.searchGroup}>
-          <Input
-            className={styles.searchInput}
-            placeholder="Search by name, email, or phone..."
-            prefix={<SearchOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            allowClear
-            aria-label="Search guests"
-          />
-          <Select
-            className={styles.filterSelect}
-            value={idTypeFilter}
-            onChange={(val) => setIdTypeFilter(val)}
-            suffixIcon={<FilterOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
-            options={idTypeFilterOptions}
-            aria-label="Filter by ID type"
-          />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className={styles.resultsBadge} aria-live="polite">
-            {guests.length} {guests.length === 1 ? 'guest' : 'guests'} found
-          </span>
-          <Button
-            icon={<UserAddOutlined aria-hidden="true" />}
-            type="primary"
-            onClick={handleOpenCreate}
-          >
-            Register Guest
-          </Button>
-        </div>
-      </section>
-
-      {/* Guest Table / Empty State */}
-      {!isLoading && guests.length === 0 ? (
-        <div className={styles.emptyStateCard} role="status">
-          <Empty
-            image={<InboxOutlined style={{ fontSize: 56, color: '#9ca3af' }} aria-hidden="true" />}
-            description={
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: '0 0 6px 0' }}>
-                  {debouncedSearch || idTypeFilter !== 'all'
-                    ? 'No Guests Match Your Search'
-                    : 'No Guest Profiles Registered'}
-                </p>
-                <p style={{ color: '#6b7280', margin: 0, maxWidth: 400 }}>
-                  {debouncedSearch || idTypeFilter !== 'all'
-                    ? 'Try adjusting your search term or clearing the ID type filter.'
-                    : 'Register your first guest profile to start tracking reservations and contact information.'}
-                </p>
-              </div>
+      <Section flush>
+        {guests.isLoading ? (
+          <ListSkeleton rows={8} />
+        ) : guests.isError ? (
+          <ErrorState error={guests.error} onRetry={() => guests.refetch()} />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            title={search || idType || city || upcomingOnly ? 'No guests match' : 'No guests yet'}
+            description={search ? `Nothing found for “${search}”.` : 'Registered guests appear here.'}
+            action={
+              isStaff && (
+                <Button size="small" onClick={() => { setEditing(null); setFormOpen(true); }}>
+                  Register a guest
+                </Button>
+              )
             }
-          >
-            {debouncedSearch || idTypeFilter !== 'all' ? (
-              <Button
-                type="default"
-                onClick={() => {
-                  setSearchTerm('');
-                  setDebouncedSearch('');
-                  setIdTypeFilter('all');
-                }}
-              >
-                Reset Filters
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                icon={<UserAddOutlined aria-hidden="true" />}
-                size="large"
-                style={{ marginTop: 12 }}
-                onClick={handleOpenCreate}
-              >
-                Register First Guest
-              </Button>
-            )}
-          </Empty>
-        </div>
-      ) : (
-        <div className={styles.tableCard}>
-          <Table<Guest>
-            dataSource={guests}
-            columns={columns}
-            rowKey="guest_id"
-            loading={isLoading}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} guests`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-            scroll={{ x: 900 }}
-            size="middle"
-            aria-label="Guest directory table"
           />
-        </div>
-      )}
+        ) : (
+          <>
+            <Table<Guest>
+              rowKey="guest_id"
+              columns={columns}
+              dataSource={rows}
+              pagination={false}
+              size="middle"
+              loading={guests.isFetching && !guests.isLoading}
+              rowClassName={() => 'clickable-row'}
+              onRow={(g) => ({ onClick: () => navigate(`/guests/${g.guest_id}`) })}
+            />
+            <div className={styles.footer}>
+              <span>
+                Showing {start}–{end}
+                {hasNext ? '' : ` of ${end}`}
+              </span>
+              <span className={styles.pager}>
+                <Button size="small" icon={<LeftOutlined />} aria-label="Previous page" disabled={page <= 1} onClick={() => set({ page: String(page - 1) }, false)} />
+                <Button size="small" icon={<RightOutlined />} aria-label="Next page" disabled={!hasNext} onClick={() => set({ page: String(page + 1) }, false)} />
+              </span>
+            </div>
+          </>
+        )}
+      </Section>
 
-      {/* Create / Edit Form Modal */}
       <GuestForm
-        open={isFormOpen}
-        initialData={editingGuest}
-        isLoading={isMutating}
-        onCancel={handleCloseModal}
-        onSubmit={handleSubmitForm}
+        open={formOpen}
+        initialData={editing}
+        isLoading={createGuest.isPending || updateGuest.isPending}
+        onCancel={() => { setFormOpen(false); setEditing(null); }}
+        onSubmit={submitForm}
       />
-    </main>
+    </div>
   );
 };

@@ -7,34 +7,34 @@
   max-width: 700px;
   margin: 0 auto;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .invoiceHeader {
   text-align: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #0c4a6e;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .resortName {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #0c4a6e;
+  color: var(--color-primary);
   margin: 0 0 4px;
   letter-spacing: -0.01em;
 }
 
 .invoiceSubtitle {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--color-muted);
   margin: 0;
 }
 
 .invoiceTitle {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-text);
   margin: 16px 0 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -46,7 +46,7 @@
   gap: 8px 24px;
   margin-bottom: 24px;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--color-surface-2);
   border-radius: 8px;
 }
 
@@ -58,7 +58,7 @@
 
 .metaLabel {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--color-muted);
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -67,18 +67,18 @@
 .metaValue {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .sectionTitle {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0c4a6e;
+  color: var(--color-primary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 20px 0 8px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .lineTable {
@@ -89,13 +89,13 @@
 
 .lineTable th {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--color-muted);
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.03em;
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .lineTable th:last-child {
@@ -105,8 +105,8 @@
 .lineTable td {
   font-size: 0.82rem;
   padding: 6px 8px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border-bottom: 1px solid var(--color-hover);
+  color: var(--color-text);
 }
 
 .lineTable td:last-child {
@@ -118,8 +118,8 @@
 .summaryBox {
   margin-top: 20px;
   padding: 16px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-soft);
   border-radius: 8px;
 }
 
@@ -128,7 +128,7 @@
   justify-content: space-between;
   padding: 4px 0;
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--color-text);
 }
 
 .summaryRow span:last-child {
@@ -140,10 +140,10 @@
   composes: summaryRow;
   font-size: 1rem;
   font-weight: 800;
-  color: #0c4a6e;
+  color: var(--color-primary);
   padding-top: 8px;
   margin-top: 8px;
-  border-top: 2px solid #0c4a6e;
+  border-top: 2px solid var(--color-primary);
 }
 
 .totalRow span:last-child {
@@ -155,29 +155,29 @@
 }
 
 .balanceSettled {
-  color: #16a34a;
+  color: var(--status-green);
 }
 
 .balanceOwed {
-  color: #dc2626;
+  color: var(--status-red);
 }
 
 .invoiceFooter {
   margin-top: 24px;
   text-align: center;
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--color-muted);
   padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
 }
 
 .refundTag {
-  color: #dc2626;
+  color: var(--status-red);
   font-weight: 600;
 }
 
 .paymentTag {
-  color: #16a34a;
+  color: var(--status-green);
   font-weight: 600;
 }
 
@@ -190,15 +190,15 @@
 
   .summaryBox {
     background: none;
-    border: 2px solid #000;
+    border: 2px solid var(--color-text);
   }
 
   .metaGrid {
     background: none;
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
   }
 
   .invoiceFooter {
-    color: #333;
+    color: var(--color-text);
   }
 }

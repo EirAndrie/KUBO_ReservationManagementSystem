@@ -1,79 +1,84 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { checkInOutService } from '../services/check-in-out.service';
-import type { ArrivalRecord, DepartureRecord } from '../types/check-in-out.types';
+import type { ArrivalRecord, DepartureRecord, InHouseRecord } from '../types/check-in-out.types';
 
 export const checkInOutKeys = {
   all: ['check-in-out'] as const,
   operationalQueue: () => [...checkInOutKeys.all, 'queue'] as const,
+  queueForDate: (date: string) => [...checkInOutKeys.operationalQueue(), date] as const,
 };
 
 /**
- * Hook to retrieve operational reservations and structure them into
- * Arrivals and Departures queues based on the chosen target date.
+ * Front-desk queues for one operational date, derived from Confirmed and
+ * CheckedIn reservations:
+ * - Arrivals: assignments still `Reserved` whose check-in date is on or before
+ *   the target date. Checking in before the assignment's check-in date (i.e.
+ *   when it is later than today) is an early check-in and needs approval.
+ * - Departures: `CheckedIn` assignments due out on or before the target date.
+ * - In-house: every `CheckedIn` assignment.
+ *
+ * The date is part of the query key, so changing it refetches.
  */
-export function useCheckInOutQueue(targetDate: string = dayjs().format('YYYY-MM-DD')) {
+export function useCheckInOutQueue(
+  targetDate: string = dayjs().format('YYYY-MM-DD'),
+  options: { enabled?: boolean } = {},
+) {
   const query = useQuery({
-    queryKey: checkInOutKeys.operationalQueue(),
+    queryKey: checkInOutKeys.queueForDate(targetDate),
     queryFn: () => checkInOutService.getActiveReservations(),
-    staleTime: 1000 * 30, // 30 seconds for live operational queue
-    refetchInterval: 1000 * 60, // auto-refresh every minute
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 60,
+    enabled: options.enabled ?? true,
   });
 
   const reservations = query.data ?? [];
   const target = dayjs(targetDate).startOf('day');
+  const today = dayjs().startOf('day');
 
-  // Derive Arrivals:
-  // Eligible reservations: 'Confirmed' (or 'CheckedIn' if partial kubos remaining)
-  // Assignments: status is 'Reserved'
   const arrivals: ArrivalRecord[] = [];
-  reservations.forEach((res) => {
-    if (['Confirmed', 'CheckedIn'].includes(res.status)) {
-      (res.assignments || []).forEach((assignment) => {
-        if (assignment.status === 'Reserved') {
-          const checkInDate = dayjs(assignment.check_in_date).startOf('day');
-          const isEarly = target.isBefore(checkInDate);
-          const canCheckIn = !isEarly || Boolean(assignment.early_check_in_approved);
-
-          arrivals.push({
-            reservation: res,
-            assignment,
-            isEarly,
-            canCheckIn,
-          });
-        }
-      });
-    }
-  });
-
-  // Derive Departures:
-  // Eligible reservations: 'CheckedIn'
-  // Assignments: status is 'CheckedIn'
   const departures: DepartureRecord[] = [];
-  reservations.forEach((res) => {
-    if (res.status === 'CheckedIn') {
-      const balance = Number(res.outstanding_balance) || 0;
-      const isSettled = balance <= 0;
+  const inHouse: InHouseRecord[] = [];
 
-      (res.assignments || []).forEach((assignment) => {
-        const checkOutDate = dayjs(assignment.check_out_date).startOf('day');
-        const isDueToCheckOut = checkOutDate.isSame(target) || checkOutDate.isBefore(target);
-        if (assignment.status === 'CheckedIn' && isDueToCheckOut) {
+  reservations.forEach((res) => {
+    const balance = Number(res.outstanding_balance) || 0;
+    (res.assignments || []).forEach((assignment) => {
+      const checkIn = dayjs(assignment.check_in_date).startOf('day');
+      const checkOut = dayjs(assignment.check_out_date).startOf('day');
+
+      if (
+        ['Confirmed', 'CheckedIn'].includes(res.status) &&
+        assignment.status === 'Reserved' &&
+        !checkIn.isAfter(target)
+      ) {
+        const isEarly = checkIn.isAfter(today);
+        arrivals.push({
+          reservation: res,
+          assignment,
+          isEarly,
+          canCheckIn: res.status !== 'Pending' && (!isEarly || Boolean(assignment.early_check_in_approved)),
+        });
+      }
+
+      if (res.status === 'CheckedIn' && assignment.status === 'CheckedIn') {
+        inHouse.push({ reservation: res, assignment, outstandingBalance: balance });
+        if (!checkOut.isAfter(target)) {
           departures.push({
             reservation: res,
             assignment,
             outstandingBalance: balance,
-            isSettled,
-            canCheckOut: isSettled,
+            isSettled: balance <= 0,
+            canCheckOut: balance <= 0,
           });
         }
-      });
-    }
+      }
+    });
   });
 
   return {
     ...query,
     arrivals,
     departures,
+    inHouse,
   };
 }

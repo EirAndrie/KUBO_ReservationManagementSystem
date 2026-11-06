@@ -1,5 +1,4 @@
 export { KuboListPage } from './pages/kubo-list.page';
-export { KuboCard } from './components/kubo-card.component';
 export { KuboFormModal } from './components/kubo-form-modal.component';
 export { KuboStatusModal } from './components/kubo-status-modal.component';
 export { useKubos, useKubo, kuboKeys } from './hooks/use-kubos.hook';

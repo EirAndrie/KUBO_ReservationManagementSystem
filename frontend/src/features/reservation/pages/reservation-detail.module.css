@@ -1,176 +1,108 @@
-.pageContainer {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #0369a1;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  margin-bottom: 20px;
-  border: none;
-  background: none;
-  padding: 6px 0;
-  min-height: 32px;
-  transition: color 120ms ease;
-}
-
-.backLink:hover {
-  color: #0c4a6e;
-}
-
-.headerCard {
-  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%);
-  border-radius: 16px;
-  padding: 28px 32px;
-  color: #ffffff;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.headerMain {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.refCode {
-  font-size: 2.1rem !important;
-  font-weight: 800 !important;
-  color: #ffffff !important;
-  letter-spacing: 0.02em;
-  margin: 0 !important;
-  font-family: monospace;
-}
-
-.headerMeta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  color: #e0f2fe;
-  font-size: 0.9rem;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.contentGrid {
+.grid {
   display: grid;
-  grid-template-columns: 1.6fr 1.1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
   align-items: start;
 }
 
-.cardSection {
+.mainCol {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  min-width: 0;
 }
 
-.infoCard {
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 0;
 }
 
-.sectionHeader {
+.sticky {
+  position: relative;
+}
+
+.balance {
+  margin: 4px 0 14px;
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.breakdown dt {
+  color: var(--color-muted);
+}
+
+.breakdown dd {
+  margin: 0;
+  text-align: right;
+}
+
+.credit {
+  color: var(--status-green);
+}
+
+.notCounted {
+  color: var(--color-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-border-strong);
+}
+
+.contactList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.contactList li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #0c4a6e;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f1f5f9;
 }
 
-.guestGrid {
+.profileLink {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.requestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.requestRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.infoRow {
-  display: flex;
-  flex-direction: column;
-}
-
-.infoLabel {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 2px;
-}
-
-.infoValue {
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.financialBox {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.financialRow {
-  display: flex;
-  justify-content: space-between;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
-  font-size: 0.9rem;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
 }
 
-.balanceRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding-top: 12px;
-  border-top: 2px dashed #cbd5e1;
-  font-weight: 700;
+.requestRow:first-child {
+  border-top: none;
 }
 
-.balanceAmount {
-  font-size: 1.4rem;
-  font-weight: 800;
-}
-
-.balanceSettled {
-  color: #16a34a;
-}
-
-.balanceUnsettled {
-  color: #ea580c;
-}
-
-.errorBanner {
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-@media (max-width: 992px) {
-  .contentGrid {
+@media (max-width: 1100px) {
+  .grid {
     grid-template-columns: 1fr;
+  }
+  .sideCol {
+    position: static;
   }
 }

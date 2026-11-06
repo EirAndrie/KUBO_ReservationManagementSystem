@@ -10,14 +10,8 @@
 export { KuboTypeListPage } from './pages/kubo-type-list.page';
 
 // Components
-export { KuboTypeCard } from './components/kubo-type-card.component';
-export type { KuboTypeCardProps } from './components/kubo-type-card.component';
-
-export { KuboTypeForm } from './components/kubo-type-form.component';
-export type { KuboTypeFormProps } from './components/kubo-type-form.component';
-
-export { KuboTypeHeroSummary } from './components/kubo-type-hero-summary.component';
-export type { KuboTypeHeroSummaryProps } from './components/kubo-type-hero-summary.component';
+export { KuboTypeDrawer } from './components/kubo-type-drawer.component';
+export type { KuboTypeDrawerProps } from './components/kubo-type-drawer.component';
 
 // Hooks
 export { useKuboTypes, useKuboType, kuboTypeKeys } from './hooks/use-kubo-types.hook';

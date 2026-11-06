@@ -47,13 +47,13 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
       open={open}
       onCancel={onClose}
       onOk={handleConfirm}
-      okText="Update Password"
+      okText="Reset password"
       okButtonProps={{ loading: resetMutation.isPending }}
       destroyOnClose
       width={460}
     >
       <div style={{ padding: '8px 0' }}>
-        <p style={{ fontSize: '0.88rem', color: '#334155', marginBottom: 16 }}>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 16 }}>
           Set a new temporary password for <strong>{employee.fullName}</strong> ({employee.username}):
         </p>
 
@@ -63,18 +63,18 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             label="New Password"
             rules={[
               { required: true, message: 'Please enter a new password.' },
-              { min: 6, max: 12, message: 'Password must be 6-12 characters long (BR-003).' },
+              { min: 6, max: 12, message: 'Passwords are 6 to 12 characters.' },
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
+              prefix={<LockOutlined style={{ color: 'var(--color-muted)' }} />}
               placeholder="6-12 characters"
               size="large"
             />
           </Form.Item>
         </Form>
 
-        <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: 0 }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', margin: 0 }}>
           {EMPLOYEE_POLICIES.CREDENTIALS}
         </p>
       </div>
