@@ -1,527 +1,271 @@
-# KUBO Reservation Management System: API Integration Guide
+# Frontend API Integration Guide
 
-This document serves as the definitive reference for integrating the Vite + React + TypeScript frontend with the Node.js + Express backend REST API. It outlines our standard patterns for fetching data, typing responses, handling errors, and using React Query.
+This guide reflects the Express routes mounted in `backend/src/modules/index.ts` and the request and response contracts implemented by the backend modules. The module `API_CONTRACT.md` files linked below remain the source for complete field constraints, enum values, and business-rule failures.
 
----
+## Base URL and headers
 
-## 1. Environment Configuration
+The backend mounts the API under this path (there is no `/api` segment):
 
-All backend API requests should use the base URL defined in the environment variables. The backend configures CORS via `FR_ORIGIN`, ensuring secure cross-origin requests.
-
-Create or update your `.env` and `.env.development` files in the frontend root directory:
-
-```env
-# .env.development
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_APP_NAME="Kubo Reservation Management System"
+```text
+http://localhost:8080/KUBO_Resort/Management-System/v0.0.1
 ```
 
-```env
-# .env.production
-VITE_API_BASE_URL=https://api.kubosystem.com/api
+Set `VITE_API_BASE_URL` in `frontend/.env` to the reachable backend origin plus that prefix. The checked-in `frontend/.env.example` uses the local URL above. The backend port comes from `PORT` in `backend/.env` and defaults to `8080`; CORS allows the configured `FR_ORIGIN`.
+
+Send JSON bodies with `Content-Type: application/json`. All endpoints except `POST /auth/login` require:
+
+```http
+Authorization: Bearer <accessToken>
 ```
 
----
+The employee acting on a write is always identified by the signed-in token. Do not send an `employeeId` to choose or impersonate the actor.
 
-## 2. API Client Setup
+## Client behavior
 
-We use **Axios** as our HTTP client. A single, configured instance is exported and used across all API services. This instance includes interceptors for attaching auth tokens (if applicable), standardizing requests, and global error handling.
+The current Axios instance is `frontend/src/lib/api.ts`:
 
-**`src/constants/api.constants.ts`**
-```typescript
-export const HTTP_STATUS = {
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  SERVER_ERROR: 500,
-} as const;
+- It uses `VITE_API_BASE_URL` (or the local URL above), a 10-second timeout, and `withCredentials: true`.
+- It attaches a Bearer token from `kubo_access_token`, falling back to `kubo_token` in local storage.
+- It unwraps successful Axios responses to `response.data`; service functions receive the backend JSON body directly.
+- A `401` clears the saved token and user, then redirects to `/login` except for a failed login request. `403` and server errors are returned as `ApiError` values with the backend message and HTTP status.
+- Sign-in is `POST /auth/login`; the response's `accessToken` and `employee` are mapped into the app session. Sign-out calls `POST /auth/logout` as a best-effort audit, then clears the local session.
 
-export const AUTH_TOKEN_KEY = 'access_token';
-export const LOGIN_REDIRECT_PATH = '/login';
-```
+## Response and pagination conventions
 
-**`src/lib/api.ts`**
-```typescript
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { message } from 'antd';
-import { HTTP_STATUS, AUTH_TOKEN_KEY, LOGIN_REDIRECT_PATH } from '@/constants/api.constants';
-import { ApiErrorResponse } from '@/types/api.types';
+There is no universal `{ data, meta }` response. Successful JSON responses generally include `success: true` and `message`, with the resource under a module-specific key:
 
-export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  // withCredentials: true, // Uncomment if using HttpOnly cookies for auth
-});
+| Resource | Response key |
+|---|---|
+| Current user / sign-in | `employee` (profile fields are camelCase) |
+| Roles | `roles` |
+| Guests | `guests` |
+| Kubo types | `kuboTypes` |
+| Kubos | `kubos` |
+| Employees | `employees` |
+| Reservations | `reservations` |
+| Kubo assignments | `reservedKubos` |
+| Payments and refunds | `payments` |
+| Catalog items | `additionalChargeCatalog` |
+| Applied charges | `additionalCharges` |
+| Custom charge requests | `additionalChargeRequests` |
+| Audit records | `auditLogs` |
 
-// Request Interceptor
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
-);
+List resources are arrays and single-resource operations return one object, except where a module contract says otherwise. Many—but not all—list endpoints include `count`; it is generally the number of rows on the current page, not the total number of matches. Paginated endpoints usually take `page` and `limit` (default 1 and 10; maximum limit 100). Filters differ by endpoint. Use the linked module contract rather than assuming a shared pagination or filter shape.
 
-// Response Interceptor
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response.data;
-  },
-  (error: AxiosError<ApiErrorResponse>) => {
-    const status = error.response?.status;
-    
-    if (status === HTTP_STATUS.UNAUTHORIZED) {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      window.location.href = LOGIN_REDIRECT_PATH;
-    } else if (status === HTTP_STATUS.FORBIDDEN) {
-      message.error('You do not have permission to perform this action.');
-    } else if (status === HTTP_STATUS.SERVER_ERROR) {
-      message.error('Server error. Please try again later.');
-    }
+The backend's shared paginated controllers accept `page` and `limit`; an `offset` query parameter is not a substitute and is stripped by the shared Zod query schema. Several current frontend services (`guest`, `reservation`, `payment`, and audit-log list) still expose or send `offset`, so non-first-page requests through those services can repeat page 1. Use `page`/`limit` for those routes, or translate a local offset to `page = floor(offset / limit) + 1` before sending it. The audit entity-history endpoint has its own `limit`/`offset` contract.
 
-    return Promise.reject(error.response?.data || error);
-  }
-);
-```
+PostgreSQL `numeric` and `bigint` values commonly arrive as JSON strings. Parse them explicitly for arithmetic and use decimal-safe handling for money. Response row fields are often snake_case; auth profile fields and request bodies use camelCase. Follow each resource's contract rather than applying one casing rule globally.
 
----
+Errors use this shape and an HTTP error status:
 
-## 3. TypeScript Types & Interfaces
-
-We maintain strict typings for all models and API payloads to ensure end-to-end type safety.
-
-### 3.1. Common & Pagination Types
-
-**`src/types/api.types.ts`**
-```typescript
-export interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-}
-
-export interface ApiErrorResponse {
-  status: 'error';
-  message: string;
-  errors?: Record<string, string[]>;
+```json
+{
+  "success": false,
+  "message": "Human-readable error"
 }
 ```
 
-### 3.2. Core Resource Models
+Successful deletes commonly return `204 No Content`; do not try to parse a JSON body for those responses. Check each endpoint contract for its status code.
 
-**`src/types/models.types.ts`**
-```typescript
-// Shared timestamps
-export interface BaseEntity {
-  id: string; // UUID or string representation of ID
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
-}
+## Live routes and request bodies
 
-export interface Guest extends BaseEntity {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-}
+All paths below are relative to the base URL above. `:id` segments are UUIDs unless the module contract specifies another format. Omit optional fields when they are not being changed; use `null` only where the route explicitly supports clearing a value.
 
-export interface RoomType extends BaseEntity {
-  name: string;
-  description: string;
-  base_price: number;
-  max_occupancy: number;
-  amenities: string[];
-}
+### Authentication
 
-export type RoomStatus = 'available' | 'occupied' | 'maintenance';
+| Method and path | Access | Request body | Success payload |
+|---|---|---|---|
+| `POST /auth/login` | Public | `{"username":"staff.user","password":"Secret123!"}` | `accessToken`, `tokenType`, `employee` |
+| `GET /auth/me` | Authenticated | None | `employee` |
+| `POST /auth/logout` | Authenticated | None | `204 No Content` |
 
-export interface Room extends BaseEntity {
-  room_number: string;
-  room_type_id: string;
-  status: RoomStatus;
-  floor: string;
-  room_type?: RoomType;
-}
+### Guests
 
-export type ReservationStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
+| Method and path | Access | Request body / query | Success payload |
+|---|---|---|---|
+| `POST /guests` | Staff | `{ "firstName":"Juan", "lastName":"Dela Cruz", "email":"juan@example.com", "phone":"09171234567", "validIdType":"Passport", "idNumber":"P1234567A", "addressLine1":"12 Mabini Street", "city":"Cebu City", "stateProvince":"Cebu", "zipPostalCode":"6000", "country":"Philippines" }` (address fields optional) | `guests` and `reused`; matching email or ID can reuse an existing guest with `200` |
+| `GET /guests` | Authenticated | Query: `page`, `limit`, `search`, `validIdType` | `guests` |
+| `GET /guests/:guestId` | Authenticated | None | `guests` |
+| `PATCH /guests/:guestId` | Staff | Any subset of `firstName`, `lastName`, `email`, `phone`, `addressLine1`, `city`, `stateProvince`, `zipPostalCode`, `country`, `validIdType`, `idNumber` | `guests` |
+| `DELETE /guests/:guestId` | Administrator | None | `204 No Content` when unused |
 
-export interface Reservation extends BaseEntity {
-  guest_id: string;
-  room_id: string;
-  check_in: string;
-  check_out: string;
-  status: ReservationStatus;
-  total_amount: number;
-  
-  guest?: Guest;
-  room?: Room;
-  payments?: Payment[];
-  additional_charges?: AdditionalCharge[];
-}
+### Roles, kubo types, and kubos
 
-export type EmployeeRole = 'admin' | 'receptionist' | 'housekeeping' | 'manager';
-export type EmployeeStatus = 'active' | 'inactive';
+| Method and path | Access | Exact request body | Success payload |
+|---|---|---|---|
+| `POST /roles` | Administrator | `{ "roleName":"FrontDesk", "description":"Handles front-desk operations" }` | `roles` |
+| `PATCH /roles/:roleId` | Administrator | Partial `{ "roleName":"Staff", "description":"Front-desk staff" }` | `roles` |
+| `GET /roles`, `GET /roles/:roleId` | Authenticated | None | `roles` |
+| `DELETE /roles/:roleId` | Administrator | None | `204 No Content` when unused |
+| `POST /kubo-types` | Administrator | `{ "kuboTypeName":"Family Kubo", "kuboTypeCapacity":4, "pricePerNight":2500, "kuboTypeDescription":"Two-bedroom kubo" }` | `kuboTypes` |
+| `PATCH /kubo-types/:kuboTypeId` | Administrator | Partial `{ "pricePerNight":2750, "kuboTypeDescription":"Updated description" }` | `kuboTypes` |
+| `GET /kubo-types`, `GET /kubo-types/:kuboTypeId` | Authenticated | List filters: `page`, `limit`, `search`, `minCapacity`, `maxCapacity` | `kuboTypes` |
+| `DELETE /kubo-types/:kuboTypeId` | Administrator | None | `204 No Content` when not referenced |
+| `POST /kubos` | Administrator | `{ "kuboNumber":"K-102", "kuboTypeId":"<uuid>" }` (optional `status`) | `kubos` |
+| `PATCH /kubos/:kuboId` | Administrator | Partial `{ "kuboNumber":"K-103", "kuboTypeId":"<uuid>" }` | `kubos` |
+| `PATCH /kubos/:kuboId/status` | Administrator | `{ "status":"Maintenance" }` | `kubos` |
+| `GET /kubos`, `GET /kubos/:kuboId`, `GET /kubos/type/:kuboTypeId` | Authenticated | List filters vary by route | `kubos` |
+| `GET /kubos/available` | Authenticated | Query: required `checkIn`, `checkOut`; optional `kuboTypeId` | `kubos` |
+| `DELETE /kubos/:kuboId` | Administrator | None | `204 No Content` when there is no assignment history |
 
-export interface Employee extends BaseEntity {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  role: EmployeeRole;
-  status: EmployeeStatus;
-}
+Kubo-type prices and other database numerics may be serialized as strings. The `PATCH /kubos/:kuboId` route updates kubo details; change a status through `PATCH /kubos/:kuboId/status`.
 
-export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'gcash';
-export type PaymentStatus = 'pending' | 'completed' | 'refunded';
+### Employees
 
-export interface Payment {
-  id: string;
-  reservation_id: string;
-  amount: number;
-  payment_method: PaymentMethod;
-  status: PaymentStatus;
-  paid_at: string | null;
-  created_at: string;
-}
+Employee operations are Administrator-only. The create payload preserves a legacy field name: `passwordHash` is the plaintext initial password sent to the API; the service hashes it before storage. Never log or return that value.
 
-export interface AdditionalCharge {
-  id: string;
-  reservation_id: string;
-  description: string;
-  amount: number;
-  charge_type: string;
-  created_at: string;
-}
-
-export type AuditAction = 'create' | 'update' | 'delete';
-
-export interface AuditLog {
-  id: string;
-  entity_type: string;
-  entity_id: string;
-  action: AuditAction;
-  performed_by: string;
-  details: Record<string, any>;
-  created_at: string;
+```json
+{
+  "roleId": "<role-uuid>",
+  "firstName": "Metch",
+  "lastName": "Amores",
+  "username": "mamores",
+  "passwordHash": "Secret123!",
+  "status": "Active"
 }
 ```
 
----
+| Method and path | Request body / query | Success payload |
+|---|---|---|
+| `POST /employees` | Body above (`status` optional) | `employees` |
+| `GET /employees` | Query: `page`, `limit`, `role`, `status`, `search` | `employees` |
+| `GET /employees/:employeeId` | None | `employees` |
+| `PATCH /employees/:employeeId` | Partial `{ "roleId":"<role-uuid>", "firstName":"Metch", "lastName":"Amores", "username":"mamores", "status":"Inactive" }` | `employees` |
+| `PATCH /employees/:employeeId/password` | `{ "password":"Secret123!" }` | `employees` |
+| `DELETE /employees/:employeeId` | None | `204 No Content` when permitted |
 
-## 4. Service Layer Pattern
+### Reservations and kubo assignments
 
-The service layer is responsible for making the actual HTTP requests using `apiClient`. It keeps API endpoints centralized and abstracts API logic away from components and hooks.
+Create a reservation with at least one assignment. The backend takes the acting Staff employee from the token, generates the reference code, and snapshots the current nightly rate.
 
-**`src/services/guest.service.ts`**
-```typescript
-import { apiClient } from '@/lib/api';
-import { Guest } from '@/types/models.types';
-import { PaginatedResponse, PaginationParams } from '@/types/api.types';
-
-export interface GetGuestsParams extends PaginationParams {
-  // Additional guest-specific filters can go here
-}
-
-export type CreateGuestDto = Omit<Guest, 'id' | 'created_at' | 'updated_at'>;
-export type UpdateGuestDto = Partial<CreateGuestDto>;
-
-export const guestService = {
-  getAll: async (params?: GetGuestsParams): Promise<PaginatedResponse<Guest>> => {
-    return apiClient.get('/guests', { params });
-  },
-
-  getById: async (id: string): Promise<Guest> => {
-    return apiClient.get(`/guests/${id}`);
-  },
-
-  create: async (data: CreateGuestDto): Promise<Guest> => {
-    return apiClient.post('/guests', data);
-  },
-
-  update: async (id: string, data: UpdateGuestDto): Promise<Guest> => {
-    return apiClient.patch(`/guests/${id}`, data);
-  },
-
-  delete: async (id: string): Promise<void> => {
-    return apiClient.delete(`/guests/${id}`);
-  },
-};
-```
-
----
-
-## 5. Mutation Hooks & `useAppMutation`
-
-To avoid scattered error handling and repetitive `onError` callbacks across the application, we wrap TanStack Query's `useMutation` with a custom `useAppMutation` hook.
-
-**`src/hooks/api/useAppMutation.ts`**
-```typescript
-import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
-import { message } from 'antd';
-import { ApiErrorResponse } from '@/types/api.types';
-
-/**
- * A wrapper around useMutation that automatically handles error notifications.
- * It takes standard mutation options but provides a default onError handler.
- */
-export const useAppMutation = <
-  TData = unknown,
-  TError = ApiErrorResponse,
-  TVariables = void,
-  TContext = unknown
->(
-  options: UseMutationOptions<TData, TError, TVariables, TContext>
-): UseMutationResult<TData, TError, TVariables, TContext> => {
-  return useMutation({
-    ...options,
-    onError: (error, variables, context) => {
-      // Default error notification behavior
-      const errorMsg = (error as any)?.message || 'An unexpected error occurred during the operation.';
-      message.error(errorMsg);
-
-      // Call the consumer's onError if provided
-      if (options.onError) {
-        options.onError(error, variables, context);
-      }
-    },
-  });
-};
-```
-
----
-
-## 6. TanStack Query (React Query) Hooks
-
-We use **TanStack Query (React Query)** to handle data fetching, caching, synchronization, and optimistic updates. Custom hooks encapsulate the query keys and service calls.
-
-**`src/hooks/api/useGuests.ts`**
-```typescript
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAppMutation } from '@/hooks/api/useAppMutation';
-import { guestService, GetGuestsParams, CreateGuestDto, UpdateGuestDto } from '@/services/guest.service';
-import { message } from 'antd';
-
-export const guestKeys = {
-  all: ['guests'] as const,
-  lists: () => [...guestKeys.all, 'list'] as const,
-  list: (filters: GetGuestsParams) => [...guestKeys.lists(), filters] as const,
-  details: () => [...guestKeys.all, 'detail'] as const,
-  detail: (id: string) => [...guestKeys.details(), id] as const,
-};
-
-// --- Queries ---
-
-export const useGuests = (params: GetGuestsParams) => {
-  return useQuery({
-    queryKey: guestKeys.list(params),
-    queryFn: () => guestService.getAll(params),
-    keepPreviousData: true,
-  });
-};
-
-export const useGuest = (id: string) => {
-  return useQuery({
-    queryKey: guestKeys.detail(id),
-    queryFn: () => guestService.getById(id),
-    enabled: !!id,
-  });
-};
-
-// --- Mutations ---
-
-export const useCreateGuest = () => {
-  const queryClient = useQueryClient();
-  
-  return useAppMutation({
-    mutationFn: (data: CreateGuestDto) => guestService.create(data),
-    onSuccess: () => {
-      message.success('Guest created successfully');
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
-    }
-    // No onError needed, useAppMutation handles it
-  });
-};
-
-export const useUpdateGuest = () => {
-  const queryClient = useQueryClient();
-  
-  return useAppMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateGuestDto }) => 
-      guestService.update(id, data),
-    onSuccess: (updatedGuest) => {
-      message.success('Guest updated successfully');
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
-      queryClient.setQueryData(guestKeys.detail(updatedGuest.id), updatedGuest);
-    }
-  });
-};
-
-export const useDeleteGuest = () => {
-  const queryClient = useQueryClient();
-  
-  return useAppMutation({
-    mutationFn: (id: string) => guestService.delete(id),
-    onSuccess: () => {
-      message.success('Guest deleted successfully');
-      queryClient.invalidateQueries({ queryKey: guestKeys.lists() });
-    }
-  });
-};
-```
-
----
-
-## 7. Error Handling
-
-Error handling occurs at three levels:
-1. **Global Interceptor (`@/lib/api`)**: Catches common HTTP errors (using constants like `HTTP_STATUS.UNAUTHORIZED`) and executes global actions like redirects or generic message notifications.
-2. **Mutation Wrapper (`useAppMutation`)**: Replaces raw `useMutation` to automatically show backend validation error responses using `antd` without scattering `onError` boilerplate across files.
-3. **Component Level**: For fine-grained control, forms can access the `error` object returned by React Query to display inline validation messages.
-
----
-
-## 8. Example: Complete Guest Feature API Integration
-
-Here is how a React component leverages the setup above to display a list of guests and handle creation using Ant Design components.
-
-**`src/features/guests/GuestList.tsx`**
-```tsx
-import React, { useState } from 'react';
-import { Table, Button, Input, Space, Popconfirm, Typography, Alert } from 'antd';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import { useGuests, useCreateGuest, useDeleteGuest } from '@/hooks/api/useGuests';
-import { Guest } from '@/types/models.types';
-
-const { Title } = Typography;
-const { Search } = Input;
-
-export const GuestList: React.FC = () => {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState('');
-  
-  // Queries
-  const { data, isLoading, isError, error } = useGuests({ page, limit, search });
-  
-  // Mutations
-  const createMutation = useCreateGuest();
-  const deleteMutation = useDeleteGuest();
-
-  const handleCreate = () => {
-    createMutation.mutate({
-      first_name: 'John',
-      last_name: 'Doe',
-      email: 'john.doe@example.com',
-      phone: '+639123456789'
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
-  };
-
-  const handleTableChange = (pagination: TablePaginationConfig) => {
-    if (pagination.current) setPage(pagination.current);
-    if (pagination.pageSize) setLimit(pagination.pageSize);
-  };
-
-  const columns: ColumnsType<Guest> = [
+```json
+{
+  "guestId": "<guest-uuid>",
+  "bookingSource": "WalkIn",
+  "assignments": [
     {
-      title: 'Name',
-      key: 'name',
-      render: (_, record) => `${record.first_name} ${record.last_name}`,
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Popconfirm
-          title="Delete the guest"
-          description="Are you sure to delete this guest?"
-          onConfirm={() => handleDelete(record.id)}
-          okText="Yes"
-          cancelText="No"
-        >
-          <Button danger type="link" loading={deleteMutation.isLoading && deleteMutation.variables === record.id}>
-            Delete
-          </Button>
-        </Popconfirm>
-      ),
-    },
-  ];
-
-  if (isError) {
-    return <Alert message="Error" description={(error as any)?.message} type="error" showIcon />;
-  }
-
-  return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <Title level={2} style={{ margin: 0 }}>Guests</Title>
-        <Button 
-          type="primary"
-          onClick={handleCreate}
-          loading={createMutation.isLoading}
-        >
-          Add Dummy Guest
-        </Button>
-      </div>
-
-      <Space style={{ marginBottom: 16 }}>
-        <Search 
-          placeholder="Search guests..." 
-          onSearch={(value) => {
-            setSearch(value);
-            setPage(1); // reset to first page on search
-          }} 
-          enterButton 
-          allowClear
-          style={{ width: 300 }}
-        />
-      </Space>
-
-      <Table
-        columns={columns}
-        dataSource={data?.data}
-        rowKey="id"
-        loading={isLoading}
-        onChange={handleTableChange}
-        pagination={{
-          current: page,
-          pageSize: limit,
-          total: data?.meta.total || 0,
-          showSizeChanger: true,
-        }}
-      />
-    </div>
-  );
-};
+      "kuboId": "<kubo-uuid>",
+      "checkInDate": "2026-11-10",
+      "checkOutDate": "2026-11-12",
+      "scheduledCheckInTime": "14:00",
+      "scheduledCheckOutTime": "11:00"
+    }
+  ]
+}
 ```
+
+| Method and path | Access | Request body / query | Success payload |
+|---|---|---|---|
+| `POST /reservations` | Staff | Body above; scheduled times optional | `reservations` |
+| `GET /reservations` | Authenticated | `page`, `limit`, `status`, `bookingSource`, `search`, `guestId`, `employeeId`, `checkInDate`, `checkOutDate` | `reservations` |
+| `GET /reservations/:reservationId` | Authenticated | None | `reservations` |
+| `PATCH /reservations/:reservationId` | Staff | Partial `{ "guestId":"<guest-uuid>", "bookingSource":"WalkIn" }` | `reservations` |
+| `PATCH /reservations/:reservationId/confirm` | Staff | None | `reservations` |
+| `PATCH /reservations/:reservationId/cancel` | Staff | `{ "reason":"Guest requested cancellation" }` | `reservations` |
+| `PATCH /reservations/:reservationId/no-show` | Staff | None | `reservations` |
+| `DELETE /reservations/:reservationId` | Staff | None; repair-only | `204 No Content` |
+| `POST /reservations/:reservationId/kubos` | Staff | `{ "kuboId":"<kubo-uuid>", "checkInDate":"2026-11-10", "checkOutDate":"2026-11-12" }` (optional scheduled times) | `reservedKubos` |
+| `GET /reservations/:reservationId/kubos`, `GET /reservations/:reservationId/kubos/:kuboId` | Authenticated | None | `reservedKubos` |
+| `PATCH /reservations/:reservationId/kubos/:kuboId` | Staff | At least one of `checkInDate`, `checkOutDate`, `scheduledCheckInTime`, `scheduledCheckOutTime` | `reservedKubos` |
+| `DELETE /reservations/:reservationId/kubos/:kuboId` | Staff | None | `204 No Content` where allowed |
+| `PATCH /reservations/:reservationId/kubos/:kuboId/check-in` | Staff | None | `reservedKubos` |
+| `PATCH /reservations/:reservationId/kubos/:kuboId/check-out` | Staff | None | `reservedKubos` |
+| `PATCH /reservations/:reservationId/kubos/:kuboId/early-check-in` | Staff | None | `reservedKubos` |
+
+Reservation totals and balances are derived from assignments, charges, and payments. Do not send or store a client-computed reservation total.
+
+### Payments and refunds
+
+Create a payment at `POST /reservations/:reservationId/payments` with:
+
+```json
+{
+  "paymentAmount": 5000,
+  "paymentType": "Deposit",
+  "paymentMethod": "GCash"
+}
+```
+
+The server sets the transaction type to `Payment`, status to `Pending`, and its timestamp. To refund a completed payment, call `POST /reservations/:reservationId/payments/refund` with:
+
+```json
+{
+  "originalPaymentId": "<payment-uuid>",
+  "paymentAmount": 1000,
+  "paymentType": "Deposit",
+  "paymentMethod": "GCash"
+}
+```
+
+| Method and path | Access | Request body / query | Success payload |
+|---|---|---|---|
+| `GET /payments` | Authenticated | `page`, `limit`, `reservationId`, `employeeId`, `paymentStatus`, `paymentMethod`, `transactionType`, `createdFrom`, `createdTo` | `payments` |
+| `GET /payments/:paymentId` | Authenticated | None | `payments` |
+| `GET /reservations/:reservationId/payments` | Authenticated | None | `payments` |
+| `POST /reservations/:reservationId/payments` | Staff | Payment body above | `payments` |
+| `POST /reservations/:reservationId/payments/refund` | Staff | Refund body above | `payments` |
+| `PATCH /payments/:paymentId/status` | Staff | `{ "status":"Completed" }` (only permitted transitions are accepted) | `payments` |
+| `DELETE /payments/:paymentId` | Administrator | None; development/repair cleanup only | `204 No Content` |
+
+Overpayment is rejected. Refunds must refer to a completed payment for the same reservation and cannot exceed net paid.
+
+### Additional-charge catalog, applied charges, and custom requests
+
+Catalog creation:
+
+```json
+{
+  "chargeType": "ExtraBed",
+  "name": "Extra Bed",
+  "description": "Rollaway bed per night",
+  "unitPrice": 500,
+  "isActive": true
+}
+```
+
+| Method and path | Access | Request body / query | Success payload |
+|---|---|---|---|
+| `GET /additional-charge-catalog` | Authenticated | `page`, `limit`, `search`, `activeOnly` (defaults to true; set false to include inactive items) | `additionalChargeCatalog` |
+| `GET /additional-charge-catalog/:catalogId` | Authenticated | None | `additionalChargeCatalog` |
+| `POST /additional-charge-catalog` | Administrator | Catalog body above | `additionalChargeCatalog` |
+| `PATCH /additional-charge-catalog/:catalogId` or `PATCH /additional-charge-catalog/:catalogId/status` | Administrator | Any supported subset of catalog body fields | `additionalChargeCatalog` |
+| `DELETE /additional-charge-catalog/:catalogId` | Administrator | None; item must be unused | `204 No Content` |
+| `POST /reservations/:reservationId/charges` | Staff | `{ "catalogId":"<catalog-uuid>", "quantity":2 }` (`quantity` optional) | `additionalCharges` |
+| `GET /reservations/:reservationId/charges` | Authenticated | None | `additionalCharges` |
+| `GET /additional-charges`, `GET /additional-charges/:chargeId` | Authenticated | List filters per additional-charge contract | `additionalCharges` |
+| `DELETE /additional-charges/:chargeId` | Staff | None; blocked after settlement | `204 No Content` |
+| `POST /additional-charges/:chargeId/corrections` | Administrator | `{ "chargeType":"Damage", "quantity":1, "unitAmount":250, "reason":"Additional damage assessment" }` | `additionalCharges` |
+| `POST /reservations/:reservationId/charge-requests` | Staff | `{ "description":"Airport transfer", "quantity":1, "proposedUnitAmount":800 }` | `additionalChargeRequests` |
+| `GET /additional-charge-requests`, `GET /additional-charge-requests/:requestId` | Authenticated | List filters per additional-charge contract | `additionalChargeRequests` |
+| `PATCH /additional-charge-requests/:requestId/approve` | Administrator | `{}` or `{ "approvedUnitAmount":900, "reason":"Updated rate" }`; reason required when adjusting price | `additionalChargeRequests` |
+| `PATCH /additional-charge-requests/:requestId/reject` | Administrator | `{ "reason":"Not provided" }` | `additionalChargeRequests` |
+| `PATCH /additional-charge-requests/:requestId/withdraw` | Requesting Staff member | None | `additionalChargeRequests` |
+
+Used catalog entries cannot be deleted; deactivate them instead. Custom requests do not change a balance until approved. Administrator corrections are additive; reductions and Adjustment/Reversal balance effects are not implemented.
+
+### Audit logs
+
+Audit log routes are Administrator-only and read-only. All writes are generated by the business-operation routes.
+
+| Method and path | Query / body | Success payload |
+|---|---|---|
+| `GET /audit-logs` | Query: `page`, `limit`, `employeeId`, `action`, `entityType`, `entityId`, `createdFrom`, `createdTo` | `auditLogs` |
+| `GET /audit-logs/:auditId` | None | `auditLogs` |
+| `GET /audit-logs/history/:entityType/:entityId` | Optional `limit`, `offset` per contract | `auditLogs` |
+| `GET /audit-logs/employees/:employeeId/audit-logs` | Pagination and filters per contract | `auditLogs` |
+
+## Contract references
+
+See the backend module contracts for full schemas, filter constraints, enum values, response examples, status codes, and database business-rule errors:
+
+- [Auth](../../backend/src/modules/auth/API_CONTRACT.md)
+- [Roles](../../backend/src/modules/role/API_CONTRACT.md)
+- [Guests](../../backend/src/modules/guest/API_CONTRACT.md)
+- [Employees](../../backend/src/modules/employee/API_CONTRACT.md)
+- [Kubo types](../../backend/src/modules/room_kubo-type/API_CONTRACT.md)
+- [Kubos](../../backend/src/modules/room_kubo/API_CONTRACT.md)
+- [Reservations](../../backend/src/modules/reservation/API_CONTRACT.md)
+- [Kubo assignments](../../backend/src/modules/reserved-room_kubo/API_CONTRACT.md)
+- [Payments and additional charges](../../backend/src/modules/payment/API_CONTRACT.md)
+- [Additional-charge catalog and requests](../../backend/src/modules/additional-charges/API_CONTRACT.md)
+- [Audit logs](../../backend/src/modules/audit-logs/API_CONTRACT.md)
