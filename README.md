@@ -2,6 +2,8 @@
 
 A reservation management system for KUBO Beach Resort, built with PostgreSQL, Express, React, and Node.js (PERN) in TypeScript.
 
+> **Project architecture:** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) explains every folder in plain language, with comments, a request walkthrough, and a "where to find things" table.
+
 The backend manages employees and roles, guests, kubo types and kubos, reservations and kubo assignments, additional charges, payments and refunds, authentication, and an append-only audit log.
 
 | Part        | Status                                                                                |
