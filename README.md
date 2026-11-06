@@ -2,6 +2,8 @@
 
 A reservation management system for KUBO Beach Resort, built with PostgreSQL, Express, React, and Node.js (PERN) in TypeScript.
 
+> **Project architecture:** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) explains every folder in plain language, with comments, a request walkthrough, and a "where to find things" table.
+
 The backend manages employees and roles, guests, kubo types and kubos, reservations and kubo assignments, additional charges, payments and refunds, authentication, and an append-only audit log.
 
 | Part        | Status                                                                                |
@@ -197,6 +199,8 @@ $env:DB_NAME = "kubo_beach_resort_system_test"; $env:PORT = "8081"; npx ts-node 
 
 ## Project Structure
 
+For a folder-by-folder explanation with comments, see [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
+
 ```text
 .
 ├── AGENTS.md                 # Implementation state and rules for coding agents
@@ -259,6 +263,7 @@ Route -> Controller -> Service -> Repository -> PostgreSQL function -> Tables
 
 | Document                                                             | Purpose                                                  |
 | -------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)             | Plain-language guide to every folder (start here)        |
 | [`AGENTS.md`](AGENTS.md)                                             | Current implementation state and rules for agents        |
 | [`docs/business_rules.md`](docs/business_rules.md)                   | Authoritative domain specification and known gaps        |
 | [`docs/development-progress.md`](docs/development-progress.md)       | Per-entity implementation status                         |
