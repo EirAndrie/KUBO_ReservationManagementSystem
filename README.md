@@ -57,6 +57,7 @@ Copy `backend/example.env` to `backend/.env` and fill it in:
 PORT=8080
 API_BASE_PATH=/KUBO_Resort/Management-System/v0.0.1
 NODE_ENV=development
+SERVE_FRONTEND=true
 FR_ORIGIN=http://localhost:5173
 
 DB_HOST=localhost
@@ -74,6 +75,7 @@ JWT_EXPIRES_IN=8h
 | `PORT`                                                        | Yes      | API port.                                                            |
 | `API_BASE_PATH`                                               | No       | Mount prefix for every API route. Defaults to `/api`; this project uses `/KUBO_Resort/Management-System/v0.0.1`. Must start with `/` and have no trailing slash. |
 | `NODE_ENV`                                                    | Yes      | `development` or `production`.                                       |
+| `SERVE_FRONTEND`                                              | No       | Serve `frontend/dist` in production. Defaults to `true`; set to `false` when the frontend is hosted separately (for example, on Vercel). |
 | `FR_ORIGIN`                                                   | Yes      | Allowed CORS origin for the frontend.                                |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Yes      | These are what the connection pool actually reads.                   |
 | `JWT_SECRET`                                                  | Yes      | Must be at least 32 characters in production.                        |
@@ -96,11 +98,14 @@ On startup the server connects to PostgreSQL, applies pending migrations, and th
 
 > **Production build caveat:** `npm run build` does not copy `src/migrations/*.sql` into `dist/`. Copy them to `dist/migrations/` before running `node dist/server.js`, or startup will fail.
 
-> **Serving the frontend in production:** when `NODE_ENV=production`, the backend
-> serves the built SPA from `frontend/dist` and falls back to `index.html` for client
-> routes. Build the frontend first (`cd frontend && npm run build`). Startup fails
-> with a clear error when `frontend/dist/index.html` is missing, and unknown routes
-> under `API_BASE_PATH` return a JSON `404` instead of the SPA.
+> **Serving the frontend in production:** when `NODE_ENV=production` and
+> `SERVE_FRONTEND=true` (the default), the backend serves the built SPA from
+> `frontend/dist` and falls back to `index.html` for client routes. Build the
+> frontend first (`cd frontend && npm run build`); startup fails with a clear error
+> when `frontend/dist/index.html` is missing. Set `SERVE_FRONTEND=false` when the
+> frontend is hosted separately (for example, on Vercel): the backend then runs
+> API-only and does not require `frontend/dist`. Unknown routes under
+> `API_BASE_PATH` return a JSON `404` in both modes.
 
 ---
 

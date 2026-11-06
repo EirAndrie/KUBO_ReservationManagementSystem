@@ -15,6 +15,7 @@ const ENV = {
       JWT_SECRET: process.env.JWT_SECRET,
       JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
       API_BASE_PATH: process.env.API_BASE_PATH,
+      SERVE_FRONTEND: process.env.SERVE_FRONTEND,
 };
 
 export default ENV;

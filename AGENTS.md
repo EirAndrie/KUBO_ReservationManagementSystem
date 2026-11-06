@@ -30,7 +30,7 @@ npm run build       # tsc -> dist/
 - The PostgreSQL pool actually reads: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`.
 - `DB_URL` and `PASSWORD_LENGTH` are declared in `src/config/env.ts` but unused. Do not assume `DB_URL` configures the connection.
 - `API_BASE_PATH` (optional, default `/api`) sets the mount prefix for every API route. `backend/example.env` and this project's `.env` use `/KUBO_Resort/Management-System/v0.0.1`; the frontend `VITE_API_BASE_URL` must include the same path. Use a leading `/` and no trailing `/`.
-- With `NODE_ENV=production`, the backend serves the built SPA from `frontend/dist`; startup fails if `frontend/dist/index.html` is missing. Client routes fall back to `index.html`, while unknown paths under `API_BASE_PATH` return JSON `404`.
+- With `NODE_ENV=production`, the backend serves the built SPA from `frontend/dist` unless `SERVE_FRONTEND=false`; startup fails if `frontend/dist/index.html` is missing while serving is enabled. Set `SERVE_FRONTEND=false` when the frontend is hosted separately (for example, on Vercel); the backend then runs API-only. Client routes fall back to `index.html`, while unknown paths under `API_BASE_PATH` return JSON `404`.
 - Startup requires a live database. It connects, then runs every `src/migrations/*.sql` in filename order, tracking applied files in `schema_migrations`. Migrations now cover role, employee, guest, kubo type, kubo, reservation, reserved kubo, additional charges/catalog/requests, payments, and audit infrastructure. The additional-charge migration expects the pre-existing `kubo_additional_charges_management` schema; the payment migration creates `kubo_payment_management`.
 - `src/utils/logger.ts` creates `logs/` relative to the working directory.
 

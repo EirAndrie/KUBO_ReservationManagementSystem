@@ -18,6 +18,9 @@ const PORT = validateServerPort(ENV.PORT);
 const API_BASE_PATH = ENV.API_BASE_PATH || "/api"; // Default to "/api" if not set in .env
 const FR_ORIGIN = validateFrontendOrigin(ENV.FR_ORIGIN);
 const isProduction = validateProductionMode(ENV.NODE_ENV);
+// Defaults to true so existing deployments keep serving the SPA. Set
+// SERVE_FRONTEND=false when the frontend is hosted separately (e.g. Vercel).
+const SERVE_FRONTEND = ENV.SERVE_FRONTEND !== "false";
 
 // Validate authentication configuration before wiring routes. The token
 // helpers in `utils/auth.ts` rely on the same values being present.
@@ -29,7 +32,7 @@ configureCors(app, FR_ORIGIN, isProduction);
 
 // ROUTES SECTION
 app.use(API_BASE_PATH, apiRoutes);
-configureEnvironmentRoutes(app, isProduction);
+configureEnvironmentRoutes(app, isProduction, SERVE_FRONTEND);
 
 connectDB()
       .then(async () => {
