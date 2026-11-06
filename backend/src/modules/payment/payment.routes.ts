@@ -21,7 +21,7 @@ const router = Router();
 // Payments scoped under a reservation
 router.post(
       "/reservations/:reservationId/payments",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(CreatePaymentSchema),
       createPaymentController,
@@ -33,7 +33,7 @@ router.get(
 ); // Checked
 router.post(
       "/reservations/:reservationId/payments/refund",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(RefundPaymentSchema),
       refundPaymentController,
@@ -48,14 +48,14 @@ router.get(
 ); // Checked
 router.patch(
       "/payments/:paymentId/status",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("paymentId"),
       validateBody(UpdatePaymentStatusSchema),
       updatePaymentStatusController,
 ); // Checked
 router.delete(
       "/payments/:paymentId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("paymentId"),
       deletePaymentCleanupController,
 ); 

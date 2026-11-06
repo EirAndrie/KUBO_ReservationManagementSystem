@@ -33,7 +33,7 @@ previous one.
 | Area | Status | Notes |
 |---|---|---|
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
-| RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role matching is case-insensitive (`ADMIN`/`Administrator`, `STAFF`/`Staff`). |
+| RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role names are canonical lowercase values (`administrator`, `staff`) matched exactly. |
 | Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
 
 ## Next up
@@ -75,8 +75,8 @@ previous one.
   stateless and are not revoked, so the token remains valid until its expiry.
 - RBAC is enforced at the route level. Reads require an authenticated employee;
   administrative and operational writes are separated according to the permission
-  matrix. The seeded role names are `ADMIN` and `STAFF`, and matching is
-  case-insensitive.
+  matrix. Role names are stored and matched as the canonical lowercase values
+  `administrator` and `staff`.
 - `JWT_SECRET` must be set or the server refuses to start; production requires at least
   32 characters. `JWT_EXPIRES_IN` defaults to `8h`.
 - The additional-charge design uses an Admin-managed catalog, Staff catalog

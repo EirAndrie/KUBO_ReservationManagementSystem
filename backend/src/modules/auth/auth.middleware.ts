@@ -8,6 +8,7 @@ import {
       type AuthContext,
       type RoleName,
 } from "../../utils/auth";
+import { ADMINISTRATOR_ROLE } from "../../utils/role-names";
 import { getAuthenticatedEmployee } from "./repository/auth.repository";
 import logger from "../../utils/logger";
 
@@ -89,7 +90,7 @@ export const authenticate = async (
 };
 
 const matchesRole = (roleName: string, role: RoleName): boolean =>
-      role === "Administrator"
+      role === ADMINISTRATOR_ROLE
             ? isAdministrator(roleName)
             : isStaff(roleName);
 

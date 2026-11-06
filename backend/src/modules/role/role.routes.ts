@@ -13,7 +13,7 @@ import { authorizeRoles } from "../auth/auth.middleware";
 const router = Router();
 
 // Role management is Administrator-only (BR-008).
-router.use(authorizeRoles("Administrator"));
+router.use(authorizeRoles("administrator"));
 
 router.post("/", validateBody(CreateRoleSchema), createRoleController);
 router.get("/", getAllRolesController);

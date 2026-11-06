@@ -7,8 +7,7 @@
             "dev": "nodemon",
             "build": "tsc",
             "typecheck": "tsc --noEmit",
-            "db:generate": "drizzle-kit generate",
-            "db:migrate": "drizzle-kit migrate"
+            "db:seed": "ts-node src/scripts/seed-sample-data.ts"
       },
       "keywords": [],
       "author": "",

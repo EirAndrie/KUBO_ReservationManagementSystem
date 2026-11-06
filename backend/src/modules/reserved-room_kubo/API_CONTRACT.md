@@ -28,7 +28,7 @@ Management System.
 | Operation | Required business role |
 |---|---|
 | `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE` | `Staff` (stored `role_name` equals `staff`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.

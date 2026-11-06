@@ -26,8 +26,7 @@ Role configuration endpoints for the Kubo Reservation Management System.
 
 | Stored `role_name` | Administrator access |
 |---|---|
-| `Admin` | Yes |
-| `Administrator` | Yes (case-insensitive) |
+| `administrator` | Yes (exact, lowercase) |
 | Anything else | No — `403 Insufficient privileges` |
 
 The authenticated employee must also have status `Active`; otherwise the
@@ -164,7 +163,8 @@ Administrator only.
 | Body fails validation | `400` | Validation detail |
 | Role name already exists (service pre-check) | `400` | `Role already exists` |
 | Role name duplicated during insert | `400` | `Role name already exists.` |
-| Role name blank at database layer | `400` | `Role name must be between 1 and 50 characters.` |
+| Role name is not `administrator` or `staff` | `400` | `Role name must be either administrator or staff.` |
+| Role name blank at database layer | `400` | `Role name must be either administrator or staff.` |
 | Description exceeds 255 characters | `400` | `Role description cannot exceed 255 characters.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not an Administrator | `403` | `Insufficient privileges` |
@@ -172,10 +172,10 @@ Administrator only.
 
 Behavior notes:
 
+- `roleName` is trimmed and lowercased before storage. Only `administrator` and
+  `staff` are accepted; shorthand such as `admin` is rejected.
 - The service pre-checks role names with a case-insensitive lookup, so
-  `administrator`, `Administrator`, and `ADMINISTRATOR` collide even though the
-  database unique constraint itself is case-sensitive.
-- `roleName` is trimmed before storage.
+  `administrator`, `Administrator`, and `ADMINISTRATOR` collide.
 - An audit row is written inside the same transaction as the insert. If the
   audit write fails, the role insert is rolled back.
 
@@ -363,11 +363,10 @@ Behavior notes:
 
 - An empty body `{}` is accepted. The database returns the role unchanged and
   still writes an update audit row.
-- `roleName` and `description` are trimmed. Zod rejects a blank value when
-  either field is supplied; the database routine would coerce a blank
-  description to `NULL` if called directly.
-- Names remain case-insensitively protected by the service layer only at create
-  time; update uniqueness is enforced by the database unique constraint.
+- `roleName` and `description` are trimmed, and `roleName` is lowercased. Only
+  `administrator` and `staff` are accepted; Zod rejects a blank or unsupported
+  value when either field is supplied.
+- Uniqueness and the closed role-name set are also enforced by the database.
 - The audit update row is written in the same transaction as the update.
 
 ### 6.6 Side effects
@@ -437,7 +436,7 @@ Behavior notes:
 - `GET /roles` returns `404` when the table is empty and never returns `count`.
 - There is no pagination or filtering for roles.
 - `PATCH /roles/:roleId` accepts `{}` and returns the unchanged role.
-- Role-name uniqueness is pre-checked case-insensitively but enforced
-  case-sensitively by the database unique constraint.
+- Role names are stored lowercase from a closed set (`administrator`, `staff`)
+  and are unique case-insensitively.
 - `DELETE` returns `204` but the controller calls `res.status(204).json()`; clients
   must treat it as an empty `204`.

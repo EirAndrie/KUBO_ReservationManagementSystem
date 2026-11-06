@@ -27,7 +27,7 @@ Employee account management endpoints for the Kubo Reservation Management System
 | Stored `role_name` | Administrator access |
 |---|---|
 | `Admin` | Yes |
-| `Administrator` | Yes (case-insensitive) |
+| `Administrator` | Yes (stored `role_name` equals `administrator`, exact) |
 | Anything else | No — `403 Insufficient privileges` |
 
 The authenticated employee must also have status `Active`; otherwise the

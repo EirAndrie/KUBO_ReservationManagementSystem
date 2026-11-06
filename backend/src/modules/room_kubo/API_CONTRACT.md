@@ -27,7 +27,7 @@ Kubo (accommodation unit) endpoints for the Kubo Reservation Management System.
 | Operation | Required business role |
 |---|---|
 | All `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.

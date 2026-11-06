@@ -22,7 +22,7 @@ const router = Router();
 // Mutations and deletion are Administrator-only (BR-018).
 router.post(
       "/",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       validateBody(CreateKuboSchema),
       createKuboController,
 );
@@ -36,21 +36,21 @@ router.get(
 router.get("/:kuboId", requireUuidParam("kuboId"), getKuboByIdController);
 router.patch(
       "/:kuboId/status",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("kuboId"),
       validateBody(ChangeKuboStatusSchema),
       changeKuboStatusController,
 );
 router.patch(
       "/:kuboId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("kuboId"),
       validateBody(UpdateKuboSchema),
       updateKuboController,
 );
 router.delete(
       "/:kuboId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("kuboId"),
       deleteKuboController,
 );

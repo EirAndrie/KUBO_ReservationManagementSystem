@@ -30,9 +30,6 @@ See [`docs/development-progress.md`](docs/development-progress.md) for per-modul
 | Frontend        | React 19, Vite (scaffold)                  |
 | API testing     | Postman collection (v3 YAML), Postman CLI  |
 | CI              | GitHub Actions: `npm ci`, typecheck, build |
-
-> The project does **not** use an ORM. Drizzle ORM, `drizzle-kit`, and `drizzle-zod` are not used. The `db:generate` and `db:migrate` npm scripts are leftovers; do not run them.
-
 ---
 
 ## Quick Start
@@ -110,6 +107,28 @@ PostgreSQL is accessed only through `pg`, almost always by calling stored functi
 The migrations **harden an existing database**. They add functions, constraints, the charge catalog and request tables, authentication, and audit infrastructure, but they do not create every base table (such as `employee`, `guest`, `reservation`, or `payment`). An empty database needs the team's base `kubo` schema loaded first. The additional-charge migration also expects the `kubo_additional_charges_management` schema to exist.
 
 To add a migration, create a new file named `YYYYMMDD_short_description.sql`. Do not edit migrations that have already been applied.
+
+### Sample data
+
+After migrations have applied, seed a development database with two demo accounts,
+four kubo types, eight kubos, and six catalog items:
+
+```bash
+cd backend
+npm run db:seed
+```
+
+The script is additive and idempotent: it inserts only missing rows, never overwrites
+existing data, and reports what it inserted or skipped.
+
+| Account | Password    | Role            |
+| ------- | ----------- | --------------- |
+| `admin` | `Admin@123` | `administrator` |
+| `staff` | `Staff@123` | `staff`         |
+
+The sample `admin` account is skipped when another active Administrator already exists
+(BR-006). Deactivate the existing administrator and re-run if you need the demo
+account.
 
 ### Rules
 

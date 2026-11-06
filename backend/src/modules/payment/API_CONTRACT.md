@@ -30,8 +30,8 @@ System.
 | Operation | Required business role |
 |---|---|
 | `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
-| `DELETE /payments/:paymentId` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
+| `POST`, `PATCH` | `Staff` (stored `role_name` equals `staff`, exact) |
+| `DELETE /payments/:paymentId` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.
