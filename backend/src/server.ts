@@ -36,7 +36,7 @@ connectDB()
             await runMigrations();
       })
       .then(() => {
-            app.listen(PORT, () => {
+            app.listen(PORT, "0.0.0.0", () => {
                   logger.info(`Server is running on port ${PORT}`);
             });
       })
