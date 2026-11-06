@@ -1,0 +1,31 @@
+.table :global(.ant-table-tbody > tr) {
+  height: 48px;
+}
+
+.table :global(.ant-table-tbody > tr > td) {
+  height: 48px;
+  padding-block: 8px;
+}
+
+.itemName,
+.category,
+.description {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryCell {
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.category {
+  font-size: 13px;
+}
+
+.description {
+  color: var(--color-muted);
+  font-size: 12px;
+}

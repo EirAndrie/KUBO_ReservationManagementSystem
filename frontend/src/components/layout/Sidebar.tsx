@@ -11,6 +11,7 @@ import {
   TeamOutlined,
   UserOutlined,
   BlockOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import { useCheckInOutQueue } from '@/features/check-in-out';
@@ -80,6 +81,7 @@ export const Sidebar: React.FC = () => {
   const adminGroup: NavItem[] = isAdmin
     ? [
         { name: 'Employees', to: '/employees', icon: <TeamOutlined /> },
+        { name: 'Charge catalog', to: '/additional-charge-catalog', icon: <TagsOutlined /> },
         { name: 'Audit log', to: '/audit-logs', icon: <FileTextOutlined /> },
       ]
     : [];
