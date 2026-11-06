@@ -14,6 +14,15 @@ import { authenticate } from "./auth/auth.middleware";
 
 const router = Router();
 
+// Health check route
+router.get("/health", async (_req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "API is running",
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // Authentication is public; it is mounted before the global auth guard.
 router.use("/auth", authRoutes);
 
