@@ -12,6 +12,9 @@ export { PaymentListPage } from './pages/payment-list.page';
 export { RecordPaymentModal } from './components/record-payment-modal.component';
 export type { RecordPaymentModalProps } from './components/record-payment-modal.component';
 
+export { RefundModal } from './components/refund-modal.component';
+export type { RefundModalProps } from './components/refund-modal.component';
+
 export { AddChargeModal } from './components/add-charge-modal.component';
 export type { AddChargeModalProps } from './components/add-charge-modal.component';
 
@@ -23,22 +26,33 @@ export {
   usePayments,
   useReservationPayments,
   useReservationCharges,
+  useChargeCatalog,
+  useChargeRequests,
   paymentKeys,
 } from './hooks/use-payments.hook';
 
 export {
   useRecordPayment,
+  useUpdatePaymentStatus,
   useIssueRefund,
-  useAddCharge,
+  useApplyCatalogCharge,
+  useCreateChargeRequest,
+  useDeleteCharge,
+  useApproveChargeRequest,
+  useRejectChargeRequest,
+  useWithdrawChargeRequest,
 } from './hooks/use-payment-mutations.hook';
 
 // Services
-export { paymentService } from './services/payment.service';
+export { paymentService, normalizePaymentStatus } from './services/payment.service';
 
 // Types
 export type {
   Payment,
   AdditionalCharge,
+  ChargeCatalogItem,
+  ChargeRequest,
+  ChargeRequestStatus,
   TransactionType,
   PaymentType,
   PaymentMethod,
@@ -46,7 +60,8 @@ export type {
   AdditionalChargeType,
   CreatePaymentPayload,
   CreateRefundPayload,
-  CreateAdditionalChargePayload,
+  ApplyCatalogChargePayload,
+  CreateChargeRequestPayload,
   PaymentFilterParams,
   InvoiceBillingBreakdown,
 } from './types/payment.types';

@@ -14,6 +14,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Audit the sign-out while the token is still present, then clear locally.
+    void authService.logoutRemote();
     authService.logout();
     setUser(null);
   }, []);

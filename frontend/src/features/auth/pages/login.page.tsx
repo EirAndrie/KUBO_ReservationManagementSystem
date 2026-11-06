@@ -1,34 +1,37 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Alert, Typography } from 'antd';
-import {
-  UserOutlined,
-  LockOutlined,
-  LoginOutlined,
-} from '@ant-design/icons';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Form, Input, Button } from 'antd';
+import { ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/use-auth.hook';
 import type { LoginCredentials } from '../types/auth.types';
+import { ThemeToggle, useThemeMode } from '@/theme';
+import { Callout } from '@/components/common';
 import styles from './login.module.css';
 
-const { Title } = Typography;
-
+/**
+ * Split sign-in: a quiet form on the left and an ocean brand panel on the
+ * right (no live data before sign-in). The 6–12 character password rule and a
+ * Caps Lock warning show before submit; server errors show inline.
+ */
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, role } = useAuth();
   const [form] = Form.useForm<LoginCredentials>();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [capsLock, setCapsLock] = useState(false);
+  const { mode } = useThemeMode();
+
+  if (isAuthenticated) {
+    return <Navigate to={role === 'Administrator' ? '/admin' : '/staff'} replace />;
+  }
 
   const handleFinish = async (values: LoginCredentials) => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const user = await login(values);
-      if (user.role === 'Administrator') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/staff', { replace: true });
-      }
+      navigate(user.role === 'Administrator' ? '/admin' : '/staff', { replace: true });
     } catch (err: unknown) {
       setErrorMsg((err as Error)?.message || 'Sign in failed. Please try again.');
     } finally {
@@ -36,96 +39,93 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const trackCaps = (e: React.KeyboardEvent) => setCapsLock(e.getModifierState?.('CapsLock') ?? false);
+
   return (
-    <div className={styles.loginContainer}>
-      <div className={styles.loginCard}>
-        {/* Brand Header */}
-        <div className={styles.brandHeader}>
-          <div className={styles.brandLogoWrapper}>
+    <div className={styles.page}>
+      <div className={styles.formSide}>
+        <div className={styles.topRow}>
+          <div className={styles.brand}>
             <img
-              src="/images/kubo-logo.jpg"
-              alt="KUBO Resort Logo"
-              className={styles.brandLogoImage}
+              src={mode === 'dark' ? '/images/kubo-logo-white.png' : '/images/kubo-logo-black.png'}
+              alt=""
+              className={styles.logo}
             />
+            <span>Kubo Beach Resort</span>
           </div>
-          <Title level={2} className={styles.brandTitle}>
-            Kubo Beach Resort
-          </Title>
-          <div className={styles.brandSubtitle}>
-            Reservation Management System
-          </div>
+          <ThemeToggle />
         </div>
 
-        {/* Error Alert */}
-        {errorMsg && (
-          <Alert
-            message="Authentication Failed"
-            description={errorMsg}
-            type="error"
-            showIcon
-            closable
-            onClose={() => setErrorMsg(null)}
-            className={styles.errorMessage}
-          />
-        )}
+        <div className={styles.formWrap}>
+          <h1 className={styles.title}>Sign in</h1>
+          <p className={styles.helper}>Use the username assigned by your administrator.</p>
 
-        {/* Login Form */}
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleFinish}
-          requiredMark={false}
-        >
-          <Form.Item
-            name="username"
-            label="Username"
-            rules={[
-              { required: true, message: 'Please enter your username.' },
-              { min: 3, message: 'Username must be at least 3 characters.' },
-            ]}
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleFinish}
+            requiredMark={false}
+            validateTrigger={['onChange', 'onBlur']}
+            disabled={loading}
           >
-            <Input
-              prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Enter assigned username"
-              size="large"
-              autoComplete="username"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[
-              { required: true, message: 'Please enter your password.' },
-              { min: 6, max: 12, message: 'Password must be between 6 and 12 characters (BR-003).' },
-            ]}
-          >
-            <Input.Password
-              prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Enter password"
-              size="large"
-              autoComplete="current-password"
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginTop: 24, marginBottom: 8 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              size="large"
-              block
-              loading={loading}
-              icon={<LoginOutlined />}
-              style={{ background: '#0284c7', borderColor: '#0284c7', fontWeight: 600, height: 44 }}
+            <Form.Item
+              name="username"
+              label="Username"
+              rules={[{ required: true, whitespace: true, message: 'Enter your username.' }]}
             >
-              Log in
-            </Button>
-          </Form.Item>
-        </Form>
+              <Input size="large" autoComplete="username" autoFocus />
+            </Form.Item>
 
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: '0.78rem', color: '#94a3b8' }}>
-          KUBO Resort Management System • Internal Use Only
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[
+                { required: true, message: 'Enter your password.' },
+                { min: 6, max: 12, message: 'Passwords are 6 to 12 characters.' },
+              ]}
+            >
+              <Input.Password
+                size="large"
+                autoComplete="current-password"
+                onKeyDown={trackCaps}
+                onKeyUp={trackCaps}
+                onBlur={() => setCapsLock(false)}
+              />
+            </Form.Item>
+
+            <Button type="primary" htmlType="submit" size="large" block loading={loading}>
+              Sign in
+            </Button>
+          </Form>
+
+          {capsLock && (
+            <Callout tone="warn" icon={<InfoCircleOutlined />} style={{ marginTop: 16 }}>
+              Caps Lock is on.
+            </Callout>
+          )}
+          {errorMsg && (
+            <Callout tone="danger" icon={<ExclamationCircleOutlined />} style={{ marginTop: 16 }}>
+              {errorMsg}
+            </Callout>
+          )}
         </div>
+
+        <p className={styles.footer}>Internal use only · Forgot your password? Ask an administrator to reset it.</p>
+      </div>
+
+      <div className={styles.brandPanel} aria-hidden="true">
+        <svg className={styles.waves} viewBox="0 0 600 400" preserveAspectRatio="none">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <path
+              key={i}
+              d={`M0 ${40 + i * 36} C 150 ${20 + i * 36}, 300 ${70 + i * 36}, 600 ${36 + i * 36}`}
+              fill="none"
+              stroke="rgba(255,255,255,0.16)"
+              strokeWidth="1"
+            />
+          ))}
+        </svg>
+        <p className={styles.tagline}>Every arrival, every kubo, every peso — in one calm front desk.</p>
       </div>
     </div>
   );

@@ -1,68 +1,69 @@
 import { apiClient } from '@/lib/api';
-import type { AuditLog, AuditLogFilterParams, AuditAction } from '../types/audit-log.types';
+import type { AuditAction, AuditLog, AuditLogFilterParams } from '../types/audit-log.types';
+import { AUDIT_ACTIONS } from '../types/audit-log.types';
 
-function normalizeAction(val?: string): AuditAction {
-  const lower = (val || '').toLowerCase();
-  if (lower.includes('login')) return 'login';
-  if (lower.includes('logout')) return 'logout';
-  if (lower.includes('cancel')) return 'cancel';
-  if (lower.includes('approve')) return 'approve';
-  if (lower.includes('reject')) return 'reject';
-  if (lower.includes('del')) return 'delete';
-  if (lower.includes('upd')) return 'update';
-  return 'create';
+type Row = Record<string, unknown>;
+
+function toObject(value: unknown): Record<string, unknown> | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
 
-function mapAuditRecord(row: Record<string, unknown>): AuditLog {
+function mapAuditRecord(row: Row): AuditLog {
+  const rawAction = String(row.action ?? row.audit_action ?? '');
+  const action = (AUDIT_ACTIONS.find((a) => a.toLowerCase() === rawAction.toLowerCase()) ?? rawAction) as AuditAction;
   return {
-    auditLogId: String(row.audit_log_id || row.auditLogId || row.id || ''),
-    employeeId: String(row.employee_id || row.employeeId || ''),
-    employeeName: row.employee_name ? String(row.employee_name) : row.username ? String(row.username) : undefined,
-    action: normalizeAction(String(row.audit_action || row.action || 'create')),
-    entityType: row.entity_type ? String(row.entity_type) : row.entityType ? String(row.entityType) : undefined,
-    entityId: String(row.entity_id || row.entityId || ''),
-    description: String(row.audit_description || row.description || ''),
-    oldValues: (row.old_values || row.oldValues || null) as Record<string, unknown> | null,
-    newValues: (row.new_values || row.newValues || null) as Record<string, unknown> | null,
-    dateTime: String(row.date_time || row.dateTime || row.created_at || new Date().toISOString()),
+    auditLogId: String(row.audit_id ?? row.audit_log_id ?? row.id ?? ''),
+    employeeId: String(row.employee_id ?? ''),
+    action,
+    entityType: String(row.entity_type ?? ''),
+    entityId: String(row.entity_id ?? ''),
+    description: String(row.description ?? row.audit_description ?? ''),
+    oldValues: toObject(row.old_values),
+    newValues: toObject(row.new_values),
+    dateTime: String(row.created_at ?? row.date_time ?? ''),
   };
 }
 
-// Initial verifiable audit trail (BR-067)
+function listOf(res: unknown): Row[] {
+  if (Array.isArray(res)) return res as Row[];
+  const rows = (res as { auditLogs?: unknown } | null)?.auditLogs;
+  if (Array.isArray(rows)) return rows as Row[];
+  throw new Error('The server returned an invalid audit log list.');
+}
+
+/** Read-only access to the append-only audit log (Administrator only). */
 export const auditLogService = {
-  /**
-   * Retrieves system audit activity logs (BR-078).
-   */
   getAll: async (filters?: AuditLogFilterParams): Promise<AuditLog[]> => {
-    const params: Record<string, string | number | undefined> = {};
+    const params: Record<string, string | number> = {};
     if (filters?.action) params.action = filters.action;
     if (filters?.entityType) params.entityType = filters.entityType;
     if (filters?.employeeId) params.employeeId = filters.employeeId;
     if (filters?.createdFrom) params.createdFrom = filters.createdFrom;
     if (filters?.createdTo) params.createdTo = filters.createdTo;
-    if (filters?.search?.trim()) params.search = filters.search.trim();
-    if (filters?.limit) params.limit = filters.limit;
+    params.limit = filters?.limit ?? 100;
     if (filters?.offset) params.offset = filters.offset;
-
-    const res = await apiClient.get<Record<string, unknown>>('/audit-logs', { params });
-    const raw = res as unknown as { auditLogs?: Record<string, unknown>[] } | Record<string, unknown>[];
-    if (Array.isArray(raw)) return raw.map(mapAuditRecord);
-    if (Array.isArray((raw as { auditLogs?: Record<string, unknown>[] })?.auditLogs)) {
-      return (raw as { auditLogs: Record<string, unknown>[] }).auditLogs.map(mapAuditRecord);
-    }
-    throw new Error('The server returned an invalid audit log list.');
+    const res = await apiClient.get('/audit-logs', { params });
+    return listOf(res).map(mapAuditRecord);
   },
 
-  /**
-   * Retrieves single audit log entry by ID with full details.
-   */
   getById: async (auditId: string): Promise<AuditLog> => {
-    const res = await apiClient.get<Record<string, unknown>>(`/audit-logs/${auditId}`);
-    const raw = res as unknown as { auditLogs?: Record<string, unknown> } | Record<string, unknown>;
-    const row = (raw as { auditLogs?: Record<string, unknown> })?.auditLogs || raw;
-    if (!row || typeof row !== 'object' || Array.isArray(row)) {
-      throw new Error('The server returned an invalid audit log record.');
-    }
-    return mapAuditRecord(row as Record<string, unknown>);
+    const res = await apiClient.get(`/audit-logs/${auditId}`);
+    const row = ((res as { auditLogs?: Row } | null)?.auditLogs ?? res) as Row;
+    return mapAuditRecord(row);
+  },
+
+  /** Every entry for one record, newest first (`get_audit_history`). */
+  getHistory: async (entityType: string, entityId: string): Promise<AuditLog[]> => {
+    const res = await apiClient.get(`/audit-logs/history/${entityType}/${entityId}`, { params: { limit: 100 } });
+    return listOf(res).map(mapAuditRecord);
   },
 };

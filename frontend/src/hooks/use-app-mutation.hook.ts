@@ -3,7 +3,7 @@ import {
   type UseMutationOptions,
   type UseMutationResult,
 } from '@tanstack/react-query';
-import { message } from 'antd';
+import { App } from 'antd';
 
 export interface AppMutationOptions<TData, TVariables, TContext = unknown>
   extends Omit<UseMutationOptions<TData, Error, TVariables, TContext>, 'mutationFn'> {
@@ -14,13 +14,14 @@ export interface AppMutationOptions<TData, TVariables, TContext = unknown>
 
 /**
  * Standardized wrapper around TanStack Query's useMutation.
- * Automatically triggers Ant Design message alerts on success and failure,
- * preventing duplicate boilerplate across components and hooks.
+ * Shows a themed toast on success and failure. Server error messages are shown
+ * verbatim unless the caller supplies its own `errorMessage`.
  */
 export function useAppMutation<TData = unknown, TVariables = void, TContext = unknown>(
   options: AppMutationOptions<TData, TVariables, TContext>
 ): UseMutationResult<TData, Error, TVariables, TContext> {
   const { successMessage, errorMessage, onSuccess, onError, ...restOptions } = options;
+  const { message } = App.useApp();
 
   return useMutation<TData, Error, TVariables, TContext>({
     ...restOptions,

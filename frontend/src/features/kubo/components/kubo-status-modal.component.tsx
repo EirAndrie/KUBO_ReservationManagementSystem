@@ -48,18 +48,18 @@ export const KuboStatusModal: React.FC<KuboStatusModalProps> = ({ open, onClose,
       open={open}
       onCancel={onClose}
       onOk={handleConfirm}
-      okText="Apply Status Change"
+      okText="Change status"
       okButtonProps={{ loading: statusMutation.isPending }}
       destroyOnClose
       width={460}
     >
       <div style={{ padding: '8px 0' }}>
-        <p style={{ fontSize: '0.88rem', color: '#334155', marginBottom: 16 }}>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 16 }}>
           Set the operational or housekeeping condition for <strong>{kubo.kuboNumber}</strong> ({kubo.typeName}):
         </p>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 6 }}>
+          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
             Unit Status
           </label>
           <Select
@@ -71,7 +71,7 @@ export const KuboStatusModal: React.FC<KuboStatusModalProps> = ({ open, onClose,
           />
         </div>
 
-        <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: 0 }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', margin: 0 }}>
           {KUBO_POLICIES.HOUSEKEEPING_READINESS}
         </p>
       </div>

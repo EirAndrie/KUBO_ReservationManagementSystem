@@ -14,6 +14,8 @@ export { ReservationWizard } from './components/reservation-wizard.component';
 export type { ReservationWizardProps } from './components/reservation-wizard.component';
 
 export { ReservationStatusTag } from './components/reservation-status-tag.component';
+export { CancelReservationModal } from './components/cancel-reservation-modal.component';
+export { ReservationPickerModal } from './components/reservation-picker-modal.component';
 export type { ReservationStatusTagProps } from './components/reservation-status-tag.component';
 
 // Hooks
@@ -34,6 +36,10 @@ export {
   useMarkNoShow,
   useDeleteReservation,
 } from './hooks/use-reservation-mutations.hook';
+
+// Utils
+export { stayOf, billedNights, balanceOf, isTerminal, TERMINAL_STATUSES } from './utils/reservation.utils';
+export type { StaySummary } from './utils/reservation.utils';
 
 // Services
 export { reservationService } from './services/reservation.service';

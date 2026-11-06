@@ -1,58 +1,94 @@
 import { apiClient } from '@/lib/api';
 import type {
   AuthUser,
+  EmployeeStatus,
   LoginCredentials,
+  UserRole,
 } from '../types/auth.types';
+
+/** Shape of `POST /auth/login` (see backend auth.controllers.ts). */
+interface LoginResponse {
+  accessToken: string;
+  tokenType: string;
+  employee: {
+    employeeId: string;
+    roleId: string;
+    roleName: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+    status: string;
+  };
+}
+
+/** BUG-01: maps the backend's `employee` + `accessToken` into the app's `AuthUser`. */
+function toAuthUser(employee: LoginResponse['employee'], accessToken: string): AuthUser {
+  const role: UserRole = employee.roleName === 'Administrator' ? 'Administrator' : 'Staff';
+  return {
+    employeeId: employee.employeeId,
+    username: employee.username,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    fullName: `${employee.firstName} ${employee.lastName}`.trim() || employee.username,
+    role,
+    status: employee.status as EmployeeStatus,
+    token: accessToken,
+  };
+}
 
 const STORAGE_KEY_TOKEN = 'kubo_access_token';
 const STORAGE_KEY_USER = 'kubo_user';
 
 export const authService = {
   /**
-   * Performs user authentication against the KUBO backend (BR-003, BR-004).
+   * Signs in against `POST /auth/login` (BR-003, BR-004).
    *
-   * Sends the credentials to the backend /auth/login endpoint.
-   * If the backend is unavailable, throws a clear error so the user knows
-   * the server must be running — no silent fallback to demo accounts.
+   * The backend answers `{ accessToken, tokenType, employee }`; the employee
+   * and token are mapped into an `AuthUser` and stored. Wrong credentials
+   * (401) and inactive accounts (403) surface the server's message verbatim.
    *
-   * Business rules:
-   * - Password must be 6–12 characters (BR-003).
-   * - Only employees with status "Active" may sign in (BR-004).
-   *
-   * @param credentials - Username and password submitted from the login form.
-   * @returns The authenticated user object with role and token.
-   * @throws {Error} When credentials are invalid, the account is inactive, or the server is unreachable.
+   * @throws {Error} When credentials are invalid, the account is not active,
+   *   or the server cannot be reached.
    */
   login: async (credentials: LoginCredentials): Promise<AuthUser> => {
-    const trimmedUsername = credentials.username.trim().toLowerCase();
+    const username = credentials.username.trim().toLowerCase();
     const password = credentials.password;
 
-    // Validate password length rule (BR-003: 6-12 chars)
     if (password.length < 6 || password.length > 12) {
-      throw new Error('Password must be between 6 and 12 characters (BR-003).');
+      throw new Error('Password must be 6 to 12 characters.');
     }
 
     try {
-      const response = await apiClient.post('/auth/login', {
-        username: trimmedUsername,
-        password,
-      }) as unknown as { user?: AuthUser };
+      const response = (await apiClient.post('/auth/login', { username, password })) as unknown as LoginResponse;
 
-      if (!response.user) {
+      if (!response?.accessToken || !response.employee) {
         throw new Error('The server returned an invalid sign-in response.');
       }
 
-      authService.setSession(response.user);
-      return response.user;
+      const user = toAuthUser(response.employee, response.accessToken);
+      authService.setSession(user);
+      return user;
     } catch (err: unknown) {
       const message = (err as Error)?.message || '';
       if (message === 'Network Error' || message.toLowerCase().includes('timeout')) {
-        throw new Error(
-          'Unable to reach the server. Please ensure the backend is running and try again.',
-          { cause: err }
-        );
+        throw new Error('Server unreachable. Check that the backend is running, then try again.', { cause: err });
       }
       throw err;
+    }
+  },
+
+  /**
+   * Best-effort audit of the sign-out (`POST /auth/logout`). The session is
+   * cleared locally whether or not the request succeeds.
+   */
+  logoutRemote: async (): Promise<void> => {
+    // Read the token now: the caller clears storage right after this starts.
+    const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+    if (!token) return;
+    try {
+      await apiClient.post('/auth/logout', undefined, { headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      // Tokens are stateless; a failed audit call must not block sign-out.
     }
   },
 

@@ -1,108 +1,134 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  HomeOutlined,
   AppstoreOutlined,
   CalendarOutlined,
-  UserOutlined,
   CreditCardOutlined,
-  TeamOutlined,
+  FileTextOutlined,
+  HomeOutlined,
   LoginOutlined,
-  CrownOutlined,
-  IdcardOutlined,
-  AuditOutlined,
+  LogoutOutlined,
+  TeamOutlined,
+  UserOutlined,
+  BlockOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
+import { useCheckInOutQueue } from '@/features/check-in-out';
+import { Avatar, RowMenu } from '@/components/common';
+import { useThemeMode } from '@/theme';
 import styles from './shell.module.css';
 
 interface NavItem {
   name: string;
   to: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ReactNode;
+  count?: number;
 }
 
-export const Sidebar: React.FC = () => {
-  const { role } = useAuth();
-  const isAdmin = role === 'Administrator';
+const NavItemLink: React.FC<{ item: NavItem }> = ({ item }) => (
+  <NavLink
+    to={item.to}
+    className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
+  >
+    <span className={styles.navIcon} aria-hidden="true">
+      {item.icon}
+    </span>
+    <span className={styles.navLabel}>{item.name}</span>
+    {item.count !== undefined && item.count > 0 && (
+      <span className={styles.navCount} aria-label={`${item.count} today`}>
+        {item.count}
+      </span>
+    )}
+  </NavLink>
+);
 
-  // Role-specific navigation menus strictly enforcing flowchart separation of duties (BR-005)
-  const navigation: NavItem[] = isAdmin
+/** Live count for the Staff "Arrivals & departures" item. */
+function useFrontDeskCount(enabled: boolean): number | undefined {
+  const { arrivals, departures, isSuccess } = useCheckInOutQueue(undefined, { enabled });
+  if (!enabled || !isSuccess) return undefined;
+  return arrivals.length + departures.length;
+}
+
+/**
+ * Light 232px sidebar. Navigation is role-specific (BR-005): Administrators
+ * see oversight pages plus an "Admin" group; Staff see front-desk pages.
+ * The signed-in user and sign-out live at the bottom.
+ */
+export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, role, logout } = useAuth();
+  const { mode } = useThemeMode();
+  const isAdmin = role === 'Administrator';
+  const deskCount = useFrontDeskCount(!isAdmin && Boolean(role));
+
+  const main: NavItem[] = isAdmin
     ? [
-        { name: 'Admin Dashboard', to: '/admin', icon: CrownOutlined },
-        { name: 'Kubo Cottages', to: '/kubos', icon: HomeOutlined },
-        { name: 'Kubo Types & Rates', to: '/kubo-types', icon: AppstoreOutlined },
-        { name: 'Reservations (Audit)', to: '/reservations', icon: CalendarOutlined },
-        { name: 'Staff Management', to: '/employees', icon: TeamOutlined },
-        { name: 'System Audit Logs', to: '/audit-logs', icon: AuditOutlined },
+        { name: 'Overview', to: '/admin', icon: <AppstoreOutlined /> },
+        { name: 'Reservations', to: '/reservations', icon: <CalendarOutlined /> },
+        { name: 'Kubos', to: '/kubos', icon: <HomeOutlined /> },
+        { name: 'Kubo types & rates', to: '/kubo-types', icon: <BlockOutlined /> },
       ]
     : [
-        { name: 'Staff Dashboard', to: '/staff', icon: IdcardOutlined },
-        { name: 'Check-In / Out Queue', to: '/check-in-out', icon: LoginOutlined },
-        { name: 'Reservations', to: '/reservations', icon: CalendarOutlined },
-        { name: 'Guests Directory', to: '/guests', icon: UserOutlined },
-        { name: 'Billing & Charges', to: '/payments', icon: CreditCardOutlined },
-        { name: 'Kubo Cottages', to: '/kubos', icon: HomeOutlined },
+        { name: 'Today', to: '/staff', icon: <AppstoreOutlined /> },
+        { name: 'Arrivals & departures', to: '/check-in-out', icon: <LoginOutlined />, count: deskCount },
+        { name: 'Reservations', to: '/reservations', icon: <CalendarOutlined /> },
+        { name: 'Guests', to: '/guests', icon: <UserOutlined /> },
+        { name: 'Payments', to: '/payments', icon: <CreditCardOutlined /> },
+        { name: 'Kubos', to: '/kubos', icon: <HomeOutlined /> },
       ];
 
+  const adminGroup: NavItem[] = isAdmin
+    ? [
+        { name: 'Employees', to: '/employees', icon: <TeamOutlined /> },
+        { name: 'Audit log', to: '/audit-logs', icon: <FileTextOutlined /> },
+      ]
+    : [];
+
+  const handleSignOut = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  const displayName = user?.fullName || user?.username || (isAdmin ? 'Administrator' : 'Staff');
+
   return (
-    <aside
-      className={`${styles.sidebar} ${isAdmin ? styles.sidebarAdmin : styles.sidebarStaff}`}
-      aria-label="Resort Management Navigation"
-    >
-      {/* Brand Header */}
-      <div className={styles.brandHeader}>
+    <aside className={styles.sidebar} aria-label="Main navigation">
+      <div className={styles.brand}>
         <img
-          src="/images/kubo-logo.jpg"
-          alt="KUBO Resort Logo"
-          className={styles.brandLogoImage}
+          src={mode === 'dark' ? '/images/kubo-logo-white.png' : '/images/kubo-logo-black.png'}
+          alt=""
+          className={styles.brandLogo}
         />
-        <div className={styles.brandTitleGroup}>
-          <span className={styles.brandTitle}>KUBO RESORT</span>
-          <span
-            className={`${styles.brandSubtitle} ${
-              isAdmin ? styles.brandSubtitleAdmin : styles.brandSubtitleStaff
-            }`}
-          >
-            {isAdmin ? 'Administrator' : 'Front Desk Operations'}
-          </span>
+        <div>
+          <div className={styles.brandName}>Kubo Resort</div>
+          <div className={styles.brandSub}>Reservation system</div>
         </div>
       </div>
 
-      {/* Navigation Links */}
-      <nav className={styles.navSection}>
-        <p
-          className={`${styles.navSectionTitle} ${
-            isAdmin ? styles.navSectionTitleAdmin : styles.navSectionTitleStaff
-          }`}
-        >
-          {isAdmin ? 'System Governance' : 'Daily Operations'}
-        </p>
-        {navigation.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => {
-                const baseClass = `${styles.navItem} ${
-                  isAdmin ? styles.navItemAdmin : styles.navItemStaff
-                }`;
-                const activeClass = isAdmin
-                  ? styles.navItemAdminActive
-                  : styles.navItemStaffActive;
-                return isActive ? `${baseClass} ${activeClass}` : baseClass;
-              }}
-            >
-              <Icon className={styles.navItemIcon} />
-              <span>{item.name}</span>
-            </NavLink>
-          );
-        })}
+      <nav className={styles.nav}>
+        {main.map((item) => (
+          <NavItemLink key={item.to} item={item} />
+        ))}
+        {adminGroup.length > 0 && (
+          <>
+            <div className={styles.navGroupLabel}>Admin</div>
+            {adminGroup.map((item) => (
+              <NavItemLink key={item.to} item={item} />
+            ))}
+          </>
+        )}
       </nav>
 
-      {/* Footer Role Indicator */}
-      <div className={styles.sidebarFooter}>
-        {isAdmin ? 'Administrator Mode' : 'Front Desk Staff Mode'}
+      <div className={styles.userCard}>
+        <Avatar name={displayName} size={30} />
+        <div className={styles.userText}>
+          <div className={styles.userName}>{displayName}</div>
+          <div className={styles.userRole}>{isAdmin ? 'Administrator' : 'Front desk'}</div>
+        </div>
+        <RowMenu
+          label="Account menu"
+          items={[{ key: 'signout', label: 'Sign out', icon: <LogoutOutlined />, onClick: handleSignOut }]}
+        />
       </div>
     </aside>
   );

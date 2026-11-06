@@ -1,306 +1,161 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Input,
-  Select,
-  Button,
-  Empty,
-  Alert,
-  Card,
-  Skeleton,
-} from 'antd';
-import {
-  SearchOutlined,
-  FilterOutlined,
-  SortAscendingOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  InboxOutlined,
-} from '@ant-design/icons';
-import { KuboTypeCard } from '../components/kubo-type-card.component';
-import { KuboTypeForm } from '../components/kubo-type-form.component';
-import { KuboTypeHeroSummary } from '../components/kubo-type-hero-summary.component';
+import React, { useMemo, useState } from 'react';
+import { App, Button, Progress, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { useKubos } from '@/features/kubo';
+import { useReservations } from '@/features/reservation';
+import { EmptyState, ErrorState, ListSkeleton, PageHeader, RowMenu, Section, TwoLine } from '@/components/common';
+import { formatMoneyWhole, pluralize } from '@/lib/format';
 import { useKuboTypes } from '../hooks/use-kubo-types.hook';
-import {
-  useCreateKuboType,
-  useUpdateKuboType,
-  useDeleteKuboType,
-} from '../hooks/use-kubo-type-mutations.hook';
-import type { KuboType, CreateKuboTypeDTO } from '../types/kubo-type.types';
+import { useCreateKuboType, useDeleteKuboType, useUpdateKuboType } from '../hooks/use-kubo-type-mutations.hook';
+import { KuboTypeDrawer } from '../components/kubo-type-drawer.component';
+import type { CreateKuboTypeDTO, KuboType } from '../types/kubo-type.types';
 import styles from './kubo-type-list.module.css';
 
-type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'capacity-desc';
-
 /**
- * Primary management page for resort Kubo Types & Nightly Rates.
- *
- * Responsibilities:
- * - Displays resort inventory tier classifications with responsive card grid.
- * - Enforces the "One Thing Leads" visual hierarchy with high-contrast summary hero banner.
- * - Provides real-time filtering, search, and sorting over categories.
- * - Handles full CRUD workflows for creating, modifying, and deleting kubo types.
- * - Honors BR-016 (rate & capacity boundaries), BR-020 (booking rate snapshots), and BR-022.
- * - Zero Emoji compliance using exclusively @ant-design/icons.
+ * Kubo types & rates (Administrator). A plain table with kubo counts and
+ * tonight's occupancy; create and edit happen in a side drawer. Types that
+ * still have kubos can't be deleted, so Delete is disabled with a reason.
  */
 export const KuboTypeListPage: React.FC = () => {
-  const { data: rawKuboTypes, isLoading, isError, error, refetch } = useKuboTypes();
+  const { modal } = App.useApp();
+  const types = useKuboTypes();
+  const kubos = useKubos();
+  const pending = useReservations({ status: 'Pending', limit: 100 });
+  const confirmed = useReservations({ status: 'Confirmed', limit: 100 });
+  const checkedIn = useReservations({ status: 'CheckedIn', limit: 100 });
+  const createType = useCreateKuboType();
+  const updateType = useUpdateKuboType();
+  const deleteType = useDeleteKuboType();
+  const [drawer, setDrawer] = useState<{ type: KuboType | null } | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const createMutation = useCreateKuboType();
-  const updateMutation = useUpdateKuboType();
-  const deleteMutation = useDeleteKuboType();
+  const usage = useMemo(() => {
+    const map = new Map<string, { total: number; occupied: number }>();
+    (kubos.data ?? []).forEach((k) => {
+      const u = map.get(k.kuboTypeId) ?? { total: 0, occupied: 0 };
+      u.total += 1;
+      if (k.status === 'Occupied') u.occupied += 1;
+      map.set(k.kuboTypeId, u);
+    });
+    return map;
+  }, [kubos.data]);
 
-  // Search & Filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
-  const [minCapacityFilter, setMinCapacityFilter] = useState<number | 'all'>('all');
+  // Active bookings per type name; they keep their booked rate when the rate changes.
+  const bookingsByTypeName = useMemo(() => {
+    const map = new Map<string, number>();
+    [...(pending.data ?? []), ...(confirmed.data ?? []), ...(checkedIn.data ?? [])].forEach((r) => {
+      const names = new Set(r.assignments.map((a) => a.type_name ?? ''));
+      names.forEach((n) => map.set(n, (map.get(n) ?? 0) + 1));
+    });
+    return map;
+  }, [pending.data, confirmed.data, checkedIn.data]);
 
-  // Modal / Form state
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingKuboType, setEditingKuboType] = useState<KuboType | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const kuboTypes = useMemo(() => rawKuboTypes ?? [], [rawKuboTypes]);
-
-  // Client-side filtering and sorting for instant responsiveness
-  const filteredAndSortedList = useMemo(() => {
-    return kuboTypes
-      .filter((item) => {
-        const matchesSearch =
-          item.type_name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-          (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase().trim()));
-
-        const matchesCapacity =
-          minCapacityFilter === 'all' || item.capacity >= minCapacityFilter;
-
-        return matchesSearch && matchesCapacity;
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case 'name-asc':
-            return a.type_name.localeCompare(b.type_name);
-          case 'name-desc':
-            return b.type_name.localeCompare(a.type_name);
-          case 'price-asc':
-            return Number(a.price_per_night) - Number(b.price_per_night);
-          case 'price-desc':
-            return Number(b.price_per_night) - Number(a.price_per_night);
-          case 'capacity-desc':
-            return b.capacity - a.capacity;
-          default:
-            return 0;
-        }
-      });
-  }, [kuboTypes, searchTerm, sortBy, minCapacityFilter]);
-
-  const handleOpenCreateModal = () => {
-    setEditingKuboType(null);
-    setIsFormOpen(true);
-  };
-
-  const handleOpenEditModal = (kuboType: KuboType) => {
-    setEditingKuboType(kuboType);
-    setIsFormOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsFormOpen(false);
-    setEditingKuboType(null);
-  };
-
-  const handleSubmitForm = async (values: CreateKuboTypeDTO) => {
-    if (editingKuboType) {
-      await updateMutation.mutateAsync({
-        id: editingKuboType.kubo_type_id,
-        data: values,
-      });
-    } else {
-      await createMutation.mutateAsync(values);
-    }
-    handleCloseModal();
-  };
-
-  const handleDeleteKuboType = async (kuboTypeId: string) => {
+  const submit = async (values: CreateKuboTypeDTO) => {
+    setServerError(null);
     try {
-      setDeletingId(kuboTypeId);
-      await deleteMutation.mutateAsync(kuboTypeId);
-    } finally {
-      setDeletingId(null);
+      if (drawer?.type) await updateType.mutateAsync({ id: drawer.type.kubo_type_id, data: values });
+      else await createType.mutateAsync(values);
+      setDrawer(null);
+    } catch (err) {
+      setServerError((err as Error).message);
     }
   };
 
-  const isMutating =
-    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const columns: ColumnsType<KuboType> = [
+    { title: 'Type', render: (_, t) => <TwoLine primary={t.type_name} secondary={t.description || undefined} /> },
+    { title: 'Capacity', width: 120, render: (_, t) => pluralize(t.capacity, 'guest') },
+    { title: 'Nightly rate', align: 'right', width: 140, render: (_, t) => <span className="tabular">{formatMoneyWhole(t.price_per_night)}</span> },
+    { title: 'Kubos', align: 'right', width: 90, render: (_, t) => <span className="tabular">{usage.get(t.kubo_type_id)?.total ?? 0}</span> },
+    {
+      title: 'Occupancy tonight',
+      width: 200,
+      render: (_, t) => {
+        const u = usage.get(t.kubo_type_id);
+        const pct = u?.total ? Math.round((u.occupied / u.total) * 100) : 0;
+        return (
+          <div className={styles.occupancy}>
+            <Progress percent={pct} showInfo={false} size="small" aria-label={`${pct}% occupied`} />
+            <span className="muted tabular">{u ? `${u.occupied}/${u.total}` : '—'}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'menu',
+      width: 48,
+      align: 'center',
+      render: (_, t) => {
+        const inUse = (usage.get(t.kubo_type_id)?.total ?? 0) > 0;
+        return (
+          <RowMenu
+            label={`Actions for ${t.type_name}`}
+            items={[
+              { key: 'edit', label: 'Edit type & rate', icon: <EditOutlined />, onClick: () => { setServerError(null); setDrawer({ type: t }); } },
+              { key: 'd', divider: true },
+              {
+                key: 'delete',
+                label: 'Delete type',
+                icon: <DeleteOutlined />,
+                danger: true,
+                disabled: inUse,
+                reason: 'Types with kubos can’t be deleted. Move or remove those kubos first.',
+                onClick: () =>
+                  modal.confirm({
+                    title: `Delete ${t.type_name}?`,
+                    content: 'This type has no kubos. It is removed permanently.',
+                    okText: 'Delete type',
+                    okButtonProps: { danger: true },
+                    onOk: () => deleteType.mutateAsync(t.kubo_type_id),
+                  }),
+              },
+            ]}
+          />
+        );
+      },
+    },
+  ];
 
   return (
-    <main className={styles.pageContainer} aria-label="Kubo Types Management">
-      {/* 1. Visual Focal Point: Hero Summary Banner ("One Thing Leads") */}
-      <KuboTypeHeroSummary
-        kuboTypes={kuboTypes}
-        onCreateClick={handleOpenCreateModal}
+    <div>
+      <PageHeader
+        title="Kubo types & rates"
+        description="Rate changes apply to new reservations only. Existing bookings keep their rate."
+        action={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setServerError(null); setDrawer({ type: null }); }}>
+            New type
+          </Button>
+        }
       />
-
-      {/* Error Banner when query encounters an issue */}
-      {isError && (
-        <Alert
-          className={styles.errorBanner}
-          type="error"
-          showIcon
-          message="Failed to load kubo categories"
-          description={
-            error instanceof Error
-              ? error.message
-              : 'An unexpected error occurred while communicating with the server.'
-          }
-          action={
-            <Button
-              size="small"
-              danger
-              icon={<ReloadOutlined aria-hidden="true" />}
-              onClick={() => refetch()}
-            >
-              Retry
-            </Button>
-          }
-        />
-      )}
-
-      {/* 2. Interactive Filtering & Sorting Toolbar */}
-      <section className={styles.toolbarContainer} aria-label="Filter and search controls">
-        <div className={styles.searchGroup}>
-          <Input
-            className={styles.searchInput}
-            placeholder="Search categories by name or amenities..."
-            prefix={<SearchOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            allowClear
-            aria-label="Search kubo categories"
+      <Section flush>
+        {types.isLoading ? (
+          <ListSkeleton rows={5} />
+        ) : types.isError ? (
+          <ErrorState error={types.error} onRetry={() => types.refetch()} />
+        ) : (types.data ?? []).length === 0 ? (
+          <EmptyState title="No kubo types yet" action={<Button size="small" onClick={() => setDrawer({ type: null })}>Create the first type</Button>} />
+        ) : (
+          <Table<KuboType>
+            rowKey="kubo_type_id"
+            columns={columns}
+            dataSource={types.data}
+            pagination={false}
+            size="middle"
+            rowClassName={() => 'clickable-row'}
+            onRow={(t) => ({ onClick: () => { setServerError(null); setDrawer({ type: t }); } })}
           />
-        </div>
+        )}
+      </Section>
 
-        <div className={styles.filterControls}>
-          <Select
-            style={{ width: 180 }}
-            value={minCapacityFilter}
-            onChange={(val) => setMinCapacityFilter(val)}
-            suffixIcon={<FilterOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
-            aria-label="Filter by guest capacity"
-            options={[
-              { label: 'All Capacities', value: 'all' },
-              { label: 'Capacity: 2+ Guests', value: 2 },
-              { label: 'Capacity: 4+ Guests', value: 4 },
-              { label: 'Capacity: 6+ Guests', value: 6 },
-              { label: 'Capacity: 8+ Guests', value: 8 },
-            ]}
-          />
-
-          <Select
-            style={{ width: 210 }}
-            value={sortBy}
-            onChange={(val) => setSortBy(val)}
-            suffixIcon={<SortAscendingOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
-            aria-label="Sort kubo categories"
-            options={[
-              { label: 'Name (A to Z)', value: 'name-asc' },
-              { label: 'Name (Z to A)', value: 'name-desc' },
-              { label: 'Rate (Lowest First)', value: 'price-asc' },
-              { label: 'Rate (Highest First)', value: 'price-desc' },
-              { label: 'Capacity (Largest First)', value: 'capacity-desc' },
-            ]}
-          />
-
-          <span className={styles.resultsBadge} aria-live="polite">
-            {filteredAndSortedList.length}{' '}
-            {filteredAndSortedList.length === 1 ? 'category' : 'categories'} found
-          </span>
-        </div>
-      </section>
-
-      {/* 3. Main Data Content Area with 8 Interactive & Loading States */}
-      {isLoading ? (
-        <div className={styles.cardsGrid} aria-busy="true" aria-label="Loading kubo categories">
-          {[1, 2, 3, 4, 5, 6].map((key) => (
-            <Card key={key} style={{ borderRadius: 12 }}>
-              <Skeleton active paragraph={{ rows: 4 }} />
-            </Card>
-          ))}
-        </div>
-      ) : kuboTypes.length === 0 ? (
-        /* Empty State owning viewport when zero categories exist */
-        <div className={styles.emptyStateCard} role="status">
-          <Empty
-            image={<InboxOutlined style={{ fontSize: 56, color: '#9ca3af' }} aria-hidden="true" />}
-            description={
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: '0 0 6px 0' }}>
-                  No Kubo Categories Configured
-                </p>
-                <p style={{ color: '#6b7280', margin: 0, maxWidth: 420 }}>
-                  Begin resort inventory configuration by creating your first kubo category with capacity limits and standard nightly pricing.
-                </p>
-              </div>
-            }
-          >
-            <Button
-              type="primary"
-              icon={<PlusOutlined aria-hidden="true" />}
-              size="large"
-              style={{ marginTop: 16 }}
-              onClick={handleOpenCreateModal}
-            >
-              Create First Kubo Type
-            </Button>
-          </Empty>
-        </div>
-      ) : filteredAndSortedList.length === 0 ? (
-        /* Empty search/filter result state */
-        <div className={styles.emptyStateCard} role="status">
-          <Empty
-            description={
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: '0 0 6px 0' }}>
-                  No Matching Categories
-                </p>
-                <p style={{ color: '#6b7280', margin: 0 }}>
-                  No kubo categories match your current search query or capacity filter.
-                </p>
-              </div>
-            }
-          >
-            <Button
-              type="default"
-              onClick={() => {
-                setSearchTerm('');
-                setMinCapacityFilter('all');
-              }}
-            >
-              Reset Filters
-            </Button>
-          </Empty>
-        </div>
-      ) : (
-        /* Rendered Cards Grid */
-        <div className={styles.cardsGrid} role="list" aria-label="Kubo category cards">
-          {filteredAndSortedList.map((item) => (
-            <div key={item.kubo_type_id} role="listitem">
-              <KuboTypeCard
-                kuboType={item}
-                onEdit={handleOpenEditModal}
-                onDelete={handleDeleteKuboType}
-                isDeleting={deletingId === item.kubo_type_id}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 4. Create / Edit Form Modal */}
-      <KuboTypeForm
-        open={isFormOpen}
-        initialData={editingKuboType}
-        isLoading={isMutating}
-        onCancel={handleCloseModal}
-        onSubmit={handleSubmitForm}
+      <KuboTypeDrawer
+        open={Boolean(drawer)}
+        kuboType={drawer?.type}
+        bookingsOnType={drawer?.type ? bookingsByTypeName.get(drawer.type.type_name) ?? 0 : 0}
+        isLoading={createType.isPending || updateType.isPending}
+        serverError={serverError}
+        onClose={() => setDrawer(null)}
+        onSubmit={submit}
       />
-    </main>
+    </div>
   );
 };

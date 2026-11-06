@@ -1,17 +1,17 @@
 /**
- * Domain types and DTO contracts for the System Audit Logs feature module.
- * Strictly adheres to BR-067 through BR-070, and BR-078.
+ * Domain types for the read-only audit log (BR-067 to BR-070, BR-078).
+ * Action values match the backend `kubo.audit_action` enum exactly.
  */
 
 export const AUDIT_ACTIONS = [
-  'create',
-  'update',
-  'delete',
-  'login',
-  'logout',
-  'cancel',
-  'approve',
-  'reject',
+  'Create',
+  'Update',
+  'Delete',
+  'Login',
+  'Logout',
+  'Cancel',
+  'Approve',
+  'Reject',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -19,9 +19,8 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 export interface AuditLog {
   auditLogId: string;
   employeeId: string;
-  employeeName?: string;
   action: AuditAction;
-  entityType?: string;
+  entityType: string;
   entityId: string;
   description: string;
   oldValues: Record<string, unknown> | null;
@@ -30,12 +29,11 @@ export interface AuditLog {
 }
 
 export interface AuditLogFilterParams {
-  action?: AuditAction | string;
+  action?: AuditAction;
   entityType?: string;
   employeeId?: string;
   createdFrom?: string;
   createdTo?: string;
-  search?: string;
   limit?: number;
   offset?: number;
 }

@@ -106,7 +106,7 @@ export const guestService = {
    */
   getReservations: async (guestId: string): Promise<GuestReservationHistoryItem[]> => {
     const response = await apiClient.get<GuestReservationsApiResponse>('/reservations', {
-      params: { guestId },
+      params: { guestId, limit: 100 },
     });
     const raw = response as unknown as GuestReservationsApiResponse | GuestReservationHistoryItem[];
     if (Array.isArray(raw)) {

@@ -83,53 +83,85 @@ export interface Payment {
   notes?: string | null;
 }
 
-/** Normalized Additional Charge record from database/API */
+/** Applied additional charge (snapshot of quantity, unit price and total). */
 export interface AdditionalCharge {
   additional_charge_id: string;
   reservation_id: string;
   employee_id: string;
   employee_name?: string;
-  charge_type: AdditionalChargeType;
+  charge_type: AdditionalChargeType | string;
+  catalog_name?: string | null;
+  request_id?: string | null;
+  quantity: number;
+  unit_amount: number;
   amount: number;
   description: string;
   charge_date: string;
 }
 
-/** Input payload to record a new payment transaction */
+/** Administrator-managed price list item that Staff apply to reservations. */
+export interface ChargeCatalogItem {
+  catalog_id: string;
+  charge_type: string;
+  name: string;
+  description: string | null;
+  unit_price: number;
+  is_active: boolean;
+}
+
+export const CHARGE_REQUEST_STATUSES = ['Pending', 'Approved', 'Rejected', 'Withdrawn'] as const;
+export type ChargeRequestStatus = (typeof CHARGE_REQUEST_STATUSES)[number];
+
+/** Custom ("Other") charge requested by Staff, reviewed by an Administrator. */
+export interface ChargeRequest {
+  request_id: string;
+  reservation_id: string;
+  reference_code: string;
+  guest_name: string;
+  requested_by: string;
+  requested_by_name: string;
+  charge_type: string;
+  description: string;
+  quantity: number;
+  proposed_unit_amount: number;
+  approved_unit_amount: number | null;
+  status: ChargeRequestStatus;
+  reviewed_by_name: string | null;
+  review_reason: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+/** Input payload to record a new payment. The backend sets status Pending. */
 export interface CreatePaymentPayload {
   reservationId: string;
-  employeeId: string;
   paymentAmount: number;
-  transactionType?: TransactionType;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
-  paymentStatus?: PaymentStatus;
-  paymentDate?: string;
-  notes?: string;
-  adminOverride?: boolean;
-  adminReason?: string;
 }
 
-/** Input payload to issue an audited refund */
+/** Input payload to refund part or all of a completed payment. */
 export interface CreateRefundPayload {
   reservationId: string;
-  employeeId: string;
+  originalPaymentId: string;
   paymentAmount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
-  paymentStatus?: PaymentStatus;
-  paymentDate?: string;
-  reason: string;
 }
 
-/** Input payload to post an incidentals/additional charge */
-export interface CreateAdditionalChargePayload {
+/** Applies an active catalog item to a reservation. */
+export interface ApplyCatalogChargePayload {
   reservationId: string;
-  employeeId: string;
-  additionalChargeType: string;
-  additionalChargeAmount: number;
-  additionalChargeDescription: string;
-  chargeDate?: string;
+  catalogId: string;
+  quantity: number;
+}
+
+/** Submits a custom charge request for Administrator review. */
+export interface CreateChargeRequestPayload {
+  reservationId: string;
+  description: string;
+  quantity: number;
+  proposedUnitAmount: number;
 }
 
 /** Filter criteria for the payment ledger query */
@@ -139,9 +171,8 @@ export interface PaymentFilterParams {
   transactionType?: string;
   reservationId?: string;
   employeeId?: string;
-  startDate?: string;
-  endDate?: string;
-  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
   limit?: number;
   offset?: number;
 }

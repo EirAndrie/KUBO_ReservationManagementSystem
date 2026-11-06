@@ -1,517 +1,397 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import {
-  Table,
-  Button,
-  Input,
-  Select,
-  DatePicker,
-  Alert,
-  Modal,
-  Tag,
-  Empty,
-  Typography,
-} from 'antd';
+import React, { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { App, Button, DatePicker, Input, Select, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
-  SearchOutlined,
-  PlusOutlined,
-  EyeOutlined,
-  FilterOutlined,
-  ReloadOutlined,
-  CheckCircleOutlined,
+  CheckOutlined,
   CloseCircleOutlined,
-  InboxOutlined,
-  ExclamationCircleOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  LeftOutlined,
+  RightOutlined,
+  SearchOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
 import { useReservations } from '../hooks/use-reservations.hook';
+import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
+import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
+import { BOOKING_SOURCE_OPTIONS, STATUS_OPTIONS } from '../constants/reservation.constants';
+import type { BookingSource, Reservation, ReservationFilterParams, ReservationStatus } from '../types/reservation.types';
+import { balanceOf, stayOf } from '../utils/reservation.utils';
 import {
-  useConfirmReservation,
-  useCancelReservation,
-} from '../hooks/use-reservation-mutations.hook';
-import { ReservationStatusTag } from '../components/reservation-status-tag.component';
-import { ReservationWizard } from '../components/reservation-wizard.component';
-import {
-  STATUS_OPTIONS,
-  BOOKING_SOURCE_OPTIONS,
-  BOOKING_SOURCE_LABELS,
-  RESERVATION_LIMITS,
-} from '../constants/reservation.constants';
-import type {
-  Reservation,
-  ReservationStatus,
-  BookingSource,
-} from '../types/reservation.types';
+  EmptyState,
+  ErrorState,
+  FilterChip,
+  ListSkeleton,
+  PageHeader,
+  RowMenu,
+  Section,
+  StatusBadge,
+  TabLabel,
+  TwoLine,
+} from '@/components/common';
+import type { RowMenuItem } from '@/components/common';
+import { useDebouncedValue } from '@/hooks/use-debounced-value.hook';
+import { formatMoney, formatStayRange, label, pluralize } from '@/lib/format';
 import styles from './reservation-list.module.css';
 
-const { Text } = Typography;
-const { RangePicker } = DatePicker;
-const { TextArea } = Input;
+const PAGE_SIZE = 25;
+
+type ViewTab = 'all' | 'arriving' | 'inhouse' | 'pending' | 'upcoming' | 'past';
+
+const TAB_PARAMS: Record<ViewTab, Partial<ReservationFilterParams>> = {
+  all: {},
+  arriving: { status: 'Confirmed' },
+  inhouse: { status: 'CheckedIn' },
+  pending: { status: 'Pending' },
+  upcoming: { status: 'Confirmed' },
+  past: { status: 'CheckedOut' },
+};
+
+type SortKey = 'booked' | 'checkin';
+
+/** Builds a CSV from the visible rows (client-side export, no new endpoint). */
+function exportCsv(rows: Reservation[]) {
+  const header = ['Reference', 'Guest', 'Kubos', 'Check-in', 'Check-out', 'Nights', 'Status', 'Source', 'Balance due'];
+  const lines = rows.map((r) => {
+    const stay = stayOf(r.assignments);
+    return [
+      r.reference_code,
+      r.guest_name,
+      (r.assignments ?? []).map((a) => a.kubo_number).join(' '),
+      stay.checkIn ?? '',
+      stay.checkOut ?? '',
+      String(stay.nights),
+      label(r.status),
+      label(r.booking_source),
+      balanceOf(r).toFixed(2),
+    ]
+      .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+      .join(',');
+  });
+  const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `reservations-${dayjs().format('YYYYMMDD')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /**
- * Primary Reservation Directory and Lifecycle Management Page.
- *
- * Implements:
- * - Filtering by Status, Booking Source, Date Range, and Search term.
- * - Real-time state updates with TanStack Query.
- * - Integration with multi-step ReservationWizard.
- * - Contextual actions (Confirm, Cancel with mandatory reason).
- * - WCAG 2.2 AA accessibility: status tags combine icons and semantic text.
- * - Zero Emoji Policy: Icons exclusively from @ant-design/icons.
+ * Reservations list. Saved-view tabs and filter chips map onto the existing
+ * query params (`status`, `bookingSource`, `search`, `checkInDate`,
+ * `checkOutDate`, `limit`, `offset`) and are mirrored in the URL so a refresh
+ * keeps them. Rare and destructive actions live in the `⋯` menu.
  */
 export const ReservationListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { modal } = App.useApp();
+  const { isStaff } = useAuth();
+  const [params, setParams] = useSearchParams();
 
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'all'>('all');
-  const [sourceFilter, setSourceFilter] = useState<BookingSource | 'all'>('all');
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const tab = (params.get('tab') as ViewTab) || 'all';
+  const statusParam = (params.get('status') as ReservationStatus) || undefined;
+  const source = (params.get('source') as BookingSource) || undefined;
+  const from = params.get('from') || undefined;
+  const to = params.get('to') || undefined;
+  const kuboType = params.get('type') || undefined;
+  const sort = (params.get('sort') as SortKey) || 'booked';
+  const page = Math.max(1, Number(params.get('page')) || 1);
+  const searchInput = params.get('search') ?? '';
+  const search = useDebouncedValue(searchInput.trim(), 300);
 
-  // Wizard modal state
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-
-  // Cancellation modal state
-  const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
-  const [cancelReason, setCancelReason] = useState('');
-
-  const queryParams = useMemo(() => {
-    return {
-      search: debouncedSearch || undefined,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      bookingSource: sourceFilter !== 'all' ? sourceFilter : undefined,
-      checkInDate: dateRange ? dateRange[0].format('YYYY-MM-DD') : undefined,
-      checkOutDate: dateRange ? dateRange[1].format('YYYY-MM-DD') : undefined,
-      limit: 100,
-    };
-  }, [debouncedSearch, statusFilter, sourceFilter, dateRange]);
-
-  const { data: rawReservations, isLoading, isError, error, refetch } = useReservations(queryParams);
-  const confirmMutation = useConfirmReservation();
-  const cancelMutation = useCancelReservation();
-
-  const reservations = useMemo(() => rawReservations ?? [], [rawReservations]);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchTerm(value);
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-      const timer = setTimeout(() => {
-        setDebouncedSearch(value.trim());
-      }, 350);
-      setDebounceTimer(timer);
-    },
-    [debounceTimer],
-  );
-
-  const formatCurrency = (val: string | number) =>
-    new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2,
-    }).format(Number(val) || 0);
-
-  // Quick Confirm handler
-  const handleQuickConfirm = async (reservation: Reservation) => {
-    await confirmMutation.mutateAsync(reservation.reservation_id);
+  const update = (patch: Record<string, string | undefined>, resetPage = true) => {
+    const next = new URLSearchParams(params);
+    Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    if (resetPage) next.delete('page');
+    setParams(next, { replace: true });
   };
 
-  // Cancellation submit handler
-  const handleConfirmCancel = async () => {
-    if (!cancellingReservation || !cancelReason.trim()) return;
+  const today = dayjs().format('YYYY-MM-DD');
+  const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
 
-    await cancelMutation.mutateAsync({
-      id: cancellingReservation.reservation_id,
-      data: { reason: cancelReason.trim() },
+  const query: ReservationFilterParams = useMemo(() => {
+    const base: ReservationFilterParams = {
+      ...TAB_PARAMS[tab],
+      search: search || undefined,
+      bookingSource: source,
+      checkInDate: from,
+      checkOutDate: to,
+      limit: PAGE_SIZE + 1,
+      offset: (page - 1) * PAGE_SIZE,
+    };
+    if (tab === 'all' && statusParam) base.status = statusParam;
+    if (tab === 'arriving') base.checkInDate = today;
+    if (tab === 'upcoming') base.checkInDate = from && from > tomorrow ? from : tomorrow;
+    return base;
+  }, [tab, statusParam, search, source, from, to, page, today, tomorrow]);
+
+  const list = useReservations(query);
+
+  // Tab counts: one request per status bucket the counts need.
+  const pendingCount = useReservations({ status: 'Pending', limit: 100 });
+  const confirmedCount = useReservations({ status: 'Confirmed', limit: 100 });
+  const inHouseCount = useReservations({ status: 'CheckedIn', limit: 100 });
+  const arrivingToday = (confirmedCount.data ?? []).filter((r) =>
+    (r.assignments ?? []).some((a) => a.check_in_date === today),
+  ).length;
+
+  const confirm = useConfirmReservation();
+  const noShow = useMarkNoShow();
+  const [cancelling, setCancelling] = useState<Reservation | null>(null);
+
+  const rows = useMemo(() => {
+    let data = (list.data ?? []).slice(0, PAGE_SIZE);
+    if (tab === 'arriving') data = data.filter((r) => (r.assignments ?? []).some((a) => a.check_in_date === today));
+    if (kuboType) data = data.filter((r) => (r.assignments ?? []).some((a) => a.type_name === kuboType));
+    if (sort === 'checkin') {
+      data = [...data].sort((a, b) => (stayOf(a.assignments).checkIn ?? '').localeCompare(stayOf(b.assignments).checkIn ?? ''));
+    }
+    return data;
+  }, [list.data, tab, today, kuboType, sort]);
+
+  const hasNext = (list.data?.length ?? 0) > PAGE_SIZE;
+  const typeOptions = useMemo(() => {
+    const names = new Set<string>();
+    [...(list.data ?? []), ...(confirmedCount.data ?? [])].forEach((r) =>
+      (r.assignments ?? []).forEach((a) => a.type_name && names.add(a.type_name)),
+    );
+    return [...names].sort().map((n) => ({ value: n, label: n }));
+  }, [list.data, confirmedCount.data]);
+
+  const askConfirm = (r: Reservation) =>
+    modal.confirm({
+      title: `Confirm ${r.reference_code}?`,
+      content: `${r.guest_name}'s booking moves from Pending to Confirmed.`,
+      okText: 'Confirm reservation',
+      onOk: () => confirm.mutateAsync(r.reservation_id),
     });
 
-    setCancellingReservation(null);
-    setCancelReason('');
+  const askNoShow = (r: Reservation) =>
+    modal.confirm({
+      title: `Mark ${r.reference_code} as no-show?`,
+      content: `${r.guest_name} didn't arrive. The booking ends and its kubos are released. This can't be undone.`,
+      okText: 'Mark no-show',
+      okButtonProps: { danger: true },
+      onOk: () => noShow.mutateAsync(r.reservation_id),
+    });
+
+  const menuFor = (r: Reservation): RowMenuItem[] => {
+    const items: RowMenuItem[] = [
+      { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: () => navigate(`/reservations/${r.reservation_id}`) },
+    ];
+    if (!isStaff) return items;
+    if (r.status === 'Pending') {
+      items.push({ key: 'confirm', label: 'Confirm', icon: <CheckOutlined />, onClick: () => askConfirm(r) });
+    }
+    if (r.status === 'Confirmed') {
+      items.push({ key: 'noshow', label: 'Mark no-show', icon: <StopOutlined />, onClick: () => askNoShow(r) });
+    }
+    if (r.status === 'Pending' || r.status === 'Confirmed') {
+      items.push({ key: 'd', divider: true });
+      items.push({ key: 'cancel', label: 'Cancel reservation', icon: <CloseCircleOutlined />, danger: true, onClick: () => setCancelling(r) });
+    }
+    return items;
   };
 
   const columns: ColumnsType<Reservation> = [
     {
       title: 'Reference',
       dataIndex: 'reference_code',
-      key: 'reference_code',
-      width: 140,
-      render: (code: string) => (
-        <Text copyable={{ text: code }} className={styles.refCode}>
-          {code}
-        </Text>
-      ),
-    },
-    {
-      title: 'Guest',
-      key: 'guest',
-      width: 180,
-      render: (_, record) => (
-        <div className={styles.guestCell}>
-          <span className={styles.guestName}>{record.guest_name}</span>
-        </div>
-      ),
-    },
-    {
-      title: 'Stay Dates',
-      key: 'dates',
       width: 190,
-      render: (_, record) => {
-        const firstAssignment = record.assignments?.[0];
-        if (!firstAssignment) return <span style={{ color: '#94a3b8' }}>No dates</span>;
-
-        const checkIn = dayjs(firstAssignment.check_in_date);
-        const checkOut = dayjs(firstAssignment.check_out_date);
-        const nights = Math.max(1, checkOut.diff(checkIn, 'day'));
-
+      render: (v: string) => <span className={`mono ${styles.ref}`}>{v}</span>,
+    },
+    { title: 'Guest', dataIndex: 'guest_name', ellipsis: true },
+    {
+      title: 'Kubo',
+      width: 170,
+      render: (_, r) => {
+        const [first, ...rest] = r.assignments ?? [];
+        if (!first) return <span className="muted">—</span>;
         return (
-          <div style={{ fontSize: '0.85rem' }}>
-            <div>
-              {checkIn.format('MMM D')} – {checkOut.format('MMM D, YYYY')}
-            </div>
-            <div style={{ color: '#0284c7', fontSize: '0.78rem', fontWeight: 600 }}>
-              {nights} {nights === 1 ? 'night' : 'nights'}
-            </div>
-          </div>
+          <TwoLine
+            primary={`${first.kubo_number ?? 'Kubo'}${rest.length ? ` +${rest.length}` : ''}`}
+            secondary={first.type_name}
+          />
         );
       },
     },
     {
-      title: 'Kubos',
-      key: 'kubos',
-      width: 160,
-      render: (_, record) => {
-        if (!record.assignments || record.assignments.length === 0) {
-          return <span style={{ color: '#94a3b8' }}>None</span>;
-        }
-        return (
-          <div className={styles.kuboTags}>
-            {record.assignments.map((a, i) => (
-              <Tag key={i} color="cyan" style={{ margin: 0, fontSize: '0.78rem' }}>
-                Kubo {a.kubo_number || a.kubo_id.slice(0, 4)}
-              </Tag>
-            ))}
-          </div>
-        );
+      title: 'Stay',
+      width: 150,
+      render: (_, r) => {
+        const s = stayOf(r.assignments);
+        return <TwoLine primary={<span className="tabular">{formatStayRange(s.checkIn, s.checkOut)}</span>} secondary={pluralize(s.nights, 'night')} />;
       },
     },
+    { title: 'Status', dataIndex: 'status', width: 130, render: (v: ReservationStatus) => <StatusBadge status={v} /> },
     {
-      title: 'Source',
-      dataIndex: 'booking_source',
-      key: 'booking_source',
-      width: 120,
-      render: (source: BookingSource) => (
-        <span style={{ fontSize: '0.82rem', color: '#475569' }}>
-          {BOOKING_SOURCE_LABELS[source] || source}
-        </span>
-      ),
+      title: 'Balance due',
+      align: 'right',
+      width: 130,
+      render: (_, r) =>
+        r.status === 'Cancelled' || r.status === 'NoShow' ? (
+          <span className="muted">—</span>
+        ) : (
+          <span className="tabular">{formatMoney(balanceOf(r))}</span>
+        ),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (status: ReservationStatus) => <ReservationStatusTag status={status} />,
-    },
-    {
-      title: 'Financials',
-      key: 'financials',
-      width: 180,
-      render: (_, record) => {
-        const balance = Number(record.outstanding_balance) || 0;
-        const isSettled = balance <= 0;
-
-        return (
-          <div style={{ fontSize: '0.82rem' }}>
-            <div style={{ fontWeight: 600, color: '#0c4a6e' }}>
-              {formatCurrency(record.accommodation_total)}
-            </div>
-            <div style={{ color: isSettled ? '#15803d' : '#b45309', fontSize: '0.76rem' }}>
-              {isSettled ? 'Fully Settled' : `Bal: ${formatCurrency(balance)}`}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      title: '',
       key: 'actions',
-      width: 200,
-      fixed: 'right' as const,
-      align: 'right' as const,
-      render: (_, record) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-          <Button
-            size="small"
-            icon={<EyeOutlined aria-hidden="true" />}
-            onClick={() => navigate(`/reservations/${record.reservation_id}`)}
-            aria-label={`View reservation ${record.reference_code}`}
-          >
-            View
-          </Button>
-
-          {record.status === 'Pending' && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CheckCircleOutlined aria-hidden="true" />}
-              loading={confirmMutation.isPending}
-              onClick={() => handleQuickConfirm(record)}
-              aria-label={`Confirm reservation ${record.reference_code}`}
-            >
-              Confirm
-            </Button>
-          )}
-
-          {['Pending', 'Confirmed'].includes(record.status) && (
-            <Button
-              size="small"
-              danger
-              icon={<CloseCircleOutlined aria-hidden="true" />}
-              onClick={() => {
-                setCancellingReservation(record);
-                setCancelReason('');
-              }}
-              aria-label={`Cancel reservation ${record.reference_code}`}
-            >
-              Cancel
-            </Button>
-          )}
-        </div>
-      ),
+      width: 48,
+      align: 'center',
+      render: (_, r) => <RowMenu items={menuFor(r)} label={`Actions for ${r.reference_code}`} />,
     },
   ];
 
+  const tabs: Array<{ key: ViewTab; text: string; count?: number }> = [
+    { key: 'all', text: 'All' },
+    { key: 'arriving', text: 'Arriving today', count: confirmedCount.isSuccess ? arrivingToday : undefined },
+    { key: 'inhouse', text: 'In-house', count: inHouseCount.data?.length },
+    { key: 'pending', text: 'Pending', count: pendingCount.data?.length },
+    { key: 'upcoming', text: 'Upcoming' },
+    { key: 'past', text: 'Past' },
+  ];
+
+  const start = rows.length ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const end = (page - 1) * PAGE_SIZE + rows.length;
+
   return (
-    <main className={styles.pageContainer} aria-label="Reservation Management">
-      {/* Hero Header */}
-      <section className={styles.heroCard}>
-        <div>
-          <div className={styles.heroEyebrow}>
-            <span>Operational Bookings & Reservations</span>
-          </div>
-          <h1 className={styles.heroTitle}>Reservation Directory</h1>
-          <p className={styles.heroSubtitle}>
-            Manage resort bookings, assign available kubos, confirm reservations, and track guest check-in/out schedules.
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined aria-hidden="true" />}
-          size="large"
-          className={styles.newButton}
-          onClick={() => setIsWizardOpen(true)}
-          aria-label="Create new reservation"
-        >
-          New Reservation
-        </Button>
-      </section>
-
-      {/* Error Banner */}
-      {isError && (
-        <Alert
-          className={styles.errorBanner}
-          type="error"
-          showIcon
-          message="Failed to load reservations"
-          description={
-            error instanceof Error
-              ? error.message
-              : 'An unexpected error occurred while communicating with the server.'
-          }
-          action={
-            <Button
-              size="small"
-              danger
-              icon={<ReloadOutlined aria-hidden="true" />}
-              onClick={() => refetch()}
-            >
-              Retry
-            </Button>
-          }
-        />
-      )}
-
-      {/* Filter Toolbar */}
-      <section className={styles.toolbarContainer} aria-label="Reservation filters">
-        <div className={styles.filterGroup}>
-          <Input
-            className={styles.searchInput}
-            placeholder="Search code or guest name..."
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} aria-hidden="true" />}
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            allowClear
-            aria-label="Search reservations"
-          />
-
-          <Select
-            className={styles.filterSelect}
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            suffixIcon={<FilterOutlined style={{ color: '#94a3b8' }} aria-hidden="true" />}
-            options={[{ label: 'All Statuses', value: 'all' }, ...STATUS_OPTIONS]}
-            aria-label="Filter by reservation status"
-          />
-
-          <Select
-            className={styles.filterSelect}
-            value={sourceFilter}
-            onChange={(val) => setSourceFilter(val)}
-            suffixIcon={<FilterOutlined style={{ color: '#94a3b8' }} aria-hidden="true" />}
-            options={[{ label: 'All Sources', value: 'all' }, ...BOOKING_SOURCE_OPTIONS]}
-            aria-label="Filter by booking source"
-          />
-
-          <RangePicker
-            style={{ width: 240 }}
-            value={dateRange}
-            onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs] | null)}
-            placeholder={['Check-in', 'Check-out']}
-            allowClear
-          />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className={styles.resultsBadge} aria-live="polite">
-            {reservations.length} {reservations.length === 1 ? 'booking' : 'bookings'}
-          </span>
-          {(searchTerm || statusFilter !== 'all' || sourceFilter !== 'all' || dateRange) && (
-            <Button
-              size="small"
-              onClick={() => {
-                setSearchTerm('');
-                setDebouncedSearch('');
-                setStatusFilter('all');
-                setSourceFilter('all');
-                setDateRange(null);
-              }}
-            >
-              Clear Filters
-            </Button>
-          )}
-        </div>
-      </section>
-
-      {/* Data Table / Empty Viewport */}
-      {!isLoading && reservations.length === 0 ? (
-        <div className={styles.emptyStateCard} role="status">
-          <Empty
-            image={<InboxOutlined style={{ fontSize: 56, color: '#94a3b8' }} aria-hidden="true" />}
-            description={
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: '0 0 6px 0' }}>
-                  {debouncedSearch || statusFilter !== 'all' || sourceFilter !== 'all' || dateRange
-                    ? 'No Reservations Match Your Filters'
-                    : 'No Active Reservations Recorded'}
-                </p>
-                <p style={{ color: '#64748b', margin: 0, maxWidth: 420 }}>
-                  {debouncedSearch || statusFilter !== 'all' || sourceFilter !== 'all' || dateRange
-                    ? 'Try widening your date range or clearing specific filter criteria.'
-                    : 'Start booking resort stays by launching the multi-step reservation wizard.'}
-                </p>
-              </div>
-            }
-          >
-            {debouncedSearch || statusFilter !== 'all' || sourceFilter !== 'all' || dateRange ? (
-              <Button
-                type="default"
-                onClick={() => {
-                  setSearchTerm('');
-                  setDebouncedSearch('');
-                  setStatusFilter('all');
-                  setSourceFilter('all');
-                  setDateRange(null);
-                }}
-              >
-                Reset Filters
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                icon={<PlusOutlined aria-hidden="true" />}
-                size="large"
-                style={{ marginTop: 16 }}
-                onClick={() => setIsWizardOpen(true)}
-              >
-                Create First Reservation
-              </Button>
-            )}
-          </Empty>
-        </div>
-      ) : (
-        <div className={styles.tableCard}>
-          <Table<Reservation>
-            dataSource={reservations}
-            columns={columns}
-            rowKey="reservation_id"
-            loading={isLoading}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} reservations`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-            scroll={{ x: 1320 }}
-            size="middle"
-            aria-label="Reservations data table"
-          />
-        </div>
-      )}
-
-      {/* Multi-step Booking Wizard */}
-      <ReservationWizard
-        open={isWizardOpen}
-        onCancel={() => setIsWizardOpen(false)}
-        onSuccess={() => refetch()}
+    <div>
+      <PageHeader
+        title="Reservations"
+        action={
+          <Button icon={<DownloadOutlined />} onClick={() => exportCsv(rows)} disabled={rows.length === 0}>
+            Export
+          </Button>
+        }
       />
 
-      {/* Cancellation Reason Modal with Strict Danger Token by Intent */}
-      <Modal
-        open={Boolean(cancellingReservation)}
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#dc2626' }}>
-            <ExclamationCircleOutlined aria-hidden="true" />
-            <span>Cancel Reservation {cancellingReservation?.reference_code}</span>
-          </div>
-        }
-        onCancel={() => {
-          setCancellingReservation(null);
-          setCancelReason('');
-        }}
-        onOk={handleConfirmCancel}
-        okText="Confirm Cancellation"
-        okButtonProps={{
-          danger: true,
-          loading: cancelMutation.isPending,
-          disabled: !cancelReason.trim(),
-        }}
-        cancelButtonProps={{
-          disabled: cancelMutation.isPending,
-        }}
-        destroyOnClose
-      >
-        <p style={{ color: '#475569', fontSize: '0.9rem', marginTop: 12 }}>
-          Cancelling this reservation will release all assigned kubos back to available inventory. This action cannot be undone (BR-035).
-        </p>
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-          Cancellation Reason <span style={{ color: '#ef4444' }}>*</span>
-        </label>
-        <TextArea
-          rows={3}
-          value={cancelReason}
-          onChange={(e) => setCancelReason(e.target.value)}
-          placeholder="State the reason for cancellation (e.g., Guest requested cancellation, emergency, travel change)..."
-          maxLength={RESERVATION_LIMITS.MAX_CANCELLATION_REASON}
-          showCount
-          autoFocus
+      <Tabs
+        activeKey={tab}
+        onChange={(k) => update({ tab: k === 'all' ? undefined : k, status: undefined })}
+        items={tabs.map((t) => ({
+          key: t.key,
+          label: <TabLabel text={t.text} count={t.count} active={tab === t.key} />,
+        }))}
+      />
+
+      <div className={styles.toolbar}>
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="muted" />}
+          placeholder="Search by guest or reference"
+          value={searchInput}
+          onChange={(e) => update({ search: e.target.value || undefined })}
+          style={{ width: 260 }}
+          aria-label="Search reservations"
         />
-      </Modal>
-    </main>
+        {tab === 'all' && (
+          <FilterChip<ReservationStatus>
+            name="Status"
+            value={statusParam}
+            options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: label(o.value) }))}
+            onChange={(v) => update({ status: v })}
+          />
+        )}
+        <DatePicker.RangePicker
+          size="small"
+          className={styles.range}
+          value={from && to ? [dayjs(from), dayjs(to)] : null}
+          onChange={(v) => {
+            const range = v as [Dayjs, Dayjs] | null;
+            update({ from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD') });
+          }}
+          placeholder={['Stay from', 'Stay to']}
+          format="MMM D"
+          aria-label="Stay dates"
+        />
+        <FilterChip<BookingSource>
+          name="Source"
+          value={source}
+          options={BOOKING_SOURCE_OPTIONS.map((o) => ({ value: o.value, label: label(o.value) }))}
+          onChange={(v) => update({ source: v })}
+        />
+        <FilterChip<string> name="Kubo type" value={kuboType} options={typeOptions} onChange={(v) => update({ type: v })} />
+        <span className={styles.spacer} />
+        <span className="muted">Sort</span>
+        <Select<SortKey>
+          size="small"
+          value={sort}
+          onChange={(v) => update({ sort: v === 'booked' ? undefined : v }, false)}
+          options={[
+            { value: 'booked', label: 'Newest booking' },
+            { value: 'checkin', label: 'Check-in date' },
+          ]}
+          style={{ width: 150 }}
+          aria-label="Sort reservations"
+        />
+      </div>
+
+      <Section flush>
+        {list.isLoading ? (
+          <ListSkeleton rows={8} />
+        ) : list.isError ? (
+          <ErrorState error={list.error} onRetry={() => list.refetch()} />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            title="No reservations match"
+            description="Try another tab or clear the filters."
+            action={
+              <Button size="small" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            <Table<Reservation>
+              rowKey="reservation_id"
+              columns={columns}
+              dataSource={rows}
+              pagination={false}
+              size="middle"
+              rowSelection={{ columnWidth: 40 }}
+              rowClassName={() => 'clickable-row'}
+              onRow={(r) => ({
+                onClick: () => navigate(`/reservations/${r.reservation_id}`),
+                onKeyDown: (e) => {
+                  if (e.key === 'Enter') navigate(`/reservations/${r.reservation_id}`);
+                },
+                tabIndex: 0,
+              })}
+              loading={list.isFetching && !list.isLoading}
+            />
+            <div className={styles.footer}>
+              <span>
+                Showing {start}–{end}
+                {hasNext ? '' : ` of ${end}`}
+              </span>
+              <span className={styles.pager}>
+                <Button
+                  size="small"
+                  icon={<LeftOutlined />}
+                  aria-label="Previous page"
+                  disabled={page <= 1}
+                  onClick={() => update({ page: String(page - 1) }, false)}
+                />
+                <Button
+                  size="small"
+                  icon={<RightOutlined />}
+                  aria-label="Next page"
+                  disabled={!hasNext}
+                  onClick={() => update({ page: String(page + 1) }, false)}
+                />
+              </span>
+            </div>
+          </>
+        )}
+      </Section>
+
+      <CancelReservationModal reservation={cancelling} onClose={() => setCancelling(null)} />
+    </div>
   );
 };

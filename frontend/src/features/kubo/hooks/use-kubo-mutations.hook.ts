@@ -14,7 +14,7 @@ export function useCreateKubo() {
 
   return useAppMutation<Kubo, CreateKuboPayload>({
     mutationFn: (payload) => kuboService.create(payload),
-    successMessage: 'Kubo cottage unit registered successfully (BR-017).',
+    successMessage: 'Kubo added.',
     errorMessage: (error) => error.message || 'Failed to register kubo.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kuboKeys.all });
@@ -27,7 +27,7 @@ export function useUpdateKubo() {
 
   return useAppMutation<Kubo, { kuboId: string; payload: UpdateKuboPayload }>({
     mutationFn: ({ kuboId, payload }) => kuboService.update(kuboId, payload),
-    successMessage: 'Kubo cottage details updated successfully.',
+    successMessage: 'Kubo updated.',
     errorMessage: (error) => error.message || 'Failed to update kubo.',
     onSuccess: (_data, { kuboId }) => {
       queryClient.invalidateQueries({ queryKey: kuboKeys.all });
@@ -41,7 +41,7 @@ export function useChangeKuboStatus() {
 
   return useAppMutation<Kubo, { kuboId: string; status: KuboStatus }>({
     mutationFn: ({ kuboId, status }) => kuboService.changeStatus(kuboId, status),
-    successMessage: 'Kubo status updated successfully (BR-021).',
+    successMessage: 'Kubo status updated.',
     errorMessage: (error) => error.message || 'Failed to update kubo status.',
     onSuccess: (_data, { kuboId }) => {
       queryClient.invalidateQueries({ queryKey: kuboKeys.all });
@@ -56,7 +56,7 @@ export function useDeleteKubo() {
 
   return useAppMutation<void, string>({
     mutationFn: (kuboId) => kuboService.delete(kuboId),
-    successMessage: 'Kubo cottage removed from inventory.',
+    successMessage: 'Kubo deleted.',
     errorMessage: (error) => {
       if (
         error.message?.includes('foreign key') ||
@@ -64,7 +64,7 @@ export function useDeleteKubo() {
         error.message?.includes('reserved') ||
         error.message?.includes('reference')
       ) {
-        return 'KUBOS WITH HISTORY CANNOT BE DELETED MARK OUT OF SERVICE INSTEAD (BR-023).';
+        return 'This kubo has bookings, so it can’t be deleted. Mark it out of service instead.';
       }
       return error.message || 'Failed to delete kubo cottage.';
     },

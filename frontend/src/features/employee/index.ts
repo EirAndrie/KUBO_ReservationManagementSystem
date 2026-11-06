@@ -10,14 +10,8 @@ export { EmployeeListPage } from './pages/employee-list.page';
 export { EmployeeFormModal } from './components/employee-form-modal.component';
 export type { EmployeeFormModalProps } from './components/employee-form-modal.component';
 
-export { EmployeeStatusModal } from './components/employee-status-modal.component';
-export type { EmployeeStatusModalProps } from './components/employee-status-modal.component';
-
 export { ResetPasswordModal } from './components/reset-password-modal.component';
 export type { ResetPasswordModalProps } from './components/reset-password-modal.component';
-
-export { RoleModal } from './components/role-modal.component';
-export type { RoleModalProps } from './components/role-modal.component';
 
 // Hooks
 export {

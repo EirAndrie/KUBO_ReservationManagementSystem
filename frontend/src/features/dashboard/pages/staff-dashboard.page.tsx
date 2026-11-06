@@ -1,308 +1,232 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Typography, Button, Alert } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import {
-  CalendarOutlined,
-  LoginOutlined,
-  DollarOutlined,
-  UserAddOutlined,
-  SearchOutlined,
-  LogoutOutlined,
+  CreditCardOutlined,
+  FileAddOutlined,
   HomeOutlined,
-  PlusCircleOutlined,
-  PrinterOutlined,
-  ArrowRightOutlined,
-  ReloadOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+  RightOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
-import { useReservations } from '@/features/reservation';
-import { useCheckInOutQueue } from '@/features/check-in-out';
-import { usePayments } from '@/features/payment';
+import { FrontDeskQueue, useCheckInOutQueue, type QueueTab } from '@/features/check-in-out';
+import { useKubos } from '@/features/kubo';
+import type { Kubo } from '@/features/kubo';
+import { GuestForm, useCreateGuest } from '@/features/guest';
+import type { CreateGuestDTO } from '@/features/guest';
+import { AddChargeModal, RecordPaymentModal } from '@/features/payment';
+import { ReservationPickerModal } from '@/features/reservation';
+import type { Reservation } from '@/features/reservation';
+import { KpiStrip, PageHeader, Section, StatusBadge } from '@/components/common';
+import { formatMoney, pluralize, toAmount } from '@/lib/format';
 import styles from './staff-dashboard.module.css';
 
-const { Title, Paragraph } = Typography;
+type QuickAction = 'payment' | 'guest' | 'charge';
 
+const KUBO_TILE_TONE: Record<string, string> = {
+  Available: styles.tileGreen,
+  Reserved: styles.tileBlue,
+  Occupied: styles.tileViolet,
+  Cleaning: styles.tileAmber,
+  UnderInspection: styles.tileAmber,
+  Maintenance: styles.tileRed,
+  OutOfService: styles.tileGray,
+};
+
+function greeting(): string {
+  const h = dayjs().hour();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+/** True when a key press comes from a field where the user is typing. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
+/**
+ * Staff "Today": the front desk lands on today's arrivals, departures and
+ * in-house guests, with Check in in the row, kubo readiness next to each
+ * arrival, a kubo status mini-board, and quick actions (P, G, C).
+ */
 export const StaffDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const today = dayjs().format('YYYY-MM-DD');
+  const [tab, setTab] = useState<QueueTab>('arrivals');
+  const queue = useCheckInOutQueue(today);
+  const kubos = useKubos();
+  const createGuest = useCreateGuest();
 
-  const reservationsQuery = useReservations();
-  const queueQuery = useCheckInOutQueue();
-  const paymentsQuery = usePayments();
-  const reservations = reservationsQuery.data ?? [];
-  const { arrivals, departures } = queueQuery;
-  const payments = paymentsQuery.data ?? [];
+  const [action, setAction] = useState<QuickAction | null>(null);
+  const [target, setTarget] = useState<Reservation | null>(null);
 
-  const arrivalsCount = arrivals.length;
-  const departuresCount = departures.length;
-  const activeBookingsCount = reservations.filter((r) => r.status === 'CheckedIn').length;
-  const hasDataError = reservationsQuery.isError || queueQuery.isError || paymentsQuery.isError;
-  const retryDashboardData = () => {
-    void Promise.all([
-      reservationsQuery.refetch(),
-      queueQuery.refetch(),
-      paymentsQuery.refetch(),
-    ]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      if (document.querySelector('.ant-modal-wrap:not([style*="display: none"]), .ant-drawer-open')) return;
+      const key = e.key.toLowerCase();
+      if (key === 'p') setAction('payment');
+      else if (key === 'g') setAction('guest');
+      else if (key === 'c') setAction('charge');
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const activeReservations = useMemo(() => {
+    const seen = new Map<string, Reservation>();
+    (queue.data ?? []).forEach((r) => seen.set(r.reservation_id, r));
+    return [...seen.values()];
+  }, [queue.data]);
+
+  const kuboList = useMemo(
+    () => [...(kubos.data ?? [])].sort((a, b) => a.kuboNumber.localeCompare(b.kuboNumber, undefined, { numeric: true })),
+    [kubos.data],
+  );
+  const readyCount = kuboList.filter((k) => k.status === 'Available').length;
+  const cleaningCount = kuboList.filter((k) => k.status === 'Cleaning').length;
+  const checkedInToday = queue.inHouse.filter((h) => dayjs(h.assignment.actual_check_in_datetime).isSame(dayjs(), 'day')).length;
+  const departureBalance = queue.departures.reduce((sum, d) => sum + d.outstandingBalance, 0);
+  const inHouseGuests = new Set(queue.inHouse.map((h) => h.reservation.reservation_id)).size;
+
+  const legend = ['Available', 'Occupied', 'Reserved', 'Cleaning'];
+
+  const closeAction = () => {
+    setAction(null);
+    setTarget(null);
   };
 
   return (
-    <main className={styles.pageContainer} aria-label="Staff Front Desk Operations Dashboard">
-      {/* Header Banner */}
-      <section className={styles.headerSection}>
-        <div className={styles.titleArea}>
-          <div className={styles.headerEyebrow}>Front-Desk Operations</div>
-          <Title level={2} className={styles.pageTitle}>
-            Front Desk Operations Portal
-          </Title>
-          <Paragraph className={styles.pageSubtitle}>
-            Welcome, <strong>{user?.fullName || 'Front Desk Staff'}</strong>. Streamline guest intake, monitor daily arrivals & departures, and process payments.
-          </Paragraph>
-        </div>
-      </section>
+    <div>
+      <PageHeader
+        title={`Today, ${dayjs().format('MMMM D')}`}
+        description={`${greeting()}, ${user?.firstName ?? 'there'}. ${pluralize(queue.arrivals.length, 'guest')} arriving, ${queue.departures.length} departing.`}
+      />
 
-      {hasDataError && (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginBottom: 20 }}
-          message="Some dashboard information could not be loaded"
-          description="Retry to refresh arrivals, reservations, and payment records."
-          action={
-            <Button size="small" icon={<ReloadOutlined aria-hidden="true" />} onClick={retryDashboardData}>
-              Retry
-            </Button>
-          }
+      <KpiStrip
+        loading={queue.isLoading}
+        items={[
+          {
+            icon: <LoginOutlined />,
+            label: 'Arrivals',
+            value: queue.arrivals.length,
+            hint: `${checkedInToday} checked in · ${queue.arrivals.length} expected`,
+          },
+          {
+            icon: <LogoutOutlined />,
+            label: 'Departures',
+            value: queue.departures.length,
+            hint: `${formatMoney(departureBalance)} balance left to settle`,
+          },
+          { icon: <HomeOutlined />, label: 'In-house', value: inHouseGuests, hint: 'Guests staying tonight' },
+          {
+            icon: <HomeOutlined />,
+            label: 'Ready kubos',
+            value: (
+              <>
+                {readyCount}
+                <span className={styles.ofTotal}> / {kuboList.length}</span>
+              </>
+            ),
+            hint: `${cleaningCount} being cleaned`,
+          },
+        ]}
+      />
+
+      <div className={styles.grid}>
+        <Section flush className={styles.queueCard}>
+          <FrontDeskQueue
+            date={today}
+            tab={tab}
+            onTabChange={setTab}
+            tabBarExtra={
+              <Link to="/check-in-out" className={styles.linkMuted}>
+                Open desk <RightOutlined />
+              </Link>
+            }
+          />
+        </Section>
+
+        <div className={styles.side}>
+          <Section
+            title="Kubo status"
+            extra={
+              <Link to="/kubos" className={styles.linkMuted}>
+                All kubos <RightOutlined />
+              </Link>
+            }
+          >
+            <div className={styles.board}>
+              {kuboList.map((k: Kubo) => (
+                <button
+                  type="button"
+                  key={k.kuboId}
+                  className={`${styles.tile} ${KUBO_TILE_TONE[k.status] ?? styles.tileGray}`}
+                  title={`${k.kuboNumber} · ${k.typeName} · ${k.status}`}
+                  aria-label={`${k.kuboNumber}, ${k.status}. Open in kubos`}
+                  onClick={() => navigate(`/kubos?search=${encodeURIComponent(k.kuboNumber)}`)}
+                >
+                  {k.kuboNumber.replace(/^K-?/i, '')}
+                </button>
+              ))}
+            </div>
+            <div className={styles.legend}>
+              {legend.map((s) => (
+                <StatusBadge key={s} status={s} />
+              ))}
+            </div>
+          </Section>
+
+          <Section title="Quick actions">
+            <div className={styles.quick}>
+              <button type="button" className={styles.quickItem} onClick={() => setAction('payment')}>
+                <CreditCardOutlined /> Record a payment <kbd>P</kbd>
+              </button>
+              <button type="button" className={styles.quickItem} onClick={() => setAction('guest')}>
+                <UserAddOutlined /> Register a guest <kbd>G</kbd>
+              </button>
+              <button type="button" className={styles.quickItem} onClick={() => setAction('charge')}>
+                <FileAddOutlined /> Add a charge <kbd>C</kbd>
+              </button>
+            </div>
+          </Section>
+        </div>
+      </div>
+
+      <ReservationPickerModal
+        open={(action === 'payment' || action === 'charge') && !target}
+        title={action === 'payment' ? 'Record a payment' : 'Add a charge'}
+        reservations={activeReservations}
+        onCancel={closeAction}
+        onPick={setTarget}
+      />
+      {target && action === 'payment' && (
+        <RecordPaymentModal
+          open
+          onClose={closeAction}
+          reservationId={target.reservation_id}
+          referenceCode={target.reference_code}
+          outstandingBalance={toAmount(target.outstanding_balance)}
+          netPaid={toAmount(target.net_paid)}
+          defaultAmount={toAmount(target.outstanding_balance)}
         />
       )}
-
-      {/* Operational KPI Counters */}
-      <section className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Arrival Queue</span>
-          <span className={styles.statValue} style={{ color: '#0284c7' }}>
-            {queueQuery.isLoading || queueQuery.isError ? '—' : arrivalsCount}
-          </span>
-          <span className={styles.statHint}>Arrivals to review</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Departures Due</span>
-          <span className={styles.statValue} style={{ color: '#d97706' }}>
-            {queueQuery.isLoading || queueQuery.isError ? '—' : departuresCount}
-          </span>
-          <span className={styles.statHint}>Check-outs due today or overdue</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Active In-House Stays</span>
-          <span className={styles.statValue} style={{ color: '#16a34a' }}>
-            {reservationsQuery.isLoading || reservationsQuery.isError ? '—' : activeBookingsCount}
-          </span>
-          <span className={styles.statHint}>Guests currently checked in</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Payment Records Loaded</span>
-          <span className={styles.statValue}>
-            {paymentsQuery.isLoading || paymentsQuery.isError ? '—' : payments.length}
-          </span>
-          <span className={styles.statHint}>Financial transactions recorded</span>
-        </div>
-      </section>
-
-      {/* Three Flowchart Operational Pillars */}
-      <section className={styles.pillarsGrid}>
-        {/* Pillar 1: Guest / Booking */}
-        <div className={styles.pillarCard}>
-          <div className={styles.pillarHeader}>
-            <div className={`${styles.pillarIcon} ${styles.iconBooking}`}>
-              <CalendarOutlined />
-            </div>
-            <div className={styles.pillarTitleGroup}>
-              <h3 className={styles.pillarTitle}>Guest & Booking</h3>
-              <span className={styles.pillarTagline}>Find guests, create bookings, and manage reservations</span>
-            </div>
-          </div>
-
-          <div className={styles.pillarActionList}>
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/reservations')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>New Reservation Wizard</span>
-                <span className={styles.actionDescription}>
-                  Create a reservation by choosing a guest, dates, and available units.
-                </span>
-              </div>
-              <ArrowRightOutlined style={{ color: '#0284c7' }} />
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/guests')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Guest Directory & Register</span>
-                <span className={styles.actionDescription}>
-                  Find an existing guest or register a new profile.
-                </span>
-              </div>
-              <UserAddOutlined style={{ color: '#0284c7' }} />
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/reservations')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Manage & Modify Bookings</span>
-                <span className={styles.actionDescription}>
-                  Review reservation details and update its status when needed.
-                </span>
-              </div>
-              <SearchOutlined style={{ color: '#0284c7' }} />
-            </div>
-          </div>
-
-          <Button
-            type="primary"
-            block
-            icon={<CalendarOutlined />}
-            onClick={() => navigate('/reservations')}
-            style={{ background: '#0284c7', borderColor: '#0284c7' }}
-          >
-            Open Reservations
-          </Button>
-        </div>
-
-        {/* Pillar 2: Stay Operations */}
-        <div className={styles.pillarCard}>
-          <div className={styles.pillarHeader}>
-            <div className={`${styles.pillarIcon} ${styles.iconStay}`}>
-              <LoginOutlined />
-            </div>
-            <div className={styles.pillarTitleGroup}>
-              <h3 className={styles.pillarTitle}>Arrivals, Departures & Housekeeping</h3>
-              <span className={styles.pillarTagline}>Process guest check-ins, check-outs, and unit readiness</span>
-            </div>
-          </div>
-
-          <div className={styles.pillarActionList}>
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/check-in-out')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Process Arrivals</span>
-                <span className={styles.actionDescription}>
-                  Check in guests, including early arrivals that need approval.
-                </span>
-              </div>
-              <LoginOutlined style={{ color: '#d97706' }} />
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/check-in-out')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Departures Due for Check-Out</span>
-                <span className={styles.actionDescription}>
-                  Complete check-out after the guest's balance has been settled.
-                </span>
-              </div>
-              <LogoutOutlined style={{ color: '#d97706' }} />
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/kubos')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Kubo Housekeeping Readiness</span>
-                <span className={styles.actionDescription}>
-                  Update a cleaned unit so it can be booked again.
-                </span>
-              </div>
-              <HomeOutlined style={{ color: '#d97706' }} />
-            </div>
-          </div>
-
-          <Button
-            type="primary"
-            block
-            icon={<LoginOutlined />}
-            onClick={() => navigate('/check-in-out')}
-            style={{ background: '#d97706', borderColor: '#d97706' }}
-          >
-            Open Check-In / Out Desk
-          </Button>
-        </div>
-
-        {/* Pillar 3: Billing & Settlement */}
-        <div className={styles.pillarCard}>
-          <div className={styles.pillarHeader}>
-            <div className={`${styles.pillarIcon} ${styles.iconBilling}`}>
-              <span className={styles.pesoSymbol} aria-hidden="true">₱</span>
-            </div>
-            <div className={styles.pillarTitleGroup}>
-              <h3 className={styles.pillarTitle}>Payments & Charges</h3>
-              <span className={styles.pillarTagline}>Record guest payments, added charges, and invoices</span>
-            </div>
-          </div>
-
-          <div className={styles.pillarActionList}>
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/payments')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Record Guest Payment</span>
-                <span className={styles.actionDescription}>
-                  Record a guest deposit or balance payment.
-                </span>
-              </div>
-              <span className={styles.pesoSymbol} style={{ color: '#16a34a' }} aria-hidden="true">
-                ₱
-              </span>
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/payments')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Post Extra Charges (Incidentals)</span>
-                <span className={styles.actionDescription}>
-                  Add charges for extra beds, food, or damages.
-                </span>
-              </div>
-              <PlusCircleOutlined style={{ color: '#16a34a' }} />
-            </div>
-
-            <div
-              className={styles.actionItem}
-              onClick={() => navigate('/payments')}
-            >
-              <div className={styles.actionInfo}>
-                <span className={styles.actionName}>Print Invoice & Audit Statement</span>
-                <span className={styles.actionDescription}>
-                  Generate printable itemized guest statements
-                </span>
-              </div>
-              <PrinterOutlined style={{ color: '#16a34a' }} />
-            </div>
-          </div>
-
-          <Button
-            type="primary"
-            block
-            icon={<DollarOutlined />}
-            onClick={() => navigate('/payments')}
-            style={{ background: '#16a34a', borderColor: '#16a34a' }}
-          >
-            Open Billing Ledger
-          </Button>
-        </div>
-      </section>
-    </main>
+      {target && action === 'charge' && <AddChargeModal open onClose={closeAction} reservationId={target.reservation_id} />}
+      <GuestForm
+        open={action === 'guest'}
+        isLoading={createGuest.isPending}
+        onCancel={closeAction}
+        onSubmit={async (values) => {
+          await createGuest.mutateAsync(values as CreateGuestDTO);
+          closeAction();
+        }}
+      />
+    </div>
   );
 };

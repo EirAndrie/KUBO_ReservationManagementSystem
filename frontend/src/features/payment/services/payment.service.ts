@@ -2,293 +2,227 @@ import { apiClient } from '@/lib/api';
 import type {
   Payment,
   AdditionalCharge,
+  ChargeCatalogItem,
+  ChargeRequest,
+  ChargeRequestStatus,
   CreatePaymentPayload,
   CreateRefundPayload,
-  CreateAdditionalChargePayload,
+  ApplyCatalogChargePayload,
+  CreateChargeRequestPayload,
   PaymentFilterParams,
   TransactionType,
   PaymentType,
   PaymentMethod,
   PaymentStatus,
-  AdditionalChargeType,
+} from '../types/payment.types';
+import {
+  TRANSACTION_TYPES,
+  PAYMENT_TYPES,
+  PAYMENT_METHODS,
+  PAYMENT_STATUSES,
 } from '../types/payment.types';
 
-// Helper to normalize backend transaction type
-function normalizeTransactionType(val?: string): TransactionType {
-  const lower = (val || '').toLowerCase();
-  if (lower.includes('refund')) return 'Refund';
-  if (lower.includes('adj')) return 'Adjustment';
-  if (lower.includes('rev')) return 'Reversal';
-  return 'Payment';
+type Row = Record<string, unknown>;
+
+/**
+ * Accepts the backend's exact enum value; tolerates case/spacing differences
+ * by comparing a normalized form, and otherwise keeps the raw value so an
+ * unknown status is never silently shown as something else.
+ */
+function matchEnum<T extends string>(values: readonly T[], raw: unknown, fallback: T): T {
+  const text = String(raw ?? '').trim();
+  if (!text) return fallback;
+  const key = text.toLowerCase().replace(/[\s_-]/g, '');
+  return values.find((v) => v.toLowerCase() === key) ?? (text as T);
 }
 
-// Helper to normalize payment type
-function normalizePaymentType(val?: string): PaymentType {
-  const lower = (val || '').toLowerCase().replace(/[\s_-]/g, '');
-  if (lower.includes('deposit')) return 'Deposit';
-  if (lower.includes('partial')) return 'PartialPayment';
-  if (lower.includes('full')) return 'FullPayment';
-  if (lower.includes('balance')) return 'BalancePayment';
-  if (lower.includes('additional') || lower.includes('charge')) return 'AdditionalCharge';
-  return 'FullPayment';
+/** BUG-03: `pending` maps to Pending; unknown values are kept, never turned into Completed. */
+export function normalizePaymentStatus(val: unknown): PaymentStatus {
+  return matchEnum(PAYMENT_STATUSES, val, 'Pending');
 }
 
-// Helper to normalize payment method
-function normalizePaymentMethod(val?: string): PaymentMethod {
-  const lower = (val || '').toLowerCase().replace(/[\s_-]/g, '');
-  if (lower.includes('cash')) return 'Cash';
-  if (lower.includes('credit')) return 'CreditCard';
-  if (lower.includes('debit')) return 'DebitCard';
-  if (lower.includes('gcash')) return 'GCash';
-  if (lower.includes('maya')) return 'Maya';
-  if (lower.includes('bank')) return 'BankTransfer';
-  if (lower.includes('online')) return 'OnlineBanking';
-  return 'Other';
-}
-
-// Helper to normalize payment status
-function normalizePaymentStatus(val?: string): PaymentStatus {
-  const lower = (val || '').toLowerCase().replace(/[\s_-]/g, '');
-  if (lower.includes('partiallyrefund')) return 'PartiallyRefunded';
-  if (lower.includes('refund')) return 'Refunded';
-  if (lower.includes('complete')) return 'Completed';
-  if (lower.includes('process')) return 'Processing';
-  if (lower.includes('fail')) return 'Failed';
-  if (lower.includes('cancel')) return 'Cancelled';
-  return 'Completed';
-}
-
-// Helper to normalize charge type
-function normalizeChargeType(val?: string): AdditionalChargeType {
-  const lower = (val || '').toLowerCase().replace(/[\s_-]/g, '');
-  if (lower.includes('extrabed')) return 'ExtraBed';
-  if (lower.includes('extraperson') || lower.includes('extraguest')) return 'ExtraPerson';
-  if (lower.includes('latecheckout')) return 'LateCheckOut';
-  if (lower.includes('earlycheckin')) return 'EarlyCheckIn';
-  if (lower.includes('roomservice')) return 'RoomService';
-  if (lower.includes('food') || lower.includes('beverage') || lower.includes('f&b')) return 'FoodAndBeverage';
-  if (lower.includes('laundry')) return 'Laundry';
-  if (lower.includes('cleaning')) return 'CleaningFee';
-  if (lower.includes('damage')) return 'Damage';
-  if (lower.includes('lostkey')) return 'LostKey';
-  if (lower.includes('lostitem')) return 'LostItem';
-  if (lower.includes('minibar')) return 'MiniBar';
-  if (lower.includes('transport')) return 'Transportation';
-  return 'Other';
-}
-
-function mapPaymentRecord(row: Record<string, unknown>): Payment {
+function mapPaymentRecord(row: Row): Payment {
   return {
-    payment_id: String(row.payment_id || row.paymentId || row.id || Math.random().toString(36).slice(2)),
-    reservation_id: String(row.reservation_id || row.reservationId || ''),
-    employee_id: String(row.employee_id || row.employeeId || ''),
-    employee_name: row.employee_name ? String(row.employee_name) : undefined,
-    reservation_reference: row.reservation_reference || row.reference_code ? String(row.reservation_reference || row.reference_code) : undefined,
+    payment_id: String(row.payment_id ?? row.paymentId ?? ''),
+    reservation_id: String(row.reservation_id ?? row.reservationId ?? ''),
+    employee_id: String(row.employee_id ?? row.employeeId ?? ''),
+    employee_name: (row.recorded_by ?? row.employee_name) ? String(row.recorded_by ?? row.employee_name) : undefined,
+    reservation_reference: (row.reference_code ?? row.reservation_reference)
+      ? String(row.reference_code ?? row.reservation_reference)
+      : undefined,
     guest_name: row.guest_name ? String(row.guest_name) : undefined,
-    payment_amount: Number(row.payment_amount ?? row.paymentAmount ?? row.amount ?? 0),
-    transaction_type: normalizeTransactionType(String(row.transaction_type || row.transactionType || 'Payment')),
-    payment_type: normalizePaymentType(String(row.payment_type || row.paymentType || 'FullPayment')),
-    payment_method: normalizePaymentMethod(String(row.payment_method || row.paymentMethod || 'Cash')),
-    payment_status: normalizePaymentStatus(String(row.payment_status || row.paymentStatus || 'Completed')),
-    payment_date: String(row.payment_date || row.paymentDate || row.created_at || new Date().toISOString()),
+    payment_amount: Number(row.payment_amount ?? row.amount ?? 0),
+    transaction_type: matchEnum<TransactionType>(TRANSACTION_TYPES, row.transaction_type, 'Payment'),
+    payment_type: matchEnum<PaymentType>(PAYMENT_TYPES, row.payment_type, 'FullPayment'),
+    payment_method: matchEnum<PaymentMethod>(PAYMENT_METHODS, row.payment_method, 'Other'),
+    payment_status: normalizePaymentStatus(row.payment_status),
+    payment_date: String(row.payment_date ?? row.created_at ?? ''),
     notes: row.notes ? String(row.notes) : null,
   };
 }
 
-function mapChargeRecord(row: Record<string, unknown>): AdditionalCharge {
+function mapChargeRecord(row: Row): AdditionalCharge {
   return {
-    additional_charge_id: String(row.additional_charge_id || row.additionalChargeId || row.id || Math.random().toString(36).slice(2)),
-    reservation_id: String(row.reservation_id || row.resrvationId || row.reservationId || ''),
-    employee_id: String(row.employee_id || row.employeeId || ''),
-    employee_name: row.employee_name ? String(row.employee_name) : undefined,
-    charge_type: normalizeChargeType(String(row.charge_type || row.additionalChargeType || 'Other')),
-    amount: Number(row.amount ?? row.additionalChargeAmount ?? 0),
-    description: String(row.description || row.additionalChargeDescription || ''),
-    charge_date: String(row.charge_date || row.chargeDate || row.created_at || new Date().toISOString()),
+    additional_charge_id: String(row.charge_id ?? row.additional_charge_id ?? ''),
+    reservation_id: String(row.reservation_id ?? ''),
+    employee_id: String(row.employee_id ?? ''),
+    employee_name: row.recorded_by ? String(row.recorded_by) : undefined,
+    charge_type: String(row.charge_type ?? 'Other'),
+    catalog_name: row.catalog_name ? String(row.catalog_name) : null,
+    request_id: row.request_id ? String(row.request_id) : null,
+    quantity: Number(row.quantity ?? 1),
+    unit_amount: Number(row.unit_amount ?? row.amount ?? 0),
+    amount: Number(row.amount ?? 0),
+    description: String(row.description ?? ''),
+    charge_date: String(row.charge_date ?? row.created_at ?? ''),
   };
 }
 
+function mapCatalogRecord(row: Row): ChargeCatalogItem {
+  return {
+    catalog_id: String(row.catalog_id ?? ''),
+    charge_type: String(row.charge_type ?? 'Other'),
+    name: String(row.name ?? ''),
+    description: row.description ? String(row.description) : null,
+    unit_price: Number(row.unit_price ?? 0),
+    is_active: Boolean(row.is_active),
+  };
+}
+
+function mapRequestRecord(row: Row): ChargeRequest {
+  return {
+    request_id: String(row.request_id ?? ''),
+    reservation_id: String(row.reservation_id ?? ''),
+    reference_code: String(row.reference_code ?? ''),
+    guest_name: String(row.guest_name ?? ''),
+    requested_by: String(row.requested_by ?? ''),
+    requested_by_name: String(row.requested_by_name ?? ''),
+    charge_type: String(row.charge_type ?? 'Other'),
+    description: String(row.description ?? ''),
+    quantity: Number(row.quantity ?? 1),
+    proposed_unit_amount: Number(row.proposed_unit_amount ?? 0),
+    approved_unit_amount: row.approved_unit_amount == null ? null : Number(row.approved_unit_amount),
+    status: String(row.status ?? 'Pending') as ChargeRequestStatus,
+    reviewed_by_name: row.reviewed_by_name ? String(row.reviewed_by_name) : null,
+    review_reason: row.review_reason ? String(row.review_reason) : null,
+    created_at: String(row.created_at ?? ''),
+    reviewed_at: row.reviewed_at ? String(row.reviewed_at) : null,
+  };
+}
+
+function listOf(res: unknown, key: string): Row[] {
+  if (Array.isArray(res)) return res as Row[];
+  const value = (res as Record<string, unknown> | null)?.[key];
+  if (Array.isArray(value)) return value as Row[];
+  throw new Error('The server returned an unexpected response.');
+}
+
+function oneOf(res: unknown, key: string): Row {
+  const value = (res as Record<string, unknown> | null)?.[key];
+  return (value && typeof value === 'object' ? value : res) as Row;
+}
+
 /**
- * Service for handling all Payment & Additional Charge API transactions.
+ * Payments, additional charges and charge requests. Enum values are sent
+ * exactly as the backend defines them (e.g. `CreditCard`, `FullPayment`).
+ * The acting employee always comes from the access token, never the body.
  */
 export const paymentService = {
-  /**
-   * Fetches payments ledger with optional status, method, reservation, and date filters.
-   */
+  /** Payments ledger with optional reservation, status, method, type and date filters. */
   getAll: async (params?: PaymentFilterParams): Promise<Payment[]> => {
-    const queryParams: Record<string, string | number | undefined> = {};
-    if (params?.paymentMethod) queryParams.paymentMethod = params.paymentMethod.toLowerCase();
-    if (params?.paymentStatus) queryParams.paymentStatus = params.paymentStatus.toLowerCase();
-    if (params?.reservationId) queryParams.reservationId = params.reservationId;
-    if (params?.employeeId) queryParams.employeeId = params.employeeId;
-    if (params?.limit) queryParams.limit = params.limit;
-    if (params?.offset) queryParams.offset = params.offset;
-
-    let res: unknown;
-    try {
-      res = await apiClient.get<Record<string, unknown>>('/payments', { params: queryParams });
-    } catch {
-      // Retain the existing alternate route while allowing its errors to reach the query state.
-      res = await apiClient.get<Record<string, unknown>>('/payments/payments', { params: queryParams });
-    }
-    const raw = res as { payments?: Record<string, unknown>[] } | Record<string, unknown>[];
-    if (Array.isArray(raw)) return raw.map(mapPaymentRecord);
-    if (Array.isArray((raw as { payments?: Record<string, unknown>[] })?.payments)) {
-      return (raw as { payments: Record<string, unknown>[] }).payments.map(mapPaymentRecord);
-    }
-    throw new Error('The server returned an invalid payment list.');
+    const query: Record<string, string | number> = {};
+    if (params?.reservationId) query.reservationId = params.reservationId;
+    if (params?.employeeId) query.employeeId = params.employeeId;
+    if (params?.paymentStatus) query.paymentStatus = params.paymentStatus;
+    if (params?.paymentMethod) query.paymentMethod = params.paymentMethod;
+    if (params?.transactionType) query.transactionType = params.transactionType;
+    if (params?.createdFrom) query.createdFrom = params.createdFrom;
+    if (params?.createdTo) query.createdTo = params.createdTo;
+    query.limit = params?.limit ?? 100;
+    if (params?.offset) query.offset = params.offset;
+    const res = await apiClient.get('/payments', { params: query });
+    return listOf(res, 'payments').map(mapPaymentRecord);
   },
 
-  /**
-   * Fetches payments belonging to a specific reservation.
-   */
   getByReservation: async (reservationId: string): Promise<Payment[]> => {
-    try {
-      const res = await apiClient.get<Record<string, unknown>>(`/reservations/${reservationId}/payments`);
-      const raw = res as unknown as { payments?: Record<string, unknown>[] } | Record<string, unknown>[];
-      if (Array.isArray(raw)) return raw.map(mapPaymentRecord);
-      if (Array.isArray((raw as { payments?: Record<string, unknown>[] })?.payments)) {
-        return (raw as { payments: Record<string, unknown>[] }).payments.map(mapPaymentRecord);
-      }
-    } catch {
-      const res = await apiClient.get<Record<string, unknown>>(`/payments/reservations/${reservationId}/payments`);
-      const raw = res as unknown as { payments?: Record<string, unknown>[] } | Record<string, unknown>[];
-      if (Array.isArray(raw)) return raw.map(mapPaymentRecord);
-      if (Array.isArray((raw as { payments?: Record<string, unknown>[] })?.payments)) {
-        return (raw as { payments: Record<string, unknown>[] }).payments.map(mapPaymentRecord);
-      }
-    }
-    throw new Error('The server returned an invalid payment list.');
+    const res = await apiClient.get(`/reservations/${reservationId}/payments`);
+    return listOf(res, 'payments').map(mapPaymentRecord);
   },
 
-  /**
-   * Records a new incoming payment (BR-049, BR-053).
-   */
-  create: async (reservationId: string, payload: CreatePaymentPayload): Promise<Payment> => {
-    const backendData = {
-      reservationId,
-      employeeId: payload.employeeId,
+  /** Records a payment. The server creates it as Pending; it counts once Completed. */
+  create: async (payload: CreatePaymentPayload): Promise<Payment> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/payments`, {
       paymentAmount: Number(payload.paymentAmount.toFixed(2)),
-      transactionType: (payload.transactionType || 'Payment').toLowerCase() === 'refund' ? 'refund' : 'payment',
-      paymentType: payload.paymentType.toLowerCase().replace(/payment/g, ''),
-      paymentMethod: payload.paymentMethod.replace(/([A-Z])/g, ' $1').trim().toLowerCase(),
-      paymentStatus: (payload.paymentStatus || 'Completed').toLowerCase(),
-      paymentDate: payload.paymentDate || new Date().toISOString(),
-      notes: payload.notes || undefined,
-    };
-
-    let res: unknown;
-    try {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/reservations/${reservationId}/payments`,
-        backendData
-      );
-    } catch {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/payments/reservations/${reservationId}/payments`,
-        backendData
-      );
-    }
-
-    const raw = res as unknown as { payments?: Record<string, unknown> } | Record<string, unknown>;
-    const record = (raw as { payments?: Record<string, unknown> })?.payments || raw;
-    return mapPaymentRecord(record as Record<string, unknown>);
+      paymentType: payload.paymentType,
+      paymentMethod: payload.paymentMethod,
+    });
+    return mapPaymentRecord(oneOf(res, 'payments'));
   },
 
-  /**
-   * Issues an audited refund against a completed payment (BR-054).
-   */
-  refund: async (reservationId: string, payload: CreateRefundPayload): Promise<Payment> => {
-    const backendData = {
-      reservationId,
-      employeeId: payload.employeeId,
+  /** Moves a payment along Pending → Processing → Completed / Failed / Cancelled. */
+  updateStatus: async (paymentId: string, status: PaymentStatus): Promise<Payment> => {
+    const res = await apiClient.patch(`/payments/${paymentId}/status`, { status });
+    return mapPaymentRecord(oneOf(res, 'payments'));
+  },
+
+  /** Refunds part or all of a completed payment; cannot exceed net paid. */
+  refund: async (payload: CreateRefundPayload): Promise<Payment> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/payments/refund`, {
+      originalPaymentId: payload.originalPaymentId,
       paymentAmount: Number(payload.paymentAmount.toFixed(2)),
-      transactionType: 'refund',
-      paymentType: payload.paymentType.toLowerCase().replace(/payment/g, ''),
-      paymentMethod: payload.paymentMethod.replace(/([A-Z])/g, ' $1').trim().toLowerCase(),
-      paymentStatus: 'completed',
-      paymentDate: payload.paymentDate || new Date().toISOString(),
-      notes: payload.reason,
-    };
-
-    let res: unknown;
-    try {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/reservations/${reservationId}/payments/refund`,
-        backendData
-      );
-    } catch {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/payments/reservations/${reservationId}/payments/refund`,
-        backendData
-      );
-    }
-
-    const raw = res as unknown as { payments?: Record<string, unknown> } | Record<string, unknown>;
-    const record = (raw as { payments?: Record<string, unknown> })?.payments || raw;
-    return mapPaymentRecord(record as Record<string, unknown>);
+      paymentType: payload.paymentType,
+      paymentMethod: payload.paymentMethod,
+    });
+    return mapPaymentRecord(oneOf(res, 'payments'));
   },
 
-  /**
-   * Fetches incidental / additional charges for a reservation.
-   */
+  /** Applied charges for a reservation (pending requests are not included). */
   getChargesByReservation: async (reservationId: string): Promise<AdditionalCharge[]> => {
-    try {
-      const res = await apiClient.get<Record<string, unknown>>(`/reservations/${reservationId}/charges`);
-      const raw = res as unknown as { additionalCharges?: Record<string, unknown>[] } | Record<string, unknown>[];
-      if (Array.isArray(raw)) return raw.map(mapChargeRecord);
-      if (Array.isArray((raw as { additionalCharges?: Record<string, unknown>[] })?.additionalCharges)) {
-        return (raw as { additionalCharges: Record<string, unknown>[] }).additionalCharges.map(mapChargeRecord);
-      }
-    } catch {
-      const res = await apiClient.get<Record<string, unknown>>(`/additional-charges/reservations/${reservationId}/charges`);
-      const raw = res as unknown as { additionalCharges?: Record<string, unknown>[] } | Record<string, unknown>[];
-      if (Array.isArray(raw)) return raw.map(mapChargeRecord);
-      if (Array.isArray((raw as { additionalCharges?: Record<string, unknown>[] })?.additionalCharges)) {
-        return (raw as { additionalCharges: Record<string, unknown>[] }).additionalCharges.map(mapChargeRecord);
-      }
-    }
-    throw new Error('The server returned an invalid charge list.');
+    const res = await apiClient.get(`/reservations/${reservationId}/charges`);
+    return listOf(res, 'additionalCharges').map(mapChargeRecord);
   },
 
-  /**
-   * Posts an incidental charge to a reservation (BR-042, BR-046).
-   */
-  createCharge: async (
-    reservationId: string,
-    payload: CreateAdditionalChargePayload
-  ): Promise<AdditionalCharge> => {
-    // Normalize charge type string e.g. "ExtraBed" -> "extra bed"
-    const formattedType = payload.additionalChargeType
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .toLowerCase();
+  applyCatalogCharge: async (payload: ApplyCatalogChargePayload): Promise<AdditionalCharge> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/charges`, {
+      catalogId: payload.catalogId,
+      quantity: payload.quantity,
+    });
+    return mapChargeRecord(oneOf(res, 'additionalCharges'));
+  },
 
-    const backendData = {
-      reservationId,
-      resrvationId: reservationId, // Handles backend schema typo compatibility
-      employeeId: payload.employeeId,
-      additionalChargeType: formattedType,
-      additionalChargeAmount: Number(payload.additionalChargeAmount.toFixed(2)),
-      additionalChargeDescription: payload.additionalChargeDescription,
-      chargeDate: payload.chargeDate || new Date().toISOString(),
-    };
+  /** Deletes an applied charge; the backend blocks this after settlement. */
+  deleteCharge: async (chargeId: string): Promise<void> => {
+    await apiClient.delete(`/additional-charges/${chargeId}`);
+  },
 
-    let res: unknown;
-    try {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/reservations/${reservationId}/charges`,
-        backendData
-      );
-    } catch {
-      res = await apiClient.post<Record<string, unknown>>(
-        `/additional-charges/reservations/${reservationId}/charges`,
-        backendData
-      );
-    }
+  getCatalog: async (): Promise<ChargeCatalogItem[]> => {
+    const res = await apiClient.get('/additional-charge-catalog', { params: { limit: 100 } });
+    return listOf(res, 'additionalChargeCatalog').map(mapCatalogRecord);
+  },
 
-    const raw = res as unknown as { additionalCharges?: Record<string, unknown> } | Record<string, unknown>;
-    const record = (raw as { additionalCharges?: Record<string, unknown> })?.additionalCharges || raw;
-    return mapChargeRecord(record as Record<string, unknown>);
+  getChargeRequests: async (params?: { status?: ChargeRequestStatus; reservationId?: string }): Promise<ChargeRequest[]> => {
+    const res = await apiClient.get('/additional-charge-requests', { params });
+    return listOf(res, 'additionalChargeRequests').map(mapRequestRecord);
+  },
+
+  createChargeRequest: async (payload: CreateChargeRequestPayload): Promise<ChargeRequest> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/charge-requests`, {
+      description: payload.description,
+      quantity: payload.quantity,
+      proposedUnitAmount: Number(payload.proposedUnitAmount.toFixed(2)),
+    });
+    return mapRequestRecord(oneOf(res, 'additionalChargeRequests'));
+  },
+
+  approveChargeRequest: async (requestId: string, body: { approvedUnitAmount?: number; reason?: string }) => {
+    await apiClient.patch(`/additional-charge-requests/${requestId}/approve`, body);
+  },
+
+  rejectChargeRequest: async (requestId: string, reason: string) => {
+    await apiClient.patch(`/additional-charge-requests/${requestId}/reject`, { reason });
+  },
+
+  withdrawChargeRequest: async (requestId: string) => {
+    await apiClient.patch(`/additional-charge-requests/${requestId}/withdraw`);
   },
 };

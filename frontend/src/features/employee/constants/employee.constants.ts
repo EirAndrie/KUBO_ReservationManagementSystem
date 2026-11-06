@@ -4,7 +4,7 @@ export const EMPLOYEE_STATUS_LABELS: Record<EmployeeStatus, string> = {
   Active: 'Active',
   Inactive: 'Inactive',
   Suspended: 'Suspended',
-  OnLeave: 'On Leave',
+  OnLeave: 'On leave',
   Terminated: 'Terminated',
 };
 
@@ -24,16 +24,12 @@ export const EMPLOYEE_STATUS_OPTIONS = Object.entries(EMPLOYEE_STATUS_LABELS).ma
 );
 
 export const EMPLOYEE_POLICIES = {
-  ONE_ROLE:
-    'BR-001: Every employee record references exactly one operational role (Administrator or Staff).',
-  CREDENTIALS:
-    'BR-003: Passwords must be 6-12 characters long with alphanumeric composition. Passwords are never returned in plaintext.',
-  ACTIVE_STATUS:
-    'BR-004: Only Active employees can sign in and execute resort transactions. Inactive, suspended, or terminated personnel are denied.',
+  ONE_ROLE: 'Each employee has exactly one role.',
+  CREDENTIALS: 'Passwords are 6 to 12 characters.',
+  ACTIVE_STATUS: 'Only active employees can sign in.',
   LAST_ADMIN_PROTECTION:
-    'BR-006, BR-080: AT LEAST ONE ACTIVE ADMINISTRATOR required. The last active Administrator cannot be demoted or disabled.',
+    'There must always be at least one active administrator. The last one can’t be demoted, suspended or deleted.',
   NO_DELETE_WITH_REFERENCES:
-    'BR-007, BR-072: CANNOT DELETE ACCOUNT WITH REFERENCES. Accounts linked to reservations, payments, charges, or audits cannot be deleted; set status to Terminated instead.',
-  ROLE_PROTECTION:
-    'BR-008: Roles referenced by employees cannot be deleted. Reassign employees before removing a role.',
+    'Accounts with recorded work (reservations, payments, audit entries) can’t be deleted. Suspend access instead.',
+  ROLE_PROTECTION: 'Roles assigned to employees can’t be deleted. Reassign those employees first.',
 } as const;

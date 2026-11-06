@@ -1,0 +1,22 @@
+.tabs :global(.ant-tabs-nav) {
+  padding: 0 16px;
+  margin-bottom: 0;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.banner {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+}

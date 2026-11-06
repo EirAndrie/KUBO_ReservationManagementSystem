@@ -84,7 +84,7 @@ export const GuestSearchSelect: React.FC<GuestSearchSelectProps> = ({
   const notFoundContent = loading ? (
     <div style={{ textAlign: 'center', padding: '12px 0' }}>
       <Spin size="small" />
-      <span style={{ marginLeft: 8, color: '#6b7280', fontSize: '0.85rem' }}>Searching guests...</span>
+      <span style={{ marginLeft: 8, color: 'var(--color-muted)', fontSize: '0.85rem' }}>Searching guests...</span>
     </div>
   ) : searched ? (
     <div className={styles.emptyOption}>
@@ -99,14 +99,14 @@ export const GuestSearchSelect: React.FC<GuestSearchSelectProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onRegisterNew?.()}
             aria-label="Register a new guest"
           >
-            Register New Guest
+            Register new guest
           </span>
         </div>
       )}
     </div>
   ) : (
     <div className={styles.emptyOption}>
-      Type at least 2 characters to search for an existing guest (BR-013).
+      Type at least 2 characters to search for an existing guest.
     </div>
   );
 
@@ -123,7 +123,7 @@ export const GuestSearchSelect: React.FC<GuestSearchSelectProps> = ({
       disabled={disabled}
       placeholder={
         <span>
-          <SearchOutlined style={{ color: '#9ca3af', marginRight: 6 }} aria-hidden="true" />
+          <SearchOutlined style={{ color: 'var(--color-muted)', marginRight: 6 }} aria-hidden="true" />
           {placeholder}
         </span>
       }
@@ -141,7 +141,7 @@ export const GuestSearchSelect: React.FC<GuestSearchSelectProps> = ({
           <div className={styles.optionItem}>
             <span className={styles.optionName}>
               <UserOutlined
-                style={{ color: '#9ca3af', marginRight: 6, fontSize: '0.8rem' }}
+                style={{ color: 'var(--color-muted)', marginRight: 6, fontSize: '0.8rem' }}
                 aria-hidden="true"
               />
               {guest.first_name} {guest.last_name}

@@ -1,177 +1,145 @@
-import { useCallback, useEffect } from 'react';
-import {
-  Modal,
-  Form,
-  InputNumber,
-  Select,
-  Input,
-  Alert,
-} from 'antd';
-import {
-  PlusCircleOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import { useAddCharge } from '../hooks/use-payment-mutations.hook';
-import {
-  CHARGE_TYPE_OPTIONS,
-  PAYMENT_POLICIES,
-} from '../constants/payment.constants';
-import type { AdditionalChargeType } from '../types/payment.types';
-import styles from './add-charge-modal.module.css';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, Form, InputNumber, Select, Input, Segmented } from 'antd';
+import { useChargeCatalog } from '../hooks/use-payments.hook';
+import { useApplyCatalogCharge, useCreateChargeRequest } from '../hooks/use-payment-mutations.hook';
+import { formatMoney } from '@/lib/format';
+import { Callout } from '@/components/common';
 
 export interface AddChargeModalProps {
   open: boolean;
   onClose: () => void;
   reservationId: string;
-  employeeId?: string;
 }
 
+type Mode = 'catalog' | 'custom';
+
 interface ChargeFormValues {
-  additionalChargeType: AdditionalChargeType;
-  additionalChargeAmount: number;
-  additionalChargeDescription: string;
+  catalogId?: string;
+  quantity: number;
+  description?: string;
+  proposedUnitAmount?: number;
 }
 
 /**
- * Modal form to post an incidental / additional charge to a reservation.
- *
- * Business rules enforced:
- * - Charge type must be a valid enum entry (BR-044).
- * - Amount must be non-negative with at most 2 decimal places (BR-048).
- * - Settled charges are append-only; no edits or deletions (BR-046).
+ * Adds a charge to a reservation in one of two ways:
+ * - From the price list: applies an active catalog item right away.
+ * - Custom: sends a request that an Administrator approves before it is billed.
+ *   Pending requests do not change the balance.
  */
-export function AddChargeModal({
-  open,
-  onClose,
-  reservationId,
-  employeeId,
-}: AddChargeModalProps) {
+export function AddChargeModal({ open, onClose, reservationId }: AddChargeModalProps) {
   const [form] = Form.useForm<ChargeFormValues>();
-  const addCharge = useAddCharge();
+  const [mode, setMode] = useState<Mode>('catalog');
+  const catalog = useChargeCatalog(open);
+  const apply = useApplyCatalogCharge();
+  const request = useCreateChargeRequest();
+  const pending = apply.isPending || request.isPending;
 
-  // Reset form state when modal opens
+  const active = useMemo(() => (catalog.data ?? []).filter((c) => c.is_active), [catalog.data]);
+  const catalogId = Form.useWatch('catalogId', form);
+  const quantity = Form.useWatch('quantity', form) ?? 1;
+  const selected = active.find((c) => c.catalog_id === catalogId);
+
   useEffect(() => {
     if (open) {
       form.resetFields();
+      form.setFieldsValue({ quantity: 1 });
     }
   }, [open, form]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
     try {
-      const values = await form.validateFields();
-
-      await addCharge.mutateAsync({
-        reservationId,
-        employeeId: employeeId || '',
-        additionalChargeType: values.additionalChargeType,
-        additionalChargeAmount: values.additionalChargeAmount,
-        additionalChargeDescription: values.additionalChargeDescription,
-      });
-
-      form.resetFields();
+      if (mode === 'catalog') {
+        await apply.mutateAsync({ reservationId, catalogId: values.catalogId!, quantity: values.quantity });
+      } else {
+        await request.mutateAsync({
+          reservationId,
+          description: values.description!.trim(),
+          quantity: values.quantity,
+          proposedUnitAmount: values.proposedUnitAmount!,
+        });
+      }
       onClose();
     } catch {
-      // Form validation or mutation error handled by useAppMutation
+      // Server message shown by the mutation toast.
     }
-  }, [form, addCharge, reservationId, employeeId, onClose]);
+  };
 
   return (
     <Modal
-      title={
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <PlusCircleOutlined aria-hidden="true" />
-          Add Extra Charge
-        </span>
-      }
+      title="Add charge"
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
-      okText="Post Charge"
-      okButtonProps={{
-        loading: addCharge.isPending,
-        style: { background: '#d97706', borderColor: '#d97706' },
-      }}
-      cancelButtonProps={{ disabled: addCharge.isPending }}
-      destroyOnClose
-      width={520}
+      okText={mode === 'catalog' ? 'Add charge' : 'Send for approval'}
+      okButtonProps={{ loading: pending }}
+      cancelButtonProps={{ disabled: pending }}
+      afterOpenChange={(visible) => !visible && setMode('catalog')}
+      destroyOnHidden
+      width={480}
     >
-      <div className={styles.modalContent}>
-        <Alert
-          className={styles.appendOnlyNotice}
-          type="info"
-          showIcon
-          icon={<InfoCircleOutlined aria-hidden="true" />}
-          message="Append-Only Financial Record (BR-046)"
-          description="Once posted, charges cannot be edited or deleted. Corrections must be made via supplementary charges or administrative adjustments."
-        />
-
-        <Form
-          form={form}
-          layout="vertical"
-          requiredMark="optional"
-        >
-          <Form.Item
-            name="additionalChargeType"
-            label="Charge Type"
-            rules={[{ required: true, message: 'Select the type of incidental charge.' }]}
-          >
-            <Select
-              options={CHARGE_TYPE_OPTIONS}
-              placeholder="Select charge category"
-              showSearch
-              optionFilterProp="label"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="additionalChargeAmount"
-            label="Charge Amount (PHP)"
-            rules={[
-              { required: true, message: 'Enter the charge amount.' },
-              {
-                type: 'number',
-                min: 0,
-                message: 'Amount must be non-negative (BR-048).',
-              },
-              {
-                validator: (_, value) => {
-                  if (value !== undefined && value !== null && Number(Number(value).toFixed(2)) !== Number(value)) {
-                    return Promise.reject(new Error('Amount cannot exceed 2 decimal places (BR-048).'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <InputNumber<number>
-              style={{ width: '100%' }}
-              min={0}
-              step={0.01}
-              precision={2}
-              placeholder="0.00"
-              prefix={<span style={{ color: '#94a3b8' }}>PHP</span>}
-              size="large"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="additionalChargeDescription"
-            label="Description"
-            rules={[{ required: true, message: 'Provide a description for the charge.' }]}
-          >
-            <Input.TextArea
-              rows={3}
-              placeholder="Describe the charge (e.g., '2 extra mattresses for 3 nights', 'Broken window pane in Kubo 5')"
-              maxLength={500}
-              showCount
-            />
-          </Form.Item>
-        </Form>
-
-        <p className={styles.policyNote}>
-          {PAYMENT_POLICIES.APPEND_ONLY_CHARGES}
-        </p>
-      </div>
+      <Segmented<Mode>
+        block
+        value={mode}
+        onChange={(v) => {
+          setMode(v);
+          form.setFieldsValue({ quantity: 1 });
+        }}
+        options={[
+          { label: 'From price list', value: 'catalog' },
+          { label: 'Custom charge', value: 'custom' },
+        ]}
+        style={{ marginBottom: 16 }}
+      />
+      <Form form={form} layout="vertical" requiredMark={false}>
+        {mode === 'catalog' ? (
+          <>
+            <Form.Item name="catalogId" label="Item" rules={[{ required: true, message: 'Choose an item.' }]}>
+              <Select
+                loading={catalog.isLoading}
+                showSearch
+                optionFilterProp="label"
+                placeholder="Choose from the price list"
+                options={active.map((c) => ({ value: c.catalog_id, label: `${c.name} · ${formatMoney(c.unit_price)}` }))}
+              />
+            </Form.Item>
+            <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+              <InputNumber<number> min={1} precision={0} style={{ width: '100%' }} />
+            </Form.Item>
+            {selected && (
+              <Callout>
+                Total {formatMoney(selected.unit_price * quantity)}. It is billed right away.
+              </Callout>
+            )}
+          </>
+        ) : (
+          <>
+            <Form.Item
+              name="description"
+              label="Description"
+              rules={[{ required: true, whitespace: true, message: 'Describe the charge.' }]}
+            >
+              <Input maxLength={255} placeholder="e.g. Bonfire setup" />
+            </Form.Item>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]} style={{ flex: 1 }}>
+                <InputNumber<number> min={1} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="proposedUnitAmount"
+                label="Unit price"
+                rules={[{ required: true, message: 'Enter a price.' }]}
+                style={{ flex: 1 }}
+              >
+                <InputNumber<number> min={0} step={0.01} precision={2} prefix="₱" style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+            <Callout tone="warn">
+              Custom charges need an administrator's approval. They are not billed until approved.
+            </Callout>
+          </>
+        )}
+      </Form>
     </Modal>
   );
 }

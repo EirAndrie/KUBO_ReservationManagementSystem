@@ -116,10 +116,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
-      okText={isEditing ? 'Save Changes' : 'Create Account'}
+      okText={isEditing ? 'Save changes' : 'Add employee'}
       okButtonProps={{
         loading: isPending,
-        style: { background: '#0284c7', borderColor: '#0284c7' },
+        style: { background: 'var(--color-primary)', borderColor: 'var(--color-primary)' },
       }}
       cancelButtonProps={{ disabled: isPending }}
       destroyOnClose
@@ -131,7 +131,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
             type="warning"
             showIcon
             icon={<CrownOutlined />}
-            message="Single Active Administrator Policy (BR-006)"
+            message="Only one active administrator"
             description="The system operational policy allows at most one Active Administrator. Designating another Active Administrator requires owner authorization."
             className={styles.adminNotice}
           />
@@ -176,7 +176,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 ]}
               >
                 <Input
-                  prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
+                  prefix={<UserOutlined style={{ color: 'var(--color-muted)' }} />}
                   placeholder="e.g. msantos"
                   disabled={isEditing}
                   size="large"
@@ -189,12 +189,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   name="password"
                   label="Password (6-12 Characters)"
                   rules={[
-                    { required: true, message: 'Password is required (BR-003).' },
-                    { min: 6, max: 12, message: 'Password must be 6-12 characters (BR-003).' },
+                    { required: true, message: 'Enter a password.' },
+                    { min: 6, max: 12, message: 'Passwords are 6 to 12 characters.' },
                   ]}
                 >
                   <Input.Password
-                    prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
+                    prefix={<LockOutlined style={{ color: 'var(--color-muted)' }} />}
                     placeholder="6-12 alphanumeric"
                     size="large"
                   />
@@ -212,7 +212,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               <Form.Item
                 name="roleId"
                 label="Assigned Operational Role"
-                rules={[{ required: true, message: 'Role selection is mandatory (BR-001).' }]}
+                rules={[{ required: true, message: 'Choose a role.' }]}
               >
                 <Select
                   placeholder="Select role"
@@ -228,7 +228,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               <Form.Item
                 name="status"
                 label="Employment Status"
-                rules={[{ required: true, message: 'Status is required (BR-004).' }]}
+                rules={[{ required: true, message: 'Choose a status.' }]}
               >
                 <Select
                   options={EMPLOYEE_STATUS_OPTIONS}

@@ -9,14 +9,11 @@
 export { CheckInOutPage } from './pages/check-in-out.page';
 
 // Components
-export { CheckInModal } from './components/check-in-modal.component';
-export type { CheckInModalProps } from './components/check-in-modal.component';
-
-export { CheckOutModal } from './components/check-out-modal.component';
-export type { CheckOutModalProps } from './components/check-out-modal.component';
-
-export { RecordPaymentModal } from './components/record-payment-modal.component';
-export type { RecordPaymentModalProps } from './components/record-payment-modal.component';
+export { CheckInDrawer } from './components/check-in-drawer.component';
+export { FrontDeskQueue } from './components/front-desk-queue.component';
+export type { QueueTab, FrontDeskQueueProps } from './components/front-desk-queue.component';
+export type { CheckInDrawerProps } from './components/check-in-drawer.component';
+export { isKuboReady, READY_KUBO_STATUSES } from './utils/kubo-readiness';
 
 // Hooks
 export { useCheckInOutQueue, checkInOutKeys } from './hooks/use-check-in-out.hook';
@@ -24,7 +21,6 @@ export {
   useCheckInKubo,
   useApproveEarlyCheckIn,
   useCheckOutKubo,
-  useRecordFinalPayment,
 } from './hooks/use-check-in-out-mutations.hook';
 
 // Services
@@ -35,11 +31,8 @@ export type {
   CheckInOutActionParams,
   ArrivalRecord,
   DepartureRecord,
-  RecordPaymentPayload,
+  InHouseRecord,
 } from './types/check-in-out.types';
 
 // Constants
-export {
-  CHECK_IN_OUT_POLICIES,
-  PAYMENT_METHOD_OPTIONS,
-} from './constants/check-in-out.constants';
+

@@ -1,591 +1,624 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Card,
-  Button,
-  Table,
-  Tag,
-  Alert,
-  Modal,
-  Input,
-  Skeleton,
-  Typography,
-} from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { App, Button, Progress, Steps, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
 import {
-  ArrowLeftOutlined,
-  CheckCircleOutlined,
+  CheckOutlined,
   CloseCircleOutlined,
+  CreditCardOutlined,
+  DeleteOutlined,
+  IdcardOutlined,
   LoginOutlined,
   LogoutOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  PlusOutlined,
+  PrinterOutlined,
+  RightOutlined,
+  RollbackOutlined,
   StopOutlined,
-  UserOutlined,
-  HomeOutlined,
-  DollarOutlined,
-  CreditCardOutlined,
-  FileTextOutlined,
-  ExclamationCircleOutlined,
-  ReloadOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { useAuth } from '@/features/auth';
+import { useGuest } from '@/features/guest';
+import { useKubos } from '@/features/kubo';
 import {
-  useReservation,
-  useReservationPayments,
+  AddChargeModal,
+  PrintInvoiceModal,
+  RecordPaymentModal,
+  RefundModal,
+  useChargeRequests,
+  useDeleteCharge,
   useReservationCharges,
-} from '../hooks/use-reservations.hook';
+  useReservationPayments,
+  useWithdrawChargeRequest,
+} from '@/features/payment';
+import type { AdditionalCharge, InvoiceBillingBreakdown, Payment } from '@/features/payment';
+import { CheckInDrawer, useCheckOutKubo } from '@/features/check-in-out';
+import type { ArrivalRecord } from '@/features/check-in-out';
 import {
-  useConfirmReservation,
-  useCancelReservation,
-  useMarkNoShow,
-} from '../hooks/use-reservation-mutations.hook';
-import { ReservationStatusTag } from '../components/reservation-status-tag.component';
+  Callout,
+  ErrorState,
+  ListSkeleton,
+  PageHeader,
+  RowMenu,
+  Section,
+  StatusBadge,
+  TwoLine,
+} from '@/components/common';
+import type { RowMenuItem } from '@/components/common';
+import { useBreadcrumbLabel } from '@/components/layout/breadcrumb-context';
 import {
-  BOOKING_SOURCE_LABELS,
-  RESERVATION_LIMITS,
-  RESERVATION_POLICIES,
-} from '../constants/reservation.constants';
-import type {
-  ReservationAssignment,
-  PaymentItem,
-  AdditionalChargeItem,
-} from '../types/reservation.types';
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatSignedMoney,
+  formatStayRange,
+  label,
+  maskId,
+  nightsBetween,
+  pluralize,
+  toAmount,
+} from '@/lib/format';
+import { useReservation } from '../hooks/use-reservations.hook';
+import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
+import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
+import type { Reservation, ReservationAssignment } from '../types/reservation.types';
+import { stayOf } from '../utils/reservation.utils';
 import styles from './reservation-detail.module.css';
 
-const { Title } = Typography;
-const { TextArea } = Input;
+interface LedgerRow {
+  key: string;
+  date: string;
+  description: string;
+  detail: string;
+  by?: string;
+  status: string;
+  statusText?: string;
+  /** Effect on the balance: charges add, payments subtract, refunds add back. */
+  amount: number;
+  counted: boolean;
+  charge?: AdditionalCharge;
+  payment?: Payment;
+}
+
+const COUNTED_PAYMENT_STATUSES = ['Completed', 'PartiallyRefunded', 'Refunded'];
+
+/** Lifecycle stepper; Cancelled and No-show end the line in red. */
+function lifecycleSteps(r: Reservation) {
+  const firstIn = r.assignments
+    .map((a) => a.actual_check_in_datetime)
+    .filter(Boolean)
+    .sort()[0];
+  const lastOut = r.assignments
+    .map((a) => a.actual_check_out_datetime)
+    .filter(Boolean)
+    .sort()
+    .reverse()[0];
+  const stay = stayOf(r.assignments);
+  const booked = { title: 'Booked', description: formatDate(r.reserved_at, 'MMM D') };
+
+  if (r.status === 'Cancelled') {
+    return {
+      current: 1,
+      items: [booked, { title: 'Cancelled', description: formatDate(r.cancelled_at, 'MMM D'), status: 'error' as const }],
+    };
+  }
+  if (r.status === 'NoShow') {
+    return {
+      current: 2,
+      items: [booked, { title: 'Confirmed' }, { title: 'No-show', description: 'Guest did not arrive', status: 'error' as const }],
+    };
+  }
+
+  const order = ['Pending', 'Confirmed', 'CheckedIn', 'CheckedOut'];
+  const reached = order.indexOf(r.status);
+  return {
+    current: reached,
+    items: [
+      booked,
+      { title: 'Confirmed', description: reached >= 1 ? 'Confirmed' : 'Awaiting confirmation' },
+      { title: 'Checked in', description: firstIn ? formatDateTime(firstIn) : formatDate(stay.checkIn, 'MMM D') },
+      { title: 'Checked out', description: lastOut ? formatDateTime(lastOut) : formatDate(stay.checkOut, 'MMM D') },
+    ].map((item, i) => ({ ...item, status: (i < reached || r.status === 'CheckedOut' ? 'finish' : i === reached ? 'process' : 'wait') as 'finish' | 'process' | 'wait' })),
+  };
+}
 
 /**
- * Reservation Detail & Lifecycle Management Page.
- *
- * Implements:
- * - Reference code heading, status tag, and contextual actions.
- * - Cancellation modal with strict Token by Intent danger styling (BR-035).
- * - Dynamic financial summary derivation: Accommodation + Charges - Net Paid (BR-040, BR-047).
- * - Rate snapshot display: price_at_booking captured at reservation creation (BR-020).
- * - Multi-section grid layout: Guest info, Assigned Kubos, Financials, Payments, Charges.
+ * Reservation detail: guest name as H1, one status-driven primary action,
+ * lifecycle stepper, stay table (rate at booking), a single charges &
+ * payments ledger, and a sticky balance card. The balance is always the API's
+ * `outstanding_balance`; it is never recomputed here.
  */
 export const ReservationDetailPage: React.FC = () => {
-  const { reservationId } = useParams<{ reservationId: string }>();
-  const navigate = useNavigate();
+  const { reservationId = '' } = useParams<{ reservationId: string }>();
+  const { modal } = App.useApp();
+  const { isStaff, user } = useAuth();
 
-  const {
-    data: reservation,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useReservation(reservationId);
+  const query = useReservation(reservationId);
+  const reservation = query.data;
+  const payments = useReservationPayments(reservationId);
+  const charges = useReservationCharges(reservationId);
+  const requests = useChargeRequests({ reservationId }, Boolean(reservationId));
+  const guest = useGuest(reservation?.guest_id);
+  const kubos = useKubos();
 
-  const { data: payments = [] } = useReservationPayments(reservationId);
-  const { data: charges = [] } = useReservationCharges(reservationId);
+  const confirm = useConfirmReservation();
+  const noShow = useMarkNoShow();
+  const checkOut = useCheckOutKubo();
+  const deleteCharge = useDeleteCharge();
+  const withdraw = useWithdrawChargeRequest();
 
-  const confirmMutation = useConfirmReservation();
-  const cancelMutation = useCancelReservation();
-  const noShowMutation = useMarkNoShow();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState<{ amount?: number } | null>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [arrival, setArrival] = useState<ArrivalRecord | null>(null);
 
-  // Cancellation modal state
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
+  useBreadcrumbLabel(reservation?.reference_code);
 
-  const formatCurrency = (val: string | number) =>
-    new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2,
-    }).format(Number(val) || 0);
+  const paymentList = useMemo(() => payments.data ?? [], [payments.data]);
+  const chargeList = useMemo(() => charges.data ?? [], [charges.data]);
+  const pendingRequests = (requests.data ?? []).filter((r) => r.status === 'Pending');
 
-  if (isLoading) {
+  const ledger: LedgerRow[] = useMemo(() => {
+    const rows: LedgerRow[] = [
+      ...chargeList.map((c) => ({
+        key: `c-${c.additional_charge_id}`,
+        date: c.charge_date,
+        description: c.catalog_name || c.description || label(c.charge_type),
+        detail: `${label(c.charge_type)}${c.quantity > 1 ? ` · ${c.quantity} × ${formatMoney(c.unit_amount)}` : ''}`,
+        by: c.employee_name,
+        status: 'Applied',
+        amount: c.amount,
+        counted: true,
+        charge: c,
+      })),
+      ...paymentList.map((p) => {
+        const isRefund = p.transaction_type === 'Refund';
+        const counted = isRefund ? p.payment_status === 'Completed' : COUNTED_PAYMENT_STATUSES.includes(p.payment_status);
+        return {
+          key: `p-${p.payment_id}`,
+          date: p.payment_date,
+          description: `${label(isRefund ? 'Refund' : p.payment_type)} · ${label(p.payment_method)}`,
+          detail: label(p.transaction_type),
+          by: p.employee_name,
+          status: p.payment_status,
+          amount: isRefund ? p.payment_amount : -p.payment_amount,
+          counted,
+          payment: p,
+        };
+      }),
+    ];
+    return rows.sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
+  }, [chargeList, paymentList]);
+
+  if (query.isLoading) {
+    return <ListSkeleton rows={12} />;
+  }
+  if (query.isError || !reservation) {
     return (
-      <main className={styles.pageContainer}>
-        <Skeleton active paragraph={{ rows: 14 }} />
-      </main>
+      <Section>
+        <ErrorState error={query.error ?? new Error('Reservation not found.')} onRetry={() => query.refetch()} />
+      </Section>
     );
   }
 
-  if (isError || !reservation) {
-    return (
-      <main className={styles.pageContainer}>
-        <Alert
-          className={styles.errorBanner}
-          type="error"
-          showIcon
-          message="Failed to load reservation"
-          description={
-            error instanceof Error
-              ? error.message
-              : 'The requested reservation could not be found or the server is unavailable.'
-          }
-          action={
-            <Button
-              size="small"
-              danger
-              icon={<ReloadOutlined aria-hidden="true" />}
-              onClick={() => refetch()}
-            >
-              Retry
-            </Button>
-          }
-        />
-        <Button
-          icon={<ArrowLeftOutlined aria-hidden="true" />}
-          onClick={() => navigate('/reservations')}
-        >
-          Back to Reservations
-        </Button>
-      </main>
-    );
-  }
+  const stay = stayOf(reservation.assignments);
+  const accommodation = toAmount(reservation.accommodation_total);
+  const gross = toAmount(reservation.charges_total); // accommodation + applied charges
+  const extras = Math.max(0, gross - accommodation);
+  const netPaid = toAmount(reservation.net_paid);
+  const balance = toAmount(reservation.outstanding_balance);
+  const paidPct = gross > 0 ? Math.min(100, Math.round((netPaid / gross) * 100)) : 0;
+  const isClosed = ['Cancelled', 'NoShow'].includes(reservation.status);
+  const isSettled =
+    ['CheckedOut', 'Cancelled', 'NoShow'].includes(reservation.status) ||
+    paymentList.some((p) => p.payment_status === 'Completed' || p.payment_status === 'PartiallyRefunded' || p.payment_status === 'Refunded');
+  const kuboStatus = (kuboId: string) => kubos.data?.find((k) => k.kuboId === kuboId)?.status;
+  const firstReserved = reservation.assignments.find((a) => a.status === 'Reserved');
+  const checkedInAssignments = reservation.assignments.filter((a) => a.status === 'CheckedIn');
 
-  // Dynamic Financial Calculations (BR-040, BR-047)
-  const accommodationTotal = Number(reservation.accommodation_total) || 0;
-  const chargesTotal = charges.reduce((sum: number, c: AdditionalChargeItem) => sum + Number(c.amount || 0), 0)
-    || Number(reservation.charges_total) || 0;
-  const netPaid = payments.reduce((sum: number, p: PaymentItem) => {
-    const amt = Number(p.amount || 0);
-    return p.transaction_type === 'Refund' ? sum - amt : sum + amt;
-  }, 0) || Number(reservation.net_paid) || 0;
-
-  const totalBilled = accommodationTotal + chargesTotal;
-  const outstandingBalance = totalBilled - netPaid;
-  const isSettled = outstandingBalance <= 0;
-
-  // Actions
-  const handleConfirm = async () => {
-    if (!reservationId) return;
-    await confirmMutation.mutateAsync(reservationId);
-  };
-
-  const handleMarkNoShow = async () => {
-    if (!reservationId) return;
-    await noShowMutation.mutateAsync(reservationId);
-  };
-
-  const handleCancelSubmit = async () => {
-    if (!reservationId || !cancelReason.trim()) return;
-    await cancelMutation.mutateAsync({
-      id: reservationId,
-      data: { reason: cancelReason.trim() },
+  const openCheckIn = (a: ReservationAssignment) =>
+    setArrival({
+      reservation,
+      assignment: a,
+      isEarly: dayjs(a.check_in_date).isAfter(dayjs(), 'day'),
+      canCheckIn: true,
     });
-    setIsCancelModalOpen(false);
-    setCancelReason('');
+
+  const doCheckOut = () =>
+    modal.confirm({
+      title: `Check out ${reservation.guest_name}?`,
+      content: `${pluralize(checkedInAssignments.length, 'kubo')} will be checked out and marked for cleaning.`,
+      okText: 'Check out',
+      onOk: async () => {
+        for (const a of checkedInAssignments) {
+          await checkOut.mutateAsync({ reservationId, kuboId: a.kubo_id });
+        }
+      },
+    });
+
+  // One primary action, chosen by status (Staff only; lifecycle is a Staff action).
+  let primary: React.ReactNode = null;
+  if (isStaff) {
+    if (reservation.status === 'Pending') {
+      primary = (
+        <Button type="primary" icon={<CheckOutlined />} loading={confirm.isPending} onClick={() => confirm.mutate(reservationId)}>
+          Confirm
+        </Button>
+      );
+    } else if (reservation.status === 'Confirmed' || (reservation.status === 'CheckedIn' && firstReserved && checkedInAssignments.length === 0)) {
+      primary = firstReserved ? (
+        <Button type="primary" icon={<LoginOutlined />} onClick={() => openCheckIn(firstReserved)}>
+          Check in
+        </Button>
+      ) : null;
+    } else if (reservation.status === 'CheckedIn') {
+      primary = (
+        <Tooltip title={balance > 0 ? `Collect ${formatMoney(balance)} before checking out.` : undefined}>
+          <Button type="primary" icon={<LogoutOutlined />} disabled={balance > 0 || checkedInAssignments.length === 0} loading={checkOut.isPending} onClick={doCheckOut}>
+            Check out
+          </Button>
+        </Tooltip>
+      );
+    }
+  }
+
+  const menu: RowMenuItem[] = [];
+  if (isStaff) {
+    if (!isClosed && reservation.status !== 'CheckedOut') {
+      menu.push({ key: 'charge', label: 'Add charge', icon: <PlusOutlined />, onClick: () => setChargeOpen(true) });
+    }
+    if (netPaid > 0) {
+      menu.push({ key: 'refund', label: 'Issue refund', icon: <RollbackOutlined />, onClick: () => setRefundOpen(true) });
+    }
+    if (reservation.status === 'Confirmed') {
+      menu.push({
+        key: 'noshow',
+        label: 'Mark no-show',
+        icon: <StopOutlined />,
+        onClick: () =>
+          modal.confirm({
+            title: `Mark ${reservation.reference_code} as no-show?`,
+            content: 'The booking ends and its kubos are released. This can’t be undone.',
+            okText: 'Mark no-show',
+            okButtonProps: { danger: true },
+            onOk: () => noShow.mutateAsync(reservationId),
+          }),
+      });
+    }
+    if (reservation.status === 'Pending' || reservation.status === 'Confirmed') {
+      menu.push({ key: 'd', divider: true });
+      menu.push({ key: 'cancel', label: 'Cancel reservation', icon: <CloseCircleOutlined />, danger: true, onClick: () => setCancelOpen(true) });
+    }
+  }
+
+  const invoice: InvoiceBillingBreakdown = {
+    reservationId,
+    referenceCode: reservation.reference_code,
+    guestName: reservation.guest_name,
+    guestEmail: guest.data?.email,
+    guestPhone: guest.data?.phone,
+    status: label(reservation.status),
+    checkInDate: stay.checkIn ?? '',
+    checkOutDate: stay.checkOut ?? '',
+    assignments: reservation.assignments.map((a) => {
+      const nights = nightsBetween(a.check_in_date, a.check_out_date);
+      return {
+        kuboNumber: a.kubo_number ?? '',
+        typeName: a.type_name ?? '',
+        nights,
+        pricePerNight: toAmount(a.price_at_booking),
+        total: nights * toAmount(a.price_at_booking),
+      };
+    }),
+    additionalCharges: chargeList.map((c) => ({
+      chargeId: c.additional_charge_id,
+      chargeType: c.charge_type,
+      description: c.catalog_name || c.description,
+      amount: c.amount,
+      date: c.charge_date,
+    })),
+    payments: paymentList.map((p) => ({
+      paymentId: p.payment_id,
+      date: p.payment_date,
+      transactionType: p.transaction_type,
+      method: p.payment_method,
+      type: p.payment_type,
+      amount: p.payment_amount,
+      status: p.payment_status,
+    })),
+    accommodationTotal: accommodation,
+    chargesTotal: extras,
+    grossBilled: gross,
+    netPaid,
+    outstandingBalance: balance,
+    isSettled: balance <= 0,
   };
 
-  // Kubo Assignment Columns
-  const assignmentColumns: ColumnsType<ReservationAssignment> = [
+  const stayColumns: ColumnsType<ReservationAssignment> = [
     {
-      title: 'Kubo Unit',
-      key: 'kubo',
-      render: (_, record) => (
-        <div>
-          <div style={{ fontWeight: 600, color: '#0c4a6e' }}>
-            Kubo {record.kubo_number || record.kubo_id.slice(0, 4)}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            {record.type_name || 'Standard Cottage'}
-          </div>
-        </div>
-      ),
+      title: 'Kubo',
+      render: (_, a) => <TwoLine primary={a.kubo_number} secondary={`${a.type_name ?? ''}${a.capacity ? ` · up to ${a.capacity}` : ''}`} />,
     },
     {
-      title: 'Stay Dates',
-      key: 'dates',
-      render: (_, record) => {
-        const checkIn = dayjs(record.check_in_date);
-        const checkOut = dayjs(record.check_out_date);
-        const nights = Math.max(1, checkOut.diff(checkIn, 'day'));
-        return (
-          <div style={{ fontSize: '0.82rem' }}>
-            <div>{checkIn.format('MMM D')} – {checkOut.format('MMM D, YYYY')}</div>
-            <div style={{ color: '#0284c7', fontWeight: 600 }}>{nights} nights</div>
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Rate Snapshot (BR-020)',
-      dataIndex: 'price_at_booking',
-      key: 'price_at_booking',
-      align: 'right',
-      render: (rate: number | string) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>
-          {formatCurrency(rate)} / night
+      title: 'Dates',
+      render: (_, a) => (
+        <span className="tabular">
+          {formatStayRange(a.check_in_date, a.check_out_date)} · {pluralize(nightsBetween(a.check_in_date, a.check_out_date), 'night')}
         </span>
       ),
     },
+    { title: 'Status', render: (_, a) => <StatusBadge status={a.status ?? 'Reserved'} /> },
+    {
+      title: 'Rate at booking',
+      align: 'right',
+      render: (_, a) => <span className="tabular">{formatMoney(a.price_at_booking)} / night</span>,
+    },
     {
       title: 'Subtotal',
-      key: 'subtotal',
       align: 'right',
-      render: (_, record) => {
-        const checkIn = dayjs(record.check_in_date);
-        const checkOut = dayjs(record.check_out_date);
-        const nights = Math.max(1, checkOut.diff(checkIn, 'day'));
-        const subtotal = Number(record.price_at_booking) * nights;
-        return (
-          <span style={{ fontWeight: 700, color: '#0c4a6e' }}>
-            {formatCurrency(subtotal)}
-          </span>
-        );
-      },
+      render: (_, a) => (
+        <span className="tabular">{formatMoney(nightsBetween(a.check_in_date, a.check_out_date) * toAmount(a.price_at_booking))}</span>
+      ),
     },
+    ...(isStaff
+      ? [
+          {
+            key: 'menu',
+            width: 48,
+            render: (_: unknown, a: ReservationAssignment) =>
+              a.status === 'Reserved' && ['Confirmed', 'CheckedIn'].includes(reservation.status) ? (
+                <RowMenu
+                  label={`Actions for ${a.kubo_number}`}
+                  items={[{ key: 'in', label: 'Check in this kubo', icon: <LoginOutlined />, onClick: () => openCheckIn(a) }]}
+                />
+              ) : null,
+          },
+        ]
+      : []),
   ];
 
+  const ledgerColumns: ColumnsType<LedgerRow> = [
+    { title: 'Date', width: 90, render: (_, r) => <span className="tabular">{formatDate(r.date, 'MMM D')}</span> },
+    { title: 'Description', render: (_, r) => <TwoLine primary={r.description} secondary={r.detail} /> },
+    { title: 'By', render: (_, r) => <span className="muted">{r.by ?? '—'}</span> },
+    { title: 'Status', render: (_, r) => <StatusBadge status={r.status} /> },
+    {
+      title: 'Amount',
+      align: 'right',
+      render: (_, r) => (
+        <span
+          className={`tabular ${!r.counted ? styles.notCounted : r.amount < 0 ? styles.credit : ''}`}
+          title={!r.counted ? 'Not counted in the balance' : undefined}
+        >
+          {formatSignedMoney(r.amount)}
+        </span>
+      ),
+    },
+    ...(isStaff && !isSettled
+      ? [
+          {
+            key: 'menu',
+            width: 48,
+            render: (_: unknown, r: LedgerRow) =>
+              r.charge ? (
+                <RowMenu
+                  label="Charge actions"
+                  items={[
+                    {
+                      key: 'del',
+                      label: 'Remove charge',
+                      icon: <DeleteOutlined />,
+                      danger: true,
+                      onClick: () =>
+                        modal.confirm({
+                          title: 'Remove this charge?',
+                          content: `${r.description} (${formatMoney(r.amount)}) will be removed from the bill.`,
+                          okText: 'Remove',
+                          okButtonProps: { danger: true },
+                          onOk: () => deleteCharge.mutateAsync(r.charge!.additional_charge_id),
+                        }),
+                    },
+                  ]}
+                />
+              ) : null,
+          },
+        ]
+      : []),
+  ];
+
+  const steps = lifecycleSteps(reservation);
+  const summary = [
+    reservation.reference_code,
+    reservation.assignments.map((a) => `${a.kubo_number} ${a.type_name ?? ''}`.trim()).join(', '),
+    stay.checkIn ? `${formatDate(stay.checkIn, 'MMM D')} → ${formatDate(stay.checkOut, 'MMM D')} (${pluralize(stay.nights, 'night')})` : null,
+    `Booked ${label(reservation.booking_source).toLowerCase()} by ${reservation.employee_name}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <main className={styles.pageContainer} aria-label={`Reservation ${reservation.reference_code}`}>
-      {/* Navigation */}
-      <button
-        className={styles.backLink}
-        onClick={() => navigate('/reservations')}
-        aria-label="Back to reservations directory"
-      >
-        <ArrowLeftOutlined aria-hidden="true" />
-        <span>Reservation Directory</span>
-      </button>
-
-      {/* Header Banner */}
-      <section className={styles.headerCard}>
-        <div className={styles.headerMain}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Title level={1} className={styles.refCode}>
-              {reservation.reference_code}
-            </Title>
-            <ReservationStatusTag status={reservation.status} />
-          </div>
-          <div className={styles.headerMeta}>
-            <span>Guest: <strong>{reservation.guest_name}</strong></span>
-            <span>•</span>
-            <span>Source: <strong>{BOOKING_SOURCE_LABELS[reservation.booking_source] || reservation.booking_source}</strong></span>
-            <span>•</span>
-            <span>Booked: {dayjs(reservation.reserved_at).format('MMM D, YYYY h:mm A')}</span>
-          </div>
-        </div>
-
-        {/* Contextual Action Buttons */}
-        <div className={styles.headerActions}>
-          {reservation.status === 'Pending' && (
-            <>
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined aria-hidden="true" />}
-                loading={confirmMutation.isPending}
-                onClick={handleConfirm}
-                style={{ background: '#16a34a', borderColor: '#16a34a' }}
-              >
-                Confirm Booking
-              </Button>
-              <Button
-                danger
-                icon={<CloseCircleOutlined aria-hidden="true" />}
-                onClick={() => setIsCancelModalOpen(true)}
-              >
-                Cancel
-              </Button>
-            </>
-          )}
-
-          {reservation.status === 'Confirmed' && (
-            <>
-              <Button
-                type="primary"
-                icon={<LoginOutlined aria-hidden="true" />}
-                onClick={() => navigate('/check-in-out')}
-                style={{ background: '#0284c7', borderColor: '#0284c7' }}
-              >
-                Check In Guest
-              </Button>
-              <Button
-                icon={<StopOutlined aria-hidden="true" />}
-                loading={noShowMutation.isPending}
-                onClick={handleMarkNoShow}
-              >
-                Mark No-Show
-              </Button>
-              <Button
-                danger
-                icon={<CloseCircleOutlined aria-hidden="true" />}
-                onClick={() => setIsCancelModalOpen(true)}
-              >
-                Cancel
-              </Button>
-            </>
-          )}
-
-          {reservation.status === 'CheckedIn' && (
-            <Button
-              type="primary"
-              icon={<LogoutOutlined aria-hidden="true" />}
-              onClick={() => navigate('/check-in-out')}
-              style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
-            >
-              Check Out Guest
+    <div>
+      <PageHeader
+        title={reservation.guest_name}
+        titleExtra={<StatusBadge status={reservation.status} />}
+        description={summary}
+        action={
+          <>
+            <Button icon={<PrinterOutlined />} onClick={() => setInvoiceOpen(true)}>
+              Invoice
             </Button>
-          )}
-        </div>
-      </section>
+            {menu.length > 0 && <RowMenu items={menu} label="More reservation actions" />}
+            {primary}
+          </>
+        }
+      />
 
-      {/* Two Column Grid */}
-      <div className={styles.contentGrid}>
-        {/* Left Column: Guest Info & Assigned Kubos */}
-        <div className={styles.cardSection}>
-          {/* Guest Information Card */}
-          <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-            <div className={styles.sectionHeader}>
-              <UserOutlined aria-hidden="true" />
-              <span>Guest Information</span>
-            </div>
-            <div className={styles.guestGrid}>
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Full Name</span>
-                <span className={styles.infoValue}>{reservation.guest_name}</span>
-              </div>
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Profile Action</span>
-                <Button
-                  size="small"
-                  type="link"
-                  style={{ padding: 0, height: 'auto', textAlign: 'left' }}
-                  onClick={() => navigate(`/guests/${reservation.guest_id}`)}
-                >
-                  View Full Profile & ID →
-                </Button>
-              </div>
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Encoded By</span>
-                <span className={styles.infoValue}>{reservation.employee_name || 'Staff'}</span>
-              </div>
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Booking Channel</span>
-                <span className={styles.infoValue}>
-                  {BOOKING_SOURCE_LABELS[reservation.booking_source] || reservation.booking_source}
-                </span>
-              </div>
-            </div>
-          </Card>
+      <Section style={{ marginBottom: 20 }}>
+        <Steps size="small" current={steps.current} items={steps.items} />
+        {reservation.status === 'Cancelled' && reservation.cancellation_reason && (
+          <p className="muted" style={{ margin: '12px 0 0' }}>
+            Reason: {reservation.cancellation_reason}
+          </p>
+        )}
+      </Section>
 
-          {/* Assigned Kubos Table */}
-          <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-            <div className={styles.sectionHeader}>
-              <HomeOutlined aria-hidden="true" />
-              <span>Assigned Kubos & Rate Snapshots</span>
-            </div>
-            <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: -8, marginBottom: 16 }}>
-              {RESERVATION_POLICIES.RATE_SNAPSHOT}
-            </p>
+      <div className={styles.grid}>
+        <div className={styles.mainCol}>
+          <Section title="Stay" flush>
             <Table<ReservationAssignment>
-              dataSource={reservation.assignments || []}
-              columns={assignmentColumns}
-              rowKey={(r, i) => r.reserved_kubo_id || `${r.kubo_id}-${i}`}
+              rowKey={(a) => a.reserved_kubo_id ?? a.kubo_id}
+              columns={stayColumns}
+              dataSource={reservation.assignments}
               pagination={false}
-              size="small"
+              size="middle"
             />
-          </Card>
+          </Section>
 
-          {/* Cancellation Info (if applicable) */}
-          {reservation.status === 'Cancelled' && (
-            <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-              <div className={styles.sectionHeader} style={{ color: '#dc2626' }}>
-                <ExclamationCircleOutlined aria-hidden="true" />
-                <span>Cancellation Audit Record (BR-035)</span>
-              </div>
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Reason</span>
-                <span className={styles.infoValue} style={{ color: '#dc2626', fontWeight: 600 }}>
-                  {reservation.cancellation_reason || 'No cancellation reason provided.'}
-                </span>
-              </div>
-              {reservation.cancelled_at && (
-                <div className={styles.infoRow} style={{ marginTop: 12 }}>
-                  <span className={styles.infoLabel}>Cancelled Timestamp</span>
-                  <span className={styles.infoValue}>
-                    {dayjs(reservation.cancelled_at).format('MMMM D, YYYY h:mm A')}
-                  </span>
-                </div>
-              )}
-            </Card>
+          <Section
+            title="Charges & payments"
+            flush
+            extra={
+              isStaff && !isClosed ? (
+                <>
+                  {reservation.status !== 'CheckedOut' && (
+                    <Button size="small" icon={<PlusOutlined />} onClick={() => setChargeOpen(true)}>
+                      Add charge
+                    </Button>
+                  )}
+                  {balance > 0 && (
+                    <Button size="small" icon={<CreditCardOutlined />} onClick={() => setPaymentOpen({})}>
+                      Record payment
+                    </Button>
+                  )}
+                </>
+              ) : null
+            }
+          >
+            {payments.isError || charges.isError ? (
+              <ErrorState
+                error={payments.error ?? charges.error}
+                onRetry={() => {
+                  payments.refetch();
+                  charges.refetch();
+                }}
+              />
+            ) : payments.isLoading || charges.isLoading ? (
+              <ListSkeleton rows={3} />
+            ) : (
+              <Table<LedgerRow>
+                rowKey="key"
+                columns={ledgerColumns}
+                dataSource={ledger}
+                pagination={false}
+                size="middle"
+                locale={{ emptyText: 'No charges or payments yet.' }}
+              />
+            )}
+          </Section>
+
+          {pendingRequests.length > 0 && (
+            <Section title="Awaiting approval · not billed yet" flush>
+              <ul className={styles.requestList}>
+                {pendingRequests.map((req) => (
+                  <li key={req.request_id} className={styles.requestRow}>
+                    <TwoLine
+                      primary={req.description}
+                      secondary={`Requested by ${req.requested_by_name} · ${formatDateTime(req.created_at)}`}
+                    />
+                    <span className={`tabular ${styles.notCounted}`}>
+                      {formatMoney(req.quantity * req.proposed_unit_amount)}
+                    </span>
+                    {isStaff && req.requested_by === user?.employeeId ? (
+                      <Button size="small" loading={withdraw.isPending} onClick={() => withdraw.mutate(req.request_id)}>
+                        Withdraw
+                      </Button>
+                    ) : (
+                      <StatusBadge status="Pending" />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Section>
           )}
         </div>
 
-        {/* Right Column: Financial Summary & Transaction Breakdown */}
-        <div className={styles.cardSection}>
-          {/* Financial Summary Card (BR-040, BR-047) */}
-          <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-            <div className={styles.sectionHeader}>
-              <DollarOutlined aria-hidden="true" />
-              <span>Financial Overview & Settlement</span>
+        <aside className={styles.sideCol}>
+          <Section className={styles.sticky}>
+            <div className="muted">Balance due</div>
+            <div className={styles.balance}>{isClosed ? '—' : formatMoney(balance)}</div>
+            <dl className={styles.breakdown}>
+              <dt>Accommodation</dt>
+              <dd className="tabular">{formatMoney(accommodation)}</dd>
+              <dt>Charges</dt>
+              <dd className="tabular">{formatMoney(extras)}</dd>
+              <dt>Paid</dt>
+              <dd className={`tabular ${styles.credit}`}>{formatSignedMoney(-netPaid)}</dd>
+            </dl>
+            <Progress percent={paidPct} showInfo={false} size="small" aria-label={`${paidPct}% paid`} />
+            <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
+              {paidPct}% paid
             </div>
-            <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: -8, marginBottom: 16 }}>
-              {RESERVATION_POLICIES.BALANCE_DERIVED}
-            </p>
-
-            <div className={styles.financialBox}>
-              <div className={styles.financialRow}>
-                <span style={{ color: '#475569' }}>Accommodation Charges:</span>
-                <span style={{ fontWeight: 600 }}>{formatCurrency(accommodationTotal)}</span>
-              </div>
-              <div className={styles.financialRow}>
-                <span style={{ color: '#475569' }}>Additional Charges:</span>
-                <span style={{ fontWeight: 600 }}>{formatCurrency(chargesTotal)}</span>
-              </div>
-              <div className={styles.financialRow}>
-                <span style={{ color: '#475569' }}>Total Billed:</span>
-                <span style={{ fontWeight: 700, color: '#0c4a6e' }}>{formatCurrency(totalBilled)}</span>
-              </div>
-              <div className={styles.financialRow}>
-                <span style={{ color: '#16a34a' }}>Net Payments Received:</span>
-                <span style={{ fontWeight: 700, color: '#16a34a' }}>- {formatCurrency(netPaid)}</span>
-              </div>
-
-              <div className={styles.balanceRow}>
-                <span>Outstanding Balance:</span>
-                <span
-                  className={`${styles.balanceAmount} ${isSettled ? styles.balanceSettled : styles.balanceUnsettled}`}
-                >
-                  {formatCurrency(outstandingBalance)}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <Button
-                type="primary"
-                icon={<CreditCardOutlined aria-hidden="true" />}
-                style={{ flex: 1, background: '#0284c7', borderColor: '#0284c7' }}
-                onClick={() => navigate('/payments')}
-              >
-                Record Payment
+            {isStaff && balance > 0 && !isClosed && (
+              <Button type={primary ? 'default' : 'primary'} block onClick={() => setPaymentOpen({ amount: balance })}>
+                Collect {formatMoney(balance)}
               </Button>
-            </div>
-          </Card>
-
-          {/* Payments Breakdown */}
-          <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-            <div className={styles.sectionHeader}>
-              <CreditCardOutlined aria-hidden="true" />
-              <span>Payment Records ({payments.length})</span>
-            </div>
-            {payments.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>
-                No payments have been recorded for this reservation.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {payments.map((p: PaymentItem) => (
-                  <div
-                    key={p.payment_id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      background: '#f8fafc',
-                      borderRadius: 6,
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>
-                        {p.transaction_type}: {formatCurrency(p.amount)}
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                        {p.payment_method} • {dayjs(p.payment_date).format('MMM D, YYYY')}
-                      </div>
-                    </div>
-                    {p.reference_number && (
-                      <Tag style={{ margin: 0, fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                        Ref: {p.reference_number}
-                      </Tag>
-                    )}
-                  </div>
-                ))}
-              </div>
             )}
-          </Card>
-
-          {/* Additional Charges Breakdown */}
-          <Card className={styles.infoCard} bodyStyle={{ padding: 20 }}>
-            <div className={styles.sectionHeader}>
-              <FileTextOutlined aria-hidden="true" />
-              <span>Additional Charges ({charges.length})</span>
-            </div>
-            {charges.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>
-                No additional incidentals or service charges applied.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {charges.map((c: AdditionalChargeItem) => (
-                  <div
-                    key={c.charge_id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      background: '#f8fafc',
-                      borderRadius: 6,
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>
-                        {c.charge_type}: {formatCurrency(c.amount)}
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '0.78rem' }}>
-                        {c.description || 'Standard incidental'}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                      {dayjs(c.charged_at).format('MMM D')}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {reservation.status === 'CheckedIn' && balance > 0 && (
+              <Callout tone="warn" style={{ marginTop: 12 }}>
+                Check-out unlocks when the balance reaches ₱0.
+              </Callout>
             )}
-          </Card>
-        </div>
+          </Section>
+
+          <Section
+            title="Guest"
+            extra={
+              <Link to={`/guests/${reservation.guest_id}`} className={styles.profileLink}>
+                Profile <RightOutlined />
+              </Link>
+            }
+          >
+            {guest.data ? (
+              <ul className={styles.contactList}>
+                <li>
+                  <MailOutlined className="muted" /> {guest.data.email}
+                </li>
+                <li>
+                  <PhoneOutlined className="muted" /> {guest.data.phone}
+                </li>
+                <li>
+                  <IdcardOutlined className="muted" /> {label(guest.data.valid_id_type)} · {maskId(guest.data.id_number)}
+                </li>
+              </ul>
+            ) : (
+              <span className="muted">{guest.isLoading ? 'Loading…' : 'Guest details unavailable.'}</span>
+            )}
+          </Section>
+        </aside>
       </div>
 
-      {/* Cancellation Reason Modal with Strict Danger Token by Intent */}
-      <Modal
-        open={isCancelModalOpen}
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#dc2626' }}>
-            <ExclamationCircleOutlined aria-hidden="true" />
-            <span>Cancel Reservation {reservation.reference_code}</span>
-          </div>
-        }
-        onCancel={() => {
-          setIsCancelModalOpen(false);
-          setCancelReason('');
-        }}
-        onOk={handleCancelSubmit}
-        okText="Confirm Cancellation"
-        okButtonProps={{
-          danger: true,
-          loading: cancelMutation.isPending,
-          disabled: !cancelReason.trim(),
-        }}
-        cancelButtonProps={{
-          disabled: cancelMutation.isPending,
-        }}
-        destroyOnClose
-      >
-        <p style={{ color: '#475569', fontSize: '0.9rem', marginTop: 12 }}>
-          Cancelling this reservation will release assigned kubos back to available inventory. This action cannot be undone (BR-035).
-        </p>
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-          Cancellation Reason <span style={{ color: '#ef4444' }}>*</span>
-        </label>
-        <TextArea
-          rows={3}
-          value={cancelReason}
-          onChange={(e) => setCancelReason(e.target.value)}
-          placeholder="State the cancellation rationale (e.g., Guest requested cancellation, travel emergency)..."
-          maxLength={RESERVATION_LIMITS.MAX_CANCELLATION_REASON}
-          showCount
-          autoFocus
-        />
-      </Modal>
-    </main>
+      <CancelReservationModal reservation={cancelOpen ? reservation : null} onClose={() => setCancelOpen(false)} />
+      <AddChargeModal open={chargeOpen} onClose={() => setChargeOpen(false)} reservationId={reservationId} />
+      <RecordPaymentModal
+        open={Boolean(paymentOpen)}
+        onClose={() => setPaymentOpen(null)}
+        reservationId={reservationId}
+        referenceCode={reservation.reference_code}
+        outstandingBalance={balance}
+        netPaid={netPaid}
+        defaultAmount={paymentOpen?.amount}
+      />
+      <RefundModal open={refundOpen} onClose={() => setRefundOpen(false)} payments={paymentList} netPaid={netPaid} />
+      <PrintInvoiceModal open={invoiceOpen} onClose={() => setInvoiceOpen(false)} invoice={invoice} />
+      <CheckInDrawer
+        arrival={arrival}
+        kuboStatus={arrival ? kuboStatus(arrival.assignment.kubo_id) : undefined}
+        onClose={() => setArrival(null)}
+      />
+    </div>
   );
 };

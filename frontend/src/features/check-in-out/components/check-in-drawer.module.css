@@ -1,0 +1,59 @@
+.eyebrow {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.kuboCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.kuboName {
+  font-weight: 500;
+}
+
+.sectionTitle {
+  margin: 4px 0 8px;
+  font-weight: 600;
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.balanceRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

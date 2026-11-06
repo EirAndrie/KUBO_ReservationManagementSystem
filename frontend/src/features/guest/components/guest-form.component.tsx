@@ -113,14 +113,14 @@ export const GuestForm: React.FC<GuestFormProps> = ({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18 }}>
           {isEditing ? (
-            <EditOutlined style={{ color: '#0369a1' }} aria-hidden="true" />
+            <EditOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
           ) : (
-            <UserAddOutlined style={{ color: '#0369a1' }} aria-hidden="true" />
+            <UserAddOutlined style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
           )}
           <span>
             {isEditing
-              ? `Edit Guest: ${initialData?.first_name} ${initialData?.last_name}`
-              : 'Register New Guest'}
+              ? `Edit ${initialData?.first_name} ${initialData?.last_name}`
+              : 'Register guest'}
           </span>
         </div>
       }
@@ -134,7 +134,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
         {!isEditing && (
           <Alert
             className={styles.noticeAlert}
-            message="Guest Profile Linking (BR-013)"
+            message="Existing guests are reused"
             description={GUEST_POLICIES.REUSE_NOTICE}
             type="info"
             showIcon
@@ -155,7 +155,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
           {/* Section 1: Primary Identity */}
           <div className={styles.sectionHeader}>
             <UserOutlined aria-hidden="true" />
-            <span>Primary Identity & Contact</span>
+            <span>Identity & Contact</span>
           </div>
 
           <div className={styles.formGridTwoCols}>
@@ -216,7 +216,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
               name="email"
               label="Email Address"
               rules={[
-                { required: true, message: 'Email address is required (BR-010).' },
+                { required: true, message: 'Enter an email address.' },
                 { type: 'email', message: 'Please enter a valid email format.' },
                 {
                   max: GUEST_LIMITS.MAX_EMAIL,
@@ -227,7 +227,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
             >
               <Input
                 className={styles.standardInput}
-                prefix={<MailOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
+                prefix={<MailOutlined style={{ color: 'var(--color-muted)' }} aria-hidden="true" />}
                 placeholder="guest@example.ph"
                 disabled={isLoading}
                 maxLength={GUEST_LIMITS.MAX_EMAIL}
@@ -238,17 +238,17 @@ export const GuestForm: React.FC<GuestFormProps> = ({
               name="phone"
               label="Contact Phone Number"
               rules={[
-                { required: true, message: 'Contact phone number is required (BR-012).' },
+                { required: true, message: 'Enter a phone number.' },
                 {
                   pattern: PHILIPPINE_PHONE_REGEX,
-                  message: 'Must match Philippine format: 09XXXXXXXXX or +639XXXXXXXXX (BR-012).',
+                  message: 'Use 09XXXXXXXXX or +639XXXXXXXXX.',
                 },
               ]}
               extra={<span className={styles.helperText}>Format: 09171234567 or +639171234567.</span>}
             >
               <Input
                 className={styles.standardInput}
-                prefix={<PhoneOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
+                prefix={<PhoneOutlined style={{ color: 'var(--color-muted)' }} aria-hidden="true" />}
                 placeholder="09171234567"
                 disabled={isLoading}
               />
@@ -258,7 +258,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
           {/* Section 2: Identification */}
           <div className={styles.sectionHeader}>
             <IdcardOutlined aria-hidden="true" />
-            <span>Government Identification (BR-011)</span>
+            <span>Government ID</span>
           </div>
 
           <div className={styles.formGridTwoCols}>
@@ -294,7 +294,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
             >
               <Input
                 className={styles.standardInput}
-                prefix={<IdcardOutlined style={{ color: '#9ca3af' }} aria-hidden="true" />}
+                prefix={<IdcardOutlined style={{ color: 'var(--color-muted)' }} aria-hidden="true" />}
                 placeholder="e.g., 1234-5678-9012"
                 maxLength={GUEST_LIMITS.MAX_ID_NUMBER}
                 disabled={isLoading}
@@ -305,7 +305,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
           {/* Section 3: Optional Address */}
           <div className={styles.sectionHeader}>
             <EnvironmentOutlined aria-hidden="true" />
-            <span>Residential Address (Optional)</span>
+            <span>Address (Optional)</span>
           </div>
 
           <Form.Item
@@ -405,7 +405,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
               Cancel
             </Button>
             <Button type="primary" htmlType="submit" loading={isLoading}>
-              {isEditing ? 'Save Changes' : 'Register Guest'}
+              {isEditing ? 'Save changes' : 'Register guest'}
             </Button>
           </div>
         </Form>

@@ -16,7 +16,7 @@ export function useCreateEmployee() {
 
   return useAppMutation<Employee, CreateEmployeePayload>({
     mutationFn: (payload) => employeeService.createEmployee(payload),
-    successMessage: 'Employee account created successfully (BR-002).',
+    successMessage: 'Employee added.',
     errorMessage: (error) => error.message || 'Failed to create employee.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.all });
@@ -29,7 +29,7 @@ export function useUpdateEmployee() {
 
   return useAppMutation<Employee, { employeeId: string; payload: UpdateEmployeePayload }>({
     mutationFn: ({ employeeId, payload }) => employeeService.updateEmployee(employeeId, payload),
-    successMessage: 'Employee record updated successfully.',
+    successMessage: 'Employee updated.',
     errorMessage: (error) => error.message || 'Failed to update employee.',
     onSuccess: (_data, { employeeId }) => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.all });
@@ -43,7 +43,7 @@ export function useResetPassword() {
 
   return useAppMutation<void, { employeeId: string; password: string }>({
     mutationFn: ({ employeeId, password }) => employeeService.resetPassword(employeeId, password),
-    successMessage: 'Password reset successfully (BR-003).',
+    successMessage: 'Password reset.',
     errorMessage: (error) => error.message || 'Failed to reset password.',
     onSuccess: (_data, { employeeId }) => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.detail(employeeId) });
@@ -56,10 +56,10 @@ export function useDeleteEmployee() {
 
   return useAppMutation<void, string>({
     mutationFn: (employeeId) => employeeService.deleteEmployee(employeeId),
-    successMessage: 'Employee account removed from database.',
+    successMessage: 'Employee deleted.',
     errorMessage: (error) => {
       if (error.message?.includes('violates foreign key') || error.message?.includes('reference')) {
-        return 'CANNOT DELETE ACCOUNT WITH REFERENCES, SET STATUS TERMINATED INSTEAD (BR-007, BR-072).';
+        return 'This account has recorded work, so it can’t be deleted. Suspend access instead.';
       }
       return error.message || 'Failed to delete employee account.';
     },
@@ -74,7 +74,7 @@ export function useCreateRole() {
 
   return useAppMutation<Role, CreateRolePayload>({
     mutationFn: (payload) => employeeService.createRole(payload),
-    successMessage: 'Role created successfully (BR-008).',
+    successMessage: 'Role created.',
     errorMessage: (error) => error.message || 'Failed to create role.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.roles });
@@ -87,7 +87,7 @@ export function useUpdateRole() {
 
   return useAppMutation<Role, { roleId: string; payload: UpdateRolePayload }>({
     mutationFn: ({ roleId, payload }) => employeeService.updateRole(roleId, payload),
-    successMessage: 'Role updated successfully.',
+    successMessage: 'Role updated.',
     errorMessage: (error) => error.message || 'Failed to update role.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.roles });
@@ -100,10 +100,10 @@ export function useDeleteRole() {
 
   return useAppMutation<void, string>({
     mutationFn: (roleId) => employeeService.deleteRole(roleId),
-    successMessage: 'Role removed successfully.',
+    successMessage: 'Role deleted.',
     errorMessage: (error) => {
       if (error.message?.includes('reference') || error.message?.includes('foreign key')) {
-        return 'Cannot delete role with assigned employees. Reassign personnel first (BR-008, BR-072).';
+        return 'This role is assigned to employees. Reassign them first.';
       }
       return error.message || 'Failed to delete role.';
     },

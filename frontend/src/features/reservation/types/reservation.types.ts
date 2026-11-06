@@ -132,7 +132,10 @@ export interface AvailableKubosApiResponse {
 export interface PaymentItem {
   payment_id: string;
   reservation_id: string;
-  amount: number | string;
+  /** Backend field (a numeric string). */
+  payment_amount?: number | string;
+  /** Legacy fallback; read `payment_amount` first. */
+  amount?: number | string;
   payment_method: string;
   transaction_type: string;
   payment_date: string;

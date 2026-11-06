@@ -1,555 +1,346 @@
-import { useState, useMemo, useCallback } from 'react';
-import {
-  Typography,
-  Button,
-  Table,
-  Tag,
-  Select,
-  Modal,
-  Input,
-  Empty,
-} from 'antd';
+import React, { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { App, Button, Input, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  PlusCircleOutlined,
-  CreditCardOutlined,
-  PrinterOutlined,
-  FilterOutlined,
-  ClearOutlined,
-  FileTextOutlined,
+  CheckOutlined,
+  CloseCircleOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  RollbackOutlined,
+  SearchOutlined,
+  StopOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-
-import { usePayments, useReservationPayments, useReservationCharges } from '../hooks/use-payments.hook';
-import { RecordPaymentModal } from '../components/record-payment-modal.component';
-import { AddChargeModal } from '../components/add-charge-modal.component';
-import { PrintInvoiceModal } from '../components/print-invoice-modal.component';
+import { useAuth } from '@/features/auth';
+import { ReservationPickerModal, useReservations } from '@/features/reservation';
+import type { Reservation } from '@/features/reservation';
 import {
-  PAYMENT_METHOD_OPTIONS,
-  PAYMENT_STATUS_OPTIONS,
-  TRANSACTION_TYPE_OPTIONS,
-  TRANSACTION_TYPE_COLORS,
-  PAYMENT_STATUS_TAGS,
-  PAYMENT_METHOD_LABELS,
-  PAYMENT_TYPE_LABELS,
-  TRANSACTION_TYPE_LABELS,
-} from '../constants/payment.constants';
-import type {
-  Payment,
-  PaymentFilterParams,
-  TransactionType,
-  PaymentStatus,
-  PaymentMethod,
-  PaymentType,
-  InvoiceBillingBreakdown,
-} from '../types/payment.types';
-import { apiClient } from '@/lib/api';
+  EmptyState,
+  ErrorState,
+  FilterChip,
+  KpiStrip,
+  ListSkeleton,
+  PageHeader,
+  RowMenu,
+  Section,
+  StatusBadge,
+  TabLabel,
+  TwoLine,
+} from '@/components/common';
+import type { RowMenuItem } from '@/components/common';
+import { formatDateTime, formatMoney, formatMoneyWhole, formatSignedMoney, label, pluralize, toAmount } from '@/lib/format';
+import { resortTime } from '@/lib/time';
+import { usePayments, useReservationPayments } from '../hooks/use-payments.hook';
+import { useUpdatePaymentStatus } from '../hooks/use-payment-mutations.hook';
+import { RecordPaymentModal } from '../components/record-payment-modal.component';
+import { RefundModal } from '../components/refund-modal.component';
+import { PAYMENT_METHODS } from '../types/payment.types';
+import type { Payment, PaymentFilterParams, PaymentMethod, PaymentStatus } from '../types/payment.types';
 import styles from './payment-list.module.css';
 
-const { Title } = Typography;
+type Tab = 'all' | 'pending' | 'completed' | 'refunds' | 'failed';
+type DateRange = 'today' | 'week' | 'month' | 'all';
 
-/** Philippine Peso currency formatter (BR-048) */
-const formatCurrency = (value: number): string =>
-  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
+const TAB_FILTER: Record<Tab, Partial<PaymentFilterParams>> = {
+  all: {},
+  pending: { paymentStatus: 'Pending' },
+  completed: { paymentStatus: 'Completed' },
+  refunds: { transactionType: 'Refund' },
+  failed: { paymentStatus: 'Failed' },
+};
+
+/** Status changes the backend allows from each status (refund states come from the refund routine). */
+const NEXT_STATUSES: Partial<Record<PaymentStatus, PaymentStatus[]>> = {
+  Pending: ['Processing', 'Completed', 'Failed', 'Cancelled'],
+  Processing: ['Completed', 'Failed', 'Cancelled'],
+};
+
+const STATUS_ICONS: Partial<Record<PaymentStatus, React.ReactNode>> = {
+  Processing: <SyncOutlined />,
+  Completed: <CheckOutlined />,
+  Failed: <StopOutlined />,
+  Cancelled: <CloseCircleOutlined />,
+};
+
+function rangeStart(range: DateRange): string | undefined {
+  const now = resortTime(new Date());
+  if (range === 'today') return now.startOf('day').toISOString();
+  if (range === 'week') return now.subtract(7, 'day').startOf('day').toISOString();
+  if (range === 'month') return now.startOf('month').toISOString();
+  return undefined;
+}
+
+/** Signed cash-flow amount: refunds are negative. */
+const signed = (p: Payment) => (p.transaction_type === 'Refund' ? -p.payment_amount : p.payment_amount);
+
+function exportCsv(rows: Payment[], guestOf: (id: string) => string) {
+  const header = ['Date', 'Reservation', 'Guest', 'Transaction', 'Type', 'Method', 'Status', 'Amount', 'Recorded by'];
+  const lines = rows.map((p) =>
+    [
+      resortTime(p.payment_date).format('YYYY-MM-DD HH:mm'),
+      p.reservation_reference ?? '',
+      guestOf(p.reservation_id),
+      p.transaction_type,
+      label(p.payment_type),
+      label(p.payment_method),
+      label(p.payment_status),
+      signed(p).toFixed(2),
+      p.employee_name ?? '',
+    ]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .join(','),
+  );
+  const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `payments-${dayjs().format('YYYYMMDD')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /**
- * Financial transactions ledger page.
- *
- * Displays all payment and refund records across reservations with filters
- * for Payment Method, Status, Transaction Type, and Date Range.
- *
- * Supports:
- * - Record Payment (BR-049)
- * - Add Extra Charge (BR-042)
- * - Print Invoice / Statement
- *
- * Token by Intent:
- * - Affirmative payments are tagged green.
- * - Refunds/reversals are tagged red/purple (distinct warning).
+ * Payments ledger. One primary action (Record payment) plus Export. KPIs count
+ * cash the way the desk does: collected today and this month (completed),
+ * pending, and refunded this month. Refunds show as negative amounts.
+ * Status changes are offered only where the backend allows them.
  */
-export function PaymentListPage() {
-  // Filter state
-  const [filters, setFilters] = useState<PaymentFilterParams>({});
-  const { data: payments = [], isLoading } = usePayments(filters);
+export const PaymentListPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { modal } = App.useApp();
+  const { isStaff } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const tab = (params.get('tab') as Tab) || 'all';
+  const range = (params.get('range') as DateRange) || 'month';
+  const method = (params.get('method') as PaymentMethod) || undefined;
+  const recordedBy = params.get('by') || undefined;
+  const [search, setSearch] = useState('');
 
-  // Modals
-  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [isChargeModalOpen, setChargeModalOpen] = useState(false);
-  const [isInvoiceModalOpen, setInvoiceModalOpen] = useState(false);
-  const [isReservationSelectorOpen, setReservationSelectorOpen] = useState(false);
-  const [modalAction, setModalAction] = useState<'payment' | 'charge' | 'invoice'>('payment');
+  const set = (patch: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(params);
+    Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    setParams(next, { replace: true });
+  };
 
-  // Selected reservation context
-  const [selectedReservationId, setSelectedReservationId] = useState('');
-  const [reservationSearchText, setReservationSearchText] = useState('');
-  const [reservationOptions, setReservationOptions] = useState<Array<{ reservation_id: string; reference_code: string; guest_name: string; status: string; outstanding_balance: string; net_paid: string; accommodation_total: string; charges_total: string; assignments: Array<Record<string, unknown>> }>>([]);
-  const [reservationLoading, setReservationLoading] = useState(false);
-  const [invoiceData, setInvoiceData] = useState<InvoiceBillingBreakdown | null>(null);
+  const createdFrom = useMemo(() => rangeStart(range), [range]);
+  const list = usePayments({ ...TAB_FILTER[tab], paymentMethod: method, createdFrom, limit: 100 });
+  const monthStart = useMemo(() => rangeStart('month'), []);
+  const month = usePayments({ createdFrom: monthStart, limit: 100 });
+  const pendingAll = usePayments({ paymentStatus: 'Pending', limit: 100 });
+  const reservations = useReservations({ limit: 100 });
+  const updateStatus = useUpdatePaymentStatus();
 
-  // Reservation payments/charges for the selected reservation
-  const { data: reservationPayments = [] } = useReservationPayments(selectedReservationId);
-  const { data: reservationCharges = [] } = useReservationCharges(selectedReservationId);
+  const [picking, setPicking] = useState(false);
+  const [recordFor, setRecordFor] = useState<Reservation | null>(null);
+  const [refundFor, setRefundFor] = useState<Payment | null>(null);
+  const refundPayments = useReservationPayments(refundFor?.reservation_id ?? '');
 
-  // Derived financial data for selected reservation
-  const selectedReservation = useMemo(
-    () => reservationOptions.find((r) => r.reservation_id === selectedReservationId),
-    [reservationOptions, selectedReservationId]
-  );
+  const reservationById = useMemo(() => new Map((reservations.data ?? []).map((r) => [r.reservation_id, r])), [reservations.data]);
+  const guestOf = (id: string) => reservationById.get(id)?.guest_name ?? '';
 
-  const outstandingBalance = useMemo(() => {
-    if (!selectedReservation) return 0;
-    return Math.max(0, Number(selectedReservation.outstanding_balance || 0));
-  }, [selectedReservation]);
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (list.data ?? []).filter((p) => {
+      if (recordedBy && p.employee_name !== recordedBy) return false;
+      if (!q) return true;
+      return [p.reservation_reference ?? '', reservationById.get(p.reservation_id)?.guest_name ?? ''].some((v) => v.toLowerCase().includes(q));
+    });
+  }, [list.data, search, recordedBy, reservationById]);
 
-  const netPaid = useMemo(() => {
-    if (!selectedReservation) return 0;
-    return Number(selectedReservation.net_paid || 0);
-  }, [selectedReservation]);
+  // KPIs (this month / today), from completed rows only.
+  const monthRows = month.data ?? [];
+  const isCollected = (p: Payment) => p.transaction_type === 'Payment' && ['Completed', 'PartiallyRefunded', 'Refunded'].includes(p.payment_status);
+  const todayKey = resortTime(new Date()).format('YYYY-MM-DD');
+  const collectedToday = monthRows.filter((p) => isCollected(p) && resortTime(p.payment_date).format('YYYY-MM-DD') === todayKey);
+  const collectedMonth = monthRows.filter(isCollected);
+  const refundsMonth = monthRows.filter((p) => p.transaction_type === 'Refund' && p.payment_status === 'Completed');
+  const pendingRows = pendingAll.data ?? [];
+  const sum = (rs: Payment[]) => rs.reduce((s, p) => s + p.payment_amount, 0);
 
-  // Summary statistics from ledger data
-  const ledgerSummary = useMemo(() => {
-    let totalIncoming = 0;
-    let totalRefunds = 0;
-    let transactionCount = 0;
+  const recorders = useMemo(() => {
+    const names = new Set<string>();
+    (list.data ?? []).forEach((p) => p.employee_name && names.add(p.employee_name));
+    if (recordedBy) names.add(recordedBy);
+    return [...names].sort().map((n) => ({ value: n, label: n }));
+  }, [list.data, recordedBy]);
 
-    for (const p of payments) {
-      transactionCount++;
-      if (p.transaction_type === 'Payment' && p.payment_status === 'Completed') {
-        totalIncoming += p.payment_amount;
-      } else if (p.transaction_type === 'Refund' && p.payment_status === 'Completed') {
-        totalRefunds += p.payment_amount;
-      }
+  const menuFor = (p: Payment): RowMenuItem[] => {
+    const items: RowMenuItem[] = [
+      { key: 'view', label: 'View reservation', icon: <EyeOutlined />, onClick: () => navigate(`/reservations/${p.reservation_id}`) },
+    ];
+    if (!isStaff) return items;
+    (NEXT_STATUSES[p.payment_status] ?? []).forEach((next) =>
+      items.push({
+        key: next,
+        label: `Mark ${label(next).toLowerCase()}`,
+        icon: STATUS_ICONS[next],
+        danger: next === 'Failed' || next === 'Cancelled',
+        onClick: () =>
+          modal.confirm({
+            title: `Mark ${formatMoney(p.payment_amount)} as ${label(next).toLowerCase()}?`,
+            content:
+              next === 'Completed'
+                ? 'The payment will count toward the reservation balance.'
+                : next === 'Processing'
+                  ? 'The payment stays out of the balance until it is completed.'
+                  : 'The payment won’t count toward the balance. This can’t be undone.',
+            okText: `Mark ${label(next).toLowerCase()}`,
+            okButtonProps: { danger: next === 'Failed' || next === 'Cancelled' },
+            onOk: () => updateStatus.mutateAsync({ paymentId: p.payment_id, status: next }),
+          }),
+      }),
+    );
+    if (p.transaction_type === 'Payment' && ['Completed', 'PartiallyRefunded'].includes(p.payment_status)) {
+      items.push({ key: 'd', divider: true });
+      items.push({ key: 'refund', label: 'Issue refund', icon: <RollbackOutlined />, onClick: () => setRefundFor(p) });
     }
+    return items;
+  };
 
-    return {
-      totalIncoming,
-      totalRefunds,
-      netRevenue: totalIncoming - totalRefunds,
-      transactionCount,
-    };
-  }, [payments]);
+  const columns: ColumnsType<Payment> = [
+    {
+      title: 'Amount',
+      align: 'right',
+      width: 140,
+      render: (_, p) => <span className={`tabular ${styles.amount}`}>{formatSignedMoney(signed(p))}</span>,
+    },
+    { title: 'Status', width: 160, render: (_, p) => <StatusBadge status={p.payment_status} /> },
+    {
+      title: 'Reservation',
+      render: (_, p) => <TwoLine primary={<span className="mono">{p.reservation_reference ?? '—'}</span>} secondary={guestOf(p.reservation_id) || undefined} />,
+    },
+    { title: 'Type', render: (_, p) => (p.transaction_type === 'Refund' ? 'Refund' : label(p.payment_type)) },
+    { title: 'Method', render: (_, p) => label(p.payment_method) },
+    { title: 'Date', width: 160, render: (_, p) => <span className="tabular">{formatDateTime(p.payment_date)}</span> },
+    { key: 'menu', width: 48, align: 'center', render: (_, p) => <RowMenu items={menuFor(p)} label="Payment actions" /> },
+  ];
 
-  // Search reservations for selector modal
-  const searchReservations = useCallback(async (search: string) => {
-    setReservationLoading(true);
-    try {
-      const res = await apiClient.get<{ reservations: Array<Record<string, unknown>> }>('/reservations', {
-        params: { search: search || undefined, limit: 20 },
-      });
-      const raw = res as unknown as { reservations?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
-      const list = Array.isArray(raw) ? raw : (raw as { reservations?: Array<Record<string, unknown>> })?.reservations || [];
-      setReservationOptions(list as typeof reservationOptions);
-    } catch {
-      setReservationOptions([]);
-    } finally {
-      setReservationLoading(false);
-    }
-  }, []);
 
-  // Open reservation selector for a specific action
-  const openReservationSelector = useCallback((action: 'payment' | 'charge' | 'invoice') => {
-    setModalAction(action);
-    setReservationSelectorOpen(true);
-    searchReservations('');
-  }, [searchReservations]);
+  const refundReservation = refundFor ? reservationById.get(refundFor.reservation_id) : undefined;
 
-  // Handle reservation selection & open the target modal
-  const handleReservationSelected = useCallback(async () => {
-    setReservationSelectorOpen(false);
-
-    if (modalAction === 'payment') {
-      setPaymentModalOpen(true);
-    } else if (modalAction === 'charge') {
-      setChargeModalOpen(true);
-    } else if (modalAction === 'invoice') {
-      // Build invoice data
-      if (selectedReservation) {
-        const r = selectedReservation;
-        const assignments = (r.assignments || []).map((a: Record<string, unknown>) => {
-          const checkIn = dayjs(String(a.check_in_date || ''));
-          const checkOut = dayjs(String(a.check_out_date || ''));
-          const nights = Math.max(1, checkOut.diff(checkIn, 'day'));
-          const pricePerNight = Number(a.price_at_booking || 0);
-          return {
-            kuboNumber: String(a.kubo_number || a.kubo_id || ''),
-            typeName: String(a.type_name || ''),
-            nights,
-            pricePerNight,
-            total: nights * pricePerNight,
-          };
-        });
-
-        const accommodationTotal = assignments.reduce((sum: number, a: { total: number }) => sum + a.total, 0);
-        const chargesSum = reservationCharges.reduce((sum, c) => sum + c.amount, 0);
-        const grossBilled = accommodationTotal + chargesSum;
-
-        let completedPayments = 0;
-        let completedRefunds = 0;
-        for (const p of reservationPayments) {
-          if (p.payment_status === 'Completed') {
-            if (p.transaction_type === 'Payment') completedPayments += p.payment_amount;
-            if (p.transaction_type === 'Refund') completedRefunds += p.payment_amount;
-          }
-        }
-
-        const computedNetPaid = completedPayments - completedRefunds;
-        const computedBalance = Math.max(0, grossBilled - computedNetPaid);
-
-        const firstAssignment = r.assignments?.[0] as Record<string, unknown> | undefined;
-        const lastAssignment = r.assignments?.[r.assignments.length - 1] as Record<string, unknown> | undefined;
-
-        const invoice: InvoiceBillingBreakdown = {
-          reservationId: r.reservation_id,
-          referenceCode: r.reference_code,
-          guestName: r.guest_name,
-          status: r.status,
-          checkInDate: String(firstAssignment?.check_in_date || ''),
-          checkOutDate: String(lastAssignment?.check_out_date || ''),
-          assignments,
-          additionalCharges: reservationCharges.map((c) => ({
-            chargeId: c.additional_charge_id,
-            chargeType: c.charge_type,
-            description: c.description,
-            amount: c.amount,
-            date: c.charge_date,
-          })),
-          payments: reservationPayments.map((p) => ({
-            paymentId: p.payment_id,
-            date: p.payment_date,
-            transactionType: p.transaction_type,
-            method: p.payment_method,
-            type: p.payment_type,
-            amount: p.payment_amount,
-            status: p.payment_status,
-          })),
-          accommodationTotal,
-          chargesTotal: grossBilled,
-          grossBilled,
-          netPaid: computedNetPaid,
-          outstandingBalance: computedBalance,
-          isSettled: computedBalance <= 0,
-        };
-
-        setInvoiceData(invoice);
-        setInvoiceModalOpen(true);
-      }
-    }
-  }, [modalAction, selectedReservation, reservationPayments, reservationCharges]);
-
-  // Filter handlers
-  const updateFilter = useCallback((key: keyof PaymentFilterParams, value: string | undefined) => {
-    setFilters((prev) => ({ ...prev, [key]: value || undefined }));
-  }, []);
-
-  const clearFilters = useCallback(() => {
-    setFilters({});
-  }, []);
-
-  const hasActiveFilters = Object.values(filters).some(Boolean);
-
-  // Table columns
-  const columns: ColumnsType<Payment> = useMemo(
-    () => [
-      {
-        title: 'Date',
-        dataIndex: 'payment_date',
-        key: 'payment_date',
-        width: 120,
-        sorter: (a, b) => dayjs(a.payment_date).unix() - dayjs(b.payment_date).unix(),
-        defaultSortOrder: 'descend',
-        render: (date: string) => dayjs(date).format('MMM D, YYYY'),
-      },
-      {
-        title: 'Reservation',
-        key: 'reservation',
-        width: 140,
-        render: (_: unknown, record: Payment) => record.reservation_reference || record.reservation_id.slice(0, 8),
-      },
-      {
-        title: 'Guest',
-        dataIndex: 'guest_name',
-        key: 'guest_name',
-        width: 150,
-        render: (name: string | undefined) => name || '--',
-      },
-      {
-        title: 'Transaction',
-        dataIndex: 'transaction_type',
-        key: 'transaction_type',
-        width: 140,
-        render: (type: TransactionType) => {
-          const colors = TRANSACTION_TYPE_COLORS[type] || TRANSACTION_TYPE_COLORS.Payment;
-          return (
-            <span
-              className={styles.transactionTag}
-              style={{ color: colors.color, borderColor: colors.border, backgroundColor: colors.bg }}
-            >
-              {TRANSACTION_TYPE_LABELS[type] || type}
-            </span>
-          );
-        },
-      },
-      {
-        title: 'Type',
-        dataIndex: 'payment_type',
-        key: 'payment_type',
-        width: 140,
-        render: (type: PaymentType) => PAYMENT_TYPE_LABELS[type] || type,
-      },
-      {
-        title: 'Method',
-        dataIndex: 'payment_method',
-        key: 'payment_method',
-        width: 130,
-        render: (method: PaymentMethod) => PAYMENT_METHOD_LABELS[method] || method,
-      },
-      {
-        title: 'Status',
-        dataIndex: 'payment_status',
-        key: 'payment_status',
-        width: 120,
-        render: (status: PaymentStatus) => {
-          const tagConfig = PAYMENT_STATUS_TAGS[status] || { color: 'default' };
-          return <Tag color={tagConfig.color}>{status}</Tag>;
-        },
-      },
-      {
-        title: 'Amount',
-        dataIndex: 'payment_amount',
-        key: 'payment_amount',
-        width: 140,
-        align: 'right',
-        sorter: (a, b) => a.payment_amount - b.payment_amount,
-        render: (amount: number, record: Payment) => {
-          const isOutgoing = record.transaction_type === 'Refund' || record.transaction_type === 'Reversal';
-          return (
-            <span className={isOutgoing ? styles.amountOutgoing : styles.amountIncoming}>
-              {isOutgoing ? '-' : '+'}
-              {formatCurrency(amount)}
-            </span>
-          );
-        },
-      },
-    ],
-    []
-  );
+  const tabs: Array<{ key: Tab; text: string; count?: number }> = [
+    { key: 'all', text: 'All', count: tab === 'all' ? list.data?.length : undefined },
+    { key: 'pending', text: 'Pending', count: pendingRows.length },
+    { key: 'completed', text: 'Completed' },
+    { key: 'refunds', text: 'Refunds' },
+    { key: 'failed', text: 'Failed' },
+  ];
 
   return (
-    <main className={styles.pageContainer} aria-label="Financial Transactions Ledger">
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div>
-          <Title level={2} className={styles.pageTitle}>
-            Billing and Payment Ledger
-          </Title>
-          <p className={styles.pageDescription}>
-            Record payments, post incidental charges, and generate guest billing statements.
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <Button
-            icon={<PlusCircleOutlined aria-hidden="true" />}
-            onClick={() => openReservationSelector('charge')}
-            style={{ borderColor: '#d97706', color: '#d97706' }}
-          >
-            Add Extra Charge
-          </Button>
-          <Button
-            icon={<PrinterOutlined aria-hidden="true" />}
-            onClick={() => openReservationSelector('invoice')}
-          >
-            Print Invoice
-          </Button>
-          <Button
-            type="primary"
-            icon={<CreditCardOutlined aria-hidden="true" />}
-            onClick={() => openReservationSelector('payment')}
-            style={{ background: '#16a34a', borderColor: '#16a34a' }}
-          >
-            Record Payment
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Statistics */}
-      <div className={styles.summaryRow}>
-        <div className={styles.summaryCard}>
-          <div className={styles.summaryLabel}>Total Transactions</div>
-          <div className={styles.summaryValue}>{ledgerSummary.transactionCount}</div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.summaryLabel}>Incoming Payments</div>
-          <div className={styles.summaryIncoming}>{formatCurrency(ledgerSummary.totalIncoming)}</div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.summaryLabel}>Refunds Issued</div>
-          <div className={styles.summaryOutgoing}>{formatCurrency(ledgerSummary.totalRefunds)}</div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.summaryLabel}>Net Revenue</div>
-          <div className={styles.summaryNet}>{formatCurrency(ledgerSummary.netRevenue)}</div>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className={styles.filterBar}>
-        <div className={styles.filterItem}>
-          <label className={styles.filterLabel}>
-            <FilterOutlined aria-hidden="true" /> Transaction Type
-          </label>
-          <Select
-            allowClear
-            placeholder="All Types"
-            options={TRANSACTION_TYPE_OPTIONS}
-            value={filters.transactionType}
-            onChange={(val) => updateFilter('transactionType', val)}
-            style={{ width: '100%' }}
-          />
-        </div>
-        <div className={styles.filterItem}>
-          <label className={styles.filterLabel}>Payment Method</label>
-          <Select
-            allowClear
-            placeholder="All Methods"
-            options={PAYMENT_METHOD_OPTIONS}
-            value={filters.paymentMethod}
-            onChange={(val) => updateFilter('paymentMethod', val)}
-            style={{ width: '100%' }}
-          />
-        </div>
-        <div className={styles.filterItem}>
-          <label className={styles.filterLabel}>Status</label>
-          <Select
-            allowClear
-            placeholder="All Statuses"
-            options={PAYMENT_STATUS_OPTIONS}
-            value={filters.paymentStatus}
-            onChange={(val) => updateFilter('paymentStatus', val)}
-            style={{ width: '100%' }}
-          />
-        </div>
-        {hasActiveFilters && (
-          <div className={styles.filterClear}>
-            <Button
-              icon={<ClearOutlined aria-hidden="true" />}
-              onClick={clearFilters}
-              size="small"
-            >
-              Clear Filters
+    <div>
+      <PageHeader
+        title="Payments"
+        action={
+          <>
+            <Button icon={<DownloadOutlined />} disabled={rows.length === 0} onClick={() => exportCsv(rows, guestOf)}>
+              Export
             </Button>
-          </div>
-        )}
-      </div>
+            {isStaff && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setPicking(true)}>
+                Record payment
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      {/* Transactions Table */}
-      <div className={styles.tableContainer}>
-        <Table<Payment>
-          dataSource={payments}
-          columns={columns}
-          rowKey="payment_id"
-          loading={isLoading}
-          pagination={{
-            pageSize: 20,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transactions`,
-          }}
-          locale={{
-            emptyText: (
-              <div className={styles.emptyState}>
-                <FileTextOutlined className={styles.emptyIcon} aria-hidden="true" />
-                <div className={styles.emptyTitle}>No Financial Transactions</div>
-                <div className={styles.emptySubtext}>
-                  {hasActiveFilters
-                    ? 'No transactions match the current filters. Try adjusting your criteria.'
-                    : 'Record your first payment to start tracking the financial ledger.'}
-                </div>
-                {!hasActiveFilters && (
-                  <Button
-                    type="primary"
-                    icon={<CreditCardOutlined aria-hidden="true" />}
-                    onClick={() => openReservationSelector('payment')}
-                    style={{ background: '#16a34a', borderColor: '#16a34a' }}
-                  >
-                    Record First Payment
-                  </Button>
-                )}
-              </div>
-            ),
-          }}
-          scroll={{ x: 960 }}
-          size="middle"
+      <KpiStrip
+        loading={month.isLoading}
+        items={[
+          { label: 'Collected today', value: formatMoneyWhole(sum(collectedToday)), hint: pluralize(collectedToday.length, 'payment') },
+          { label: 'Collected this month', value: formatMoneyWhole(sum(collectedMonth)), hint: pluralize(collectedMonth.length, 'payment') },
+          { label: 'Pending', value: formatMoneyWhole(sum(pendingRows)), hint: `${pendingRows.length} awaiting confirmation` },
+          { label: 'Refunded this month', value: formatMoneyWhole(sum(refundsMonth)), hint: pluralize(refundsMonth.length, 'refund') },
+        ]}
+      />
+
+      <Tabs
+        activeKey={tab}
+        onChange={(k) => set({ tab: k === 'all' ? undefined : k })}
+        items={tabs.map((t) => ({ key: t.key, label: <TabLabel text={t.text} count={t.count} active={tab === t.key} /> }))}
+      />
+
+      <div className={styles.toolbar}>
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="muted" />}
+          placeholder="Search reference or guest"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 260 }}
+          aria-label="Search payments"
         />
+        <FilterChip<DateRange>
+          name="Date"
+          value={range}
+          options={[
+            { value: 'today', label: 'Today' },
+            { value: 'week', label: 'Last 7 days' },
+            { value: 'month', label: 'This month' },
+            { value: 'all', label: 'All time' },
+          ]}
+          onChange={(v) => set({ range: v === 'month' ? undefined : (v ?? 'all') })}
+        />
+        <FilterChip<PaymentMethod>
+          name="Method"
+          value={method}
+          options={PAYMENT_METHODS.map((m) => ({ value: m, label: label(m) }))}
+          onChange={(v) => set({ method: v })}
+        />
+        <FilterChip<string> name="Recorded by" value={recordedBy} options={recorders} onChange={(v) => set({ by: v })} />
       </div>
 
-      {/* Reservation Selector Modal */}
-      <Modal
-        title="Select Reservation"
-        open={isReservationSelectorOpen}
-        onCancel={() => setReservationSelectorOpen(false)}
-        onOk={handleReservationSelected}
-        okText="Continue"
-        okButtonProps={{ disabled: !selectedReservationId }}
-        destroyOnClose
-        width={520}
-      >
-        <div className={styles.selectorContainer}>
-          <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 12 }}>
-            Search for a reservation by reference code or guest name:
-          </p>
-          <Input.Search
-            placeholder="Search by reference code or guest name"
-            value={reservationSearchText}
-            onChange={(e) => setReservationSearchText(e.target.value)}
-            onSearch={(val) => searchReservations(val)}
-            loading={reservationLoading}
-            allowClear
-            style={{ marginBottom: 12 }}
+      <Section flush>
+        {list.isLoading ? (
+          <ListSkeleton rows={8} />
+        ) : list.isError ? (
+          <ErrorState error={list.error} onRetry={() => list.refetch()} />
+        ) : rows.length === 0 ? (
+          <EmptyState title="No payments match" description="Try another tab, date range or method." />
+        ) : (
+          <Table<Payment>
+            rowKey="payment_id"
+            columns={columns}
+            dataSource={rows}
+            size="middle"
+            pagination={rows.length > 25 ? { pageSize: 25, showSizeChanger: false } : false}
+            rowClassName={() => 'clickable-row'}
+            onRow={(p) => ({ onClick: () => navigate(`/reservations/${p.reservation_id}`) })}
           />
-          <Select
-            style={{ width: '100%' }}
-            placeholder="Select a reservation"
-            value={selectedReservationId || undefined}
-            onChange={(val) => setSelectedReservationId(val)}
-            loading={reservationLoading}
-            showSearch
-            optionFilterProp="label"
-            options={reservationOptions.map((r) => ({
-              value: r.reservation_id,
-              label: `${r.reference_code} - ${r.guest_name} (${r.status})`,
-            }))}
-            notFoundContent={
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No reservations found"
-              />
-            }
-          />
-        </div>
-      </Modal>
+        )}
+      </Section>
 
-      {/* Record Payment Modal */}
-      <RecordPaymentModal
-        open={isPaymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        reservationId={selectedReservationId}
-        outstandingBalance={outstandingBalance}
-        netPaid={netPaid}
+      <ReservationPickerModal
+        open={picking}
+        title="Record payment"
+        reservations={(reservations.data ?? []).filter((r) => ['Pending', 'Confirmed', 'CheckedIn', 'CheckedOut'].includes(r.status) && toAmount(r.outstanding_balance) > 0)}
+        onCancel={() => setPicking(false)}
+        onPick={(r) => {
+          setPicking(false);
+          setRecordFor(r);
+        }}
       />
-
-      {/* Add Charge Modal */}
-      <AddChargeModal
-        open={isChargeModalOpen}
-        onClose={() => setChargeModalOpen(false)}
-        reservationId={selectedReservationId}
+      {recordFor && (
+        <RecordPaymentModal
+          open
+          onClose={() => setRecordFor(null)}
+          reservationId={recordFor.reservation_id}
+          referenceCode={recordFor.reference_code}
+          outstandingBalance={toAmount(recordFor.outstanding_balance)}
+          netPaid={toAmount(recordFor.net_paid)}
+          defaultAmount={toAmount(recordFor.outstanding_balance)}
+        />
+      )}
+      <RefundModal
+        open={Boolean(refundFor)}
+        onClose={() => setRefundFor(null)}
+        payments={refundPayments.data ?? []}
+        netPaid={toAmount(refundReservation?.net_paid)}
+        originalPaymentId={refundFor?.payment_id}
       />
-
-      {/* Print Invoice Modal */}
-      <PrintInvoiceModal
-        open={isInvoiceModalOpen}
-        onClose={() => setInvoiceModalOpen(false)}
-        invoice={invoiceData}
-      />
-    </main>
+    </div>
   );
-}
+};
