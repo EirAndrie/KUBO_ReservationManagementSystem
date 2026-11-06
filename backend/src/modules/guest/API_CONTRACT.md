@@ -27,8 +27,8 @@ Guest profile endpoints for the Kubo Reservation Management System.
 | Operation | Required business role |
 |---|---|
 | `GET /guests`, `GET /guests/:guestId` | Any authenticated employee |
-| `POST /guests`, `PATCH /guests/:guestId` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
-| `DELETE /guests/:guestId` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
+| `POST /guests`, `PATCH /guests/:guestId` | `Staff` (stored `role_name` equals `staff`, exact) |
+| `DELETE /guests/:guestId` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.

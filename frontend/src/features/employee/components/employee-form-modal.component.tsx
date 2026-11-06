@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Modal, Form, Input, Select, Alert, Row, Col } from 'antd';
 import { UserOutlined, LockOutlined, CrownOutlined } from '@ant-design/icons';
+import { formatRoleLabel, isAdministratorRole } from '@/features/auth';
 import { useCreateEmployee, useUpdateEmployee } from '../hooks/use-employee-mutations.hook';
 import { useRoles } from '../hooks/use-employees.hook';
 import { EMPLOYEE_STATUS_OPTIONS, EMPLOYEE_POLICIES } from '../constants/employee.constants';
@@ -43,11 +44,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
   const isAssigningAdmin = useMemo(() => {
     const role = roles.find((r) => r.roleId === selectedRoleId);
-    return role?.roleName?.toLowerCase().includes('admin');
+    return isAdministratorRole(role?.roleName);
   }, [roles, selectedRoleId]);
 
   const showSecondAdminWarning = useMemo(() => {
-    if (isEditing && employee?.roleName?.toLowerCase().includes('admin')) {
+    if (isEditing && isAdministratorRole(employee?.roleName)) {
       return false; // Already this admin
     }
     return Boolean(isAssigningAdmin && selectedStatus === 'Active' && activeAdminCount >= 1);
@@ -219,7 +220,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   size="large"
                   options={roles.map((r) => ({
                     value: r.roleId,
-                    label: `${r.roleName} - ${r.description}`,
+                    label: `${formatRoleLabel(r.roleName)} - ${r.description}`,
                   }))}
                 />
               </Form.Item>

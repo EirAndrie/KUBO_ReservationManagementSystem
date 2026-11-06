@@ -41,27 +41,27 @@ router.get(
 ); // Checked
 router.post(
       "/additional-charge-catalog",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       validateBody(CreateCatalogItemSchema),
       createCatalogItemController,
 ); // Checked
 router.patch(
       "/additional-charge-catalog/:catalogId/status",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("catalogId"),
       validateBody(UpdateCatalogItemSchema),
       updateCatalogItemController,
 ); // Checked
 router.patch(
       "/additional-charge-catalog/:catalogId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("catalogId"),
       validateBody(UpdateCatalogItemSchema),
       updateCatalogItemController,
 ); // Checked
 router.delete(
       "/additional-charge-catalog/:catalogId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("catalogId"),
       deleteCatalogItemController,
 ); // Checked
@@ -69,7 +69,7 @@ router.delete(
 // Staff catalog application
 router.post(
       "/reservations/:reservationId/charges",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(ApplyCatalogChargeSchema),
       applyCatalogChargeController,
@@ -83,7 +83,7 @@ router.get(
 // Staff custom requests
 router.post(
       "/reservations/:reservationId/charge-requests",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(CustomChargeRequestSchema),
       createChargeRequestController,
@@ -98,21 +98,21 @@ router.get(
 ); // Checked
 router.patch(
       "/additional-charge-requests/:requestId/approve",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("requestId"),
       validateBody(ApproveChargeRequestSchema),
       approveChargeRequestController,
 ); // Checked
 router.patch(
       "/additional-charge-requests/:requestId/reject",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("requestId"),
       validateBody(RejectChargeRequestSchema),
       rejectChargeRequestController,
 ); // Checked
 router.patch(
       "/additional-charge-requests/:requestId/withdraw",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("requestId"),
       withdrawChargeRequestController,
 ); // Checked
@@ -126,13 +126,13 @@ router.get(
 ); // Checked
 router.delete(
       "/additional-charges/:chargeId",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("chargeId"),
       deleteChargeController,
 ); // Checked
 router.post(
       "/additional-charges/:chargeId/corrections",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("chargeId"),
       validateBody(AddChargeCorrectionSchema),
       addChargeCorrectionController,

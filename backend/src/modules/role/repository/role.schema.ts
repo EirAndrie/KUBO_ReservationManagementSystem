@@ -1,12 +1,24 @@
 import { z } from "zod";
+import { ROLE_NAMES } from "../../../utils/role-names";
+
+/**
+ * Role names are stored in their canonical lowercase form. Input is trimmed
+ * and lowercased so `Administrator` is accepted, but only the full business
+ * names are valid — shorthand such as `admin` is rejected (BR-001, BR-008).
+ */
+const roleNameSchema = z
+      .string()
+      .trim()
+      .min(1, { message: "Role name is required." })
+      .max(50, { message: "Role name cannot exceed 50 characters." })
+      .transform((value) => value.toLowerCase())
+      .refine((value) => (ROLE_NAMES as readonly string[]).includes(value), {
+            message: "Role name must be 'administrator' or 'staff'.",
+      });
 
 export const RoleSchema = z.object({
       roleId: z.string().uuid(),
-      roleName: z
-            .string()
-            .trim()
-            .min(1, { message: "Role name is required." })
-            .max(50, { message: "Role name cannot exceed 50 characters." }),
+      roleName: roleNameSchema,
       description: z
             .string()
             .trim()

@@ -14,7 +14,7 @@ const router = Router();
 
 router.post(
       "/",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       validateBody(CreateGuestSchema),
       createGuestController,
 );
@@ -22,7 +22,7 @@ router.get("/", getAllGuestsController);
 router.get("/:guestId", requireUuidParam("guestId"), getGuestByIdController);
 router.patch(
       "/:guestId",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("guestId"),
       validateBody(UpdateGuestSchema),
       updateGuestController,
@@ -30,7 +30,7 @@ router.patch(
 // Deletion is an Administrator-only administrative action.
 router.delete(
       "/:guestId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("guestId"),
       deleteGuestController,
 );

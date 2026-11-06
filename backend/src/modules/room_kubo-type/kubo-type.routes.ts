@@ -17,7 +17,7 @@ const router = Router();
 
 router.post(
       "/",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       validateBody(CreateKuboTypeSchema),
       createKuboTypeController,
 );
@@ -29,14 +29,14 @@ router.get(
 );
 router.patch(
       "/:kuboTypeId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("kuboTypeId"),
       validateBody(UpdateKuboTypeSchema),
       updateKuboTypeController,
 );
 router.delete(
       "/:kuboTypeId",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("kuboTypeId"),
       deleteKuboTypeController,
 );

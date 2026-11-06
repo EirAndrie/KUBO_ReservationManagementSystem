@@ -1,5 +1,12 @@
 import jwt from "jsonwebtoken";
 import { AUTH_CONFIG } from "../config/auth";
+import {
+      ADMINISTRATOR_ROLE,
+      STAFF_ROLE,
+      type RoleName,
+} from "./role-names";
+
+export type { RoleName } from "./role-names";
 
 /**
  * The authenticated employee identity attached to `req.auth` after a request
@@ -24,24 +31,15 @@ export interface AuthTokenClaims extends jwt.JwtPayload {
 }
 
 /**
- * The business role names understood by the authorization middleware. The
- * stored `role_name` values are free text; matching is case-insensitive and
- * tolerant of the `ADMIN`/`ADMINISTRATOR` and `STAFF` variants seen in the
- * seed data.
+ * Whether a stored role name denotes the administrative role. Stored names are
+ * canonical lowercase values, so the comparison is exact (BR-001, BR-005).
  */
-export type RoleName = "Administrator" | "Staff";
-
-const normalizeRoleName = (name: string) => name.trim().toLowerCase();
-
-/** Whether a stored role name denotes the administrative role. */
-export const isAdministrator = (roleName: string): boolean => {
-      const normalized = normalizeRoleName(roleName);
-      return normalized === "admin" || normalized === "administrator";
-};
+export const isAdministrator = (roleName: string): boolean =>
+      roleName === ADMINISTRATOR_ROLE;
 
 /** Whether a stored role name denotes the operational staff role. */
 export const isStaff = (roleName: string): boolean =>
-      normalizeRoleName(roleName) === "staff";
+      roleName === STAFF_ROLE;
 
 /** Signs a short-lived access token for the given authenticated employee. */
 export const signAccessToken = (context: AuthContext): string => {

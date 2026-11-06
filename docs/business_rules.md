@@ -72,13 +72,14 @@ These limitations are detailed in Section 14.
 
 ### 3.1 Roles
 
-The `role` table stores role names. The DDL makes `role_name` unique but does not
-restrict the values. The business defines two operational roles:
+The `role` table stores role names as a closed set of canonical lowercase values.
+`role_name` is unique and constrained to `administrator` or `staff`; shorthand
+such as `admin` is rejected. The business defines two operational roles:
 
 | `role_name` | Purpose |
 |---|---|
-| **Administrator** | Administration and oversight: employees and roles, kubo types and kubos, rates, additional-charge catalog, custom-charge approvals, read-only reservation review, audit-log review, and additional-charge corrections. |
-| **Staff** | Daily operational transactions: guests, reservations, kubos assignments, catalog charge application, custom-charge requests, payments, and check-in/check-out. |
+| **`administrator`** (Administrator) | Administration and oversight: employees and roles, kubo types and kubos, rates, additional-charge catalog, custom-charge approvals, read-only reservation review, audit-log review, and additional-charge corrections. |
+| **`staff`** (Staff) | Daily operational transactions: guests, reservations, kubos assignments, catalog charge application, custom-charge requests, payments, and check-in/check-out. |
 
 ### 3.2 Permission matrix
 
@@ -111,11 +112,12 @@ The DDL has no permission table, so this matrix is enforced by the application.
 #### BR-001 — Each employee has exactly one role
 - **Rule:** Every employee record must reference exactly one existing `role` through
   `employee.role_id`. An employee cannot hold two roles simultaneously. The two
-  operational role names are `Administrator` and `Staff`.
+  operational role names are the canonical lowercase values `administrator` and
+  `staff`.
 - **Entities:** `employee`, `role`
 - **Enforcement:** `employee.role_id` is `NOT NULL` and a foreign key with
-  `ON DELETE RESTRICT`; `role.role_name` is unique. The set of role names is a
-  business policy, not a database constraint.
+  `ON DELETE RESTRICT`; `role.role_name` is unique and constrained by
+  `CHECK (role_name IN ('administrator', 'staff'))`.
 
 #### BR-002 — Required employee account data
 - **Rule:** An employee account must have `first_name`, `last_name`, a unique
@@ -181,12 +183,12 @@ The DDL has no permission table, so this matrix is enforced by the application.
   deletion while references exist. The preferred operational action is a status change.
 
 #### BR-008 — Role management is Administrator-only
-- **Rule:** Only an Administrator may create, rename, or delete roles. A role may be
-  deleted only when no employee references it. Renaming a role changes the name shown
-  for all assigned employees.
+- **Rule:** Only an Administrator may create or delete the two business roles. A role
+  may be deleted only when no employee references it. Role names are fixed by BR-001;
+  only the description can be edited.
 - **Entities:** `role`, `employee`
-- **Enforcement:** `UNIQUE (role_name)` and `ON DELETE RESTRICT`; authorization is
-  application-level.
+- **Enforcement:** `UNIQUE (role_name)`, `CHECK (role_name IN ('administrator',
+  'staff'))`, and `ON DELETE RESTRICT`; authorization is application-level.
 
 ---
 

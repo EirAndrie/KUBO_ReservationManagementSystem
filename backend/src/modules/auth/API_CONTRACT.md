@@ -306,8 +306,8 @@ Auth does not restrict by role. Authorization helpers use these business role na
 
 | Business role | Matching rule |
 |---|---|
-| `Administrator` | Stored `role_name` equals `Admin` or `Administrator`, case-insensitive |
-| `Staff` | Stored `role_name` equals `Staff`, case-insensitive |
+| `Administrator` | Stored `role_name` equals `administrator` (exact, lowercase) |
+| `Staff` | Stored `role_name` equals `staff` (exact, lowercase) |
 
 An authenticated employee whose status is not `Active` is rejected with `403` before
 any role check.

@@ -29,7 +29,7 @@ Read-only audit-log endpoints for the Kubo Reservation Management System.
 | Stored `role_name` | Access |
 |---|---|
 | `Admin` | Yes |
-| `Administrator` | Yes (case-insensitive) |
+| `Administrator` | Yes (stored `role_name` equals `administrator`, exact) |
 | Anything else | No — `403 Insufficient privileges` |
 
 The authenticated employee must have status `Active`; otherwise the authentication
