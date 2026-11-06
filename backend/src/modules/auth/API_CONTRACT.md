@@ -2,7 +2,7 @@
 
 Authentication and session endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/auth`
 - **Source files:** `auth.routes.ts`, `auth.controllers.ts`, `auth.services.ts`, `auth.middleware.ts`, `repository/auth.schema.ts`, `repository/auth.repository.ts`
 - **Authentication:** `POST /login` is public. `POST /logout` and `GET /me` require a Bearer access token.
