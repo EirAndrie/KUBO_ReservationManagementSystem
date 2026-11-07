@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Ping health endpoint
         env:
-          HEALTH_URL: ${{ vars.BACKEND_HEALTH_URL }}
+          HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
         run: |
           if [ -z "$HEALTH_URL" ]; then
             echo "Set the BACKEND_HEALTH_URL repository variable first." >&2
