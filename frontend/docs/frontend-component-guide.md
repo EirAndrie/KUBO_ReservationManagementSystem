@@ -169,9 +169,14 @@ Each domain module relies on specialized components composed from the shared fou
 - **`PaymentStatusBadge`**: Paid, Partial, Pending, Refunded using antd `Tag` with preset colors (success, processing, default, warning).
 
 ### Additional Charge
-- **`ChargeList`**: Inline table typically found within `ReservationDetailPage` using antd `Table`.
-- **`ChargeForm`**: Adding incidental charges (e.g., Room Service, Minibar) using antd `Modal` and `Form`.
-- **`ChargeSummary`**: Roll-up of extra costs.
+- **`ChargeCatalogTable`**: Admin table of predefined charges, prices, active status, and usage.
+- **`ChargeCatalogForm`**: Admin create/edit form for catalog items.
+- **`ChargeRequestTable`**: Admin queue of Pending/Approved/Rejected/Withdrawn custom requests.
+- **`ChargeRequestReviewDrawer`**: Approve, reject, or adjust a custom request with a reason.
+- **`AppliedChargeList`**: Inline table in `ReservationDetailPage` showing quantity, unit amount, total, recorded by, and charge date.
+- **`AppliedChargePicker`**: Staff catalog search/selection with quantity and calculated total.
+- **`CustomChargeRequestForm`**: Staff “Other” request form with description, quantity, and proposed unit amount.
+- **`ChargeSummary`**: Roll-up of applied extra costs; excludes pending requests.
 
 ### Audit Log
 - **`AuditLogListPage`**: System-wide activity tracker using antd `Table`.

@@ -36,6 +36,9 @@ This document serves as the comprehensive blueprint for every view within the fr
 | `/employees/new` | `EmployeeFormPage` | Admin | Add new staff member |
 | `/employees/:id/edit` | `EmployeeFormPage` | Admin | Edit staff member details |
 | `/payments` | `PaymentListPage` | Auth (Billing) | Centralized view of all transactions |
+| `/additional-charges` | `AdditionalChargeReviewPage` | Admin | Review applied charges and record corrections |
+| `/additional-charges/catalog` | `AdditionalChargeCatalogPage` | Admin | Create/update/deactivate predefined charges |
+| `/additional-charges/requests` | `AdditionalChargeRequestPage` | Admin | Review pending custom charge requests |
 | `/audit-logs` | `AuditLogPage` | Admin | System activity history |
 | `*` | `NotFoundPage` | Public | 404 Fallback |
 
@@ -109,7 +112,7 @@ This document serves as the comprehensive blueprint for every view within the fr
     - *Column 2 (Financials & Logs):*
       - **Financial Summary Card:** Base cost + Extra charges = Total Amount.
       - **Payment Section:** `antd Table` of payments (Date, Method, Amount, Status). "Add Payment" button opening an `antd Modal`.
-      - **Additional Charges Section:** List of incidentals. "Add Charge" button.
+      - **Additional Charges Section:** `antd Table` of applied charges with charge name/type, quantity, unit amount, total amount, recorded by, date, and status. Staff see “Apply Catalog Charge” and “Request Custom Charge” actions. Admin sees read-only review and correction actions.
   - **Audit Trail:** `antd Timeline` or `antd Collapse` showing timeline of changes (e.g., "Created on X", "Status changed to Confirmed by User Y").
   - **Top Actions:** Edit Reservation, Print Invoice.
 - **Data Required:** `GET /api/reservations/:id`, `GET /api/reservations/:id/payments`, `GET /api/reservations/:id/logs`.
@@ -241,9 +244,72 @@ This document serves as the comprehensive blueprint for every view within the fr
 
 ---
 
-### 3.9. Audit Logs Section
+### 3.9. Additional Charges Section
 
-#### 3.9a. Audit Log Page (`/audit-logs`)
+#### 3.9a. Additional Charge Catalog Page (`/additional-charges/catalog`)
+
+- **Component:** `AdditionalChargeCatalogPage`
+- **Access:** Administrator
+- **UI Elements:**
+  - `antd Table` or card grid of catalog items.
+  - Columns: charge type, display name, description, unit price, active status, usage count.
+  - Filters: active/inactive, charge type, search by name.
+  - “New Charge” primary button.
+  - Row actions: Edit, Activate/Deactivate, Delete unused.
+- **Form fields:** charge type, name, description, unit price, active.
+- **Validation:** unique name, non-negative two-decimal price, valid enum type.
+- **States:** loading, empty, error, delete confirmation, deactivate confirmation.
+
+#### 3.9b. Additional Charge Request Page (`/additional-charges/requests`)
+
+- **Component:** `AdditionalChargeRequestPage`
+- **Access:** Administrator
+- **UI Elements:**
+  - `antd Table` of requests.
+  - Columns: request ID, reservation, guest, requested by, description, quantity, proposed unit amount, status, submitted at.
+  - Filters: `Pending`, `Approved`, `Rejected`, `Withdrawn`, reservation, employee, date range.
+  - “Review” action opens a drawer/modal.
+- **Review drawer:**
+  - Request details and reservation balance.
+  - Approve with optional adjusted unit amount and reason.
+  - Reject with required reason.
+  - Show calculated total for approved quantity.
+- **States:** loading, empty, approval success, rejection success.
+
+#### 3.9c. Applied Charge Review Page (`/additional-charges`)
+
+- **Component:** `AdditionalChargeReviewPage`
+- **Access:** Administrator
+- **UI Elements:**
+  - `antd Table` of applied charges.
+  - Columns: reservation, guest, charge name/type, quantity, unit amount, total, recorded by, charge date.
+  - Filters: reservation, guest, employee, charge type, date range.
+  - “Record Correction” action opens a modal.
+  - No Edit or Delete actions for applied charges.
+- **Correction modal:**
+  - Increase amount owed: create a new additional charge with a reason.
+  - Reduce amount owed: record Adjustment/Reversal payment; disabled until payment API exists.
+- **States:** read-only, correction success, blocked edit/delete explanation.
+
+#### 3.9d. Staff Charge Selection in Reservation Detail
+
+- **Component:** `AppliedChargePicker`
+- **Access:** Staff
+- **UI Elements:**
+  - Active catalog items list/search.
+  - Catalog item name, charge type, unit price, description.
+  - Quantity input with calculated total.
+  - “Apply Charge” button.
+  - “Request Custom Charge” button when the item is not in the catalog.
+- **Custom request modal:**
+  - `charge_type = Other`.
+  - Required description, quantity, proposed unit amount.
+  - Submit creates a Pending request and does not change the balance.
+- **States:** catalog empty, request pending, validation error, applied successfully.
+
+### 3.10. Audit Logs Section
+
+#### 3.10a. Audit Log Page (`/audit-logs`)
 - **Component:** `AuditLogPage`
 - **UI Elements:**
   - **Filters:** Entity Type `antd Select`, Action `antd Select`, Date Range `antd DatePicker.RangePicker`, Performed By User `antd Select`.
@@ -255,7 +321,7 @@ This document serves as the comprehensive blueprint for every view within the fr
 
 ---
 
-### 3.10. 404 Not Found Page
+### 3.11. 404 Not Found Page
 - **Component:** `NotFoundPage`
 - **UI Elements:**
   - Centered layout using `antd Result` component.

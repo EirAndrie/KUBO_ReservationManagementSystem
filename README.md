@@ -9,7 +9,7 @@ The backend manages employees and roles, guests, kubo types and kubos, reservati
 | Part        | Status                                                                                |
 | ----------- | ------------------------------------------------------------------------------------- |
 | `backend/`  | Runnable Express API. Core modules, JWT authentication, RBAC, and audit logging work. |
-| `frontend/` | Vite + React scaffold only. UI planning lives in `frontend/docs/`.                    |
+| `frontend/` | React 19 + Vite app, deployed on Vercel. See `docs/development-progress.md`.            |
 | `docs/`     | Business rules, architecture, database, API, and validation documentation.            |
 | `postman/`  | Postman collection with read-only checks and self-cleaning write tests.               |
 
