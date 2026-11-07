@@ -2,9 +2,10 @@
 
 ## Connecting to the backend
 
-The app calls the API at `VITE_API_BASE_URL`. The backend mounts every route
-under `/KUBO_Resort/Management-System/v0.0.1` and listens on `PORT` from
-`backend/.env` (8080 by default).
+The app calls the API at `VITE_API_BASE_URL`. The backend mounts every route under
+the path in `API_BASE_PATH` from `backend/.env` (this project uses
+`/KUBO_Resort/Management-System/v0.0.1`) and listens on `PORT` (8080 by default).
+`VITE_API_BASE_URL` must include the same base path.
 
 ```bash
 cp .env.example .env
@@ -20,6 +21,10 @@ VITE_API_BASE_URL=http://localhost:8080/KUBO_Resort/Management-System/v0.0.1
 The backend only accepts browser requests from `FR_ORIGIN` (default
 `http://localhost:3000`, the Vite dev port). If Vite starts on another port,
 set `FR_ORIGIN` for the backend to match.
+
+`npm run build` writes the production bundle to `frontend/dist`. With
+`NODE_ENV=production`, the backend serves that directory and falls back to
+`index.html` for client routes.
 
 The light/dark theme switcher is in the top bar and on the sign-in page; the
 choice is saved in the browser (`kubo_theme`).
