@@ -3,11 +3,11 @@
 Ordered by database dependencies so each entity can be built on top of the
 previous one.
 
-**Last updated:** 2026-11-03
+**Last updated:** 2026-11-07
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
-| 1 | `role` | Complete | CRUD, validation, reference-safe deletion, and audit writes are in place. |
+| 1 | `role` | Complete | CRUD, validation, reference-safe deletion, and audit writes are in place. Role names are the canonical lowercase values `administrator` and `staff`, enforced by a database `CHECK` constraint. |
 | 2 | `employee` | In progress | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced and mutations write audit rows without exposing `password_hash`. |
 | 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes are in place (`id_number` masked). |
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). |
@@ -20,8 +20,15 @@ previous one.
 | 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds with net-paid limits, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Cumulative refunds are linked through audit descriptions. Adjustment/Reversal balance effects remain. |
 | 12 | `audit_log` | Complete | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All BR-067 events are audited: every tracked mutation plus successful login and logout. |
 
+## Frontend
+
+| Area | Status | Notes |
+|---|---|---|
+| Frontend app | Deployed | React 19 + Vite + TanStack Query app. Implemented: authentication, role-based dashboards, guests, reservations, kubos, kubo types, employees/roles, payments, audit logs, and the additional-charge catalog. Deployed on Vercel with `VITE_API_BASE_URL` pointing at the Render API. A dedicated custom additional-charge request review screen is not implemented. |
+
 ## Status legend
 
+- **Deployed** — implemented and running in production, with remaining scoped work noted.
 - **Complete** — usable end to end against the database.
 - **In progress** — core flow works, but validation or business rules remain.
 - **Scaffolded** — routes, controllers, services, repository, and schemas exist,
@@ -35,12 +42,58 @@ previous one.
 | Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role names are canonical lowercase values (`administrator`, `staff`) matched exactly. |
 | Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
+| CI | Complete | Separate backend and frontend workflows. Backend runs typecheck and build; frontend runs typecheck, lint, and build. |
+| Deployment | Deployed | Backend on Render, frontend on Vercel. See [Deployment](#deployment). |
+| Seed data | Complete | `npm run db:seed` inserts demo administrator/staff accounts, kubo types, kubos, and catalog items. The script is additive and idempotent. |
+| Health and keep-alive | In progress | Public `GET <API_BASE_PATH>/health` performs a `SELECT 1`, and a GitHub Actions workflow pings it every 5 minutes. Database-failure handling still returns a generic `500` and needs a `503` JSON response. |
+
+## Deployment
+
+- **Backend:** Render web service. Because `npm run build` does not copy
+  `src/migrations`, the Render build command currently installs dev dependencies
+  and copies migrations explicitly:
+  `npm ci --include=dev && npm run build && cp -r src/migrations dist/migrations`.
+- **Backend environment:** `NODE_ENV=production`, `PORT` (provided by Render),
+  `API_BASE_PATH=/KUBO_Resort/Management-System/v0.0.1`, `SERVE_FRONTEND=false`,
+  `FR_ORIGIN=https://kubo-reservation-management-system.vercel.app`,
+  `JWT_SECRET` (32+ characters), and the `DB_HOST` / `DB_PORT` / `DB_USERNAME` /
+  `DB_PASSWORD` / `DB_NAME` values.
+- **Frontend:** Vercel. `VITE_API_BASE_URL` must point at the Render backend plus
+  `API_BASE_PATH`.
+- **Production mode:** the frontend is hosted separately, so the backend runs
+  API-only with `SERVE_FRONTEND=false`. Setting `SERVE_FRONTEND=true` restores
+  serving `frontend/dist` and the SPA fallback.
+- **Keep-alive:** `.github/workflows/keep-alive.yml` runs every 5 minutes and calls
+  the health endpoint. `BACKEND_HEALTH_URL` must be configured in GitHub Actions;
+  the workflow currently reads it from `secrets`.
 
 ## Next up
 
 1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
-2. Implement the planned frontend login flow and token handling.
-3. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
+2. Move the production migration copy into the repo (`postbuild`) and add
+   `@types/node` explicitly so Render does not need a custom build workaround.
+3. Harden the health endpoint: catch database errors and return `503` JSON instead
+   of a generic `500` page.
+4. Add automated tests; there is currently no unit or integration test suite.
+5. Close the remaining application-only invariants (overlapping stays,
+   at-least-one-kubo, complete status-transition coverage, derived totals).
+6. Add the custom additional-charge request review screen to the frontend if the
+   scope requires it.
+
+## Recent changes (2026-11-04 to 2026-11-07)
+
+- Enforced canonical lowercase role names (`administrator`, `staff`) across the
+  database, backend, and frontend. The migration normalizes existing rows, adds a
+  `CHECK` constraint, and tightens role create/update and administrator detection.
+- Added `npm run db:seed` for demo accounts, kubo types, kubos, and catalog items.
+- Made the API mount prefix configurable with `API_BASE_PATH`.
+- Added production SPA serving from `frontend/dist` and a `SERVE_FRONTEND` switch;
+  the Render backend runs API-only because the frontend is hosted on Vercel.
+- Added a public health endpoint that performs a database query and a GitHub Actions
+  keep-alive workflow that runs every 5 minutes.
+- Split CI into separate backend and frontend workflows and added a backend `start`
+  script for deployment.
+- Implemented and deployed the React/Vite frontend on Vercel.
 
 ## Notes
 
