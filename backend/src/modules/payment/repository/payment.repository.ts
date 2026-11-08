@@ -227,20 +227,15 @@ export const recordChargeAdjustment = async (
       data: WithActor<CreateChargeAdjustmentDTO>,
 ): Promise<PaymentResponseDTO> => {
       try {
-            const result = await db.query(
+            const result = await db.query<{ payment_id: string }>(
                   `
-                  SELECT details.*
-                  FROM kubo_payment_management.fn_record_charge_adjustment(
+                  SELECT kubo_payment_management.fn_record_charge_adjustment(
                         p_reservation_id => $1,
                         p_charge_id => $2,
                         p_employee_id => $3,
                         p_payment_amount => $4,
                         p_description => $5
-                  ) AS created(payment_id)
-                  CROSS JOIN LATERAL
-                        kubo_payment_management.fn_get_payment_details_by_id(
-                              created.payment_id
-                        ) AS details
+                  ) AS payment_id
                   `,
                   [
                         reservationId,
@@ -250,7 +245,7 @@ export const recordChargeAdjustment = async (
                         data.description,
                   ],
             );
-            return result.rows[0];
+            return await requirePaymentById(result.rows[0]?.payment_id);
       } catch (error: any) {
             logger.error("Failed to record charge adjustment", {
                   message: error.message,
@@ -271,20 +266,15 @@ export const reverseChargeAdjustment = async (
       data: WithActor<ReverseChargeAdjustmentDTO>,
 ): Promise<PaymentResponseDTO> => {
       try {
-            const result = await db.query(
+            const result = await db.query<{ payment_id: string }>(
                   `
-                  SELECT details.*
-                  FROM kubo_payment_management.fn_reverse_charge_adjustment(
+                  SELECT kubo_payment_management.fn_reverse_charge_adjustment(
                         p_reservation_id => $1,
                         p_adjustment_payment_id => $2,
                         p_employee_id => $3,
                         p_payment_amount => $4,
                         p_description => $5
-                  ) AS created(payment_id)
-                  CROSS JOIN LATERAL
-                        kubo_payment_management.fn_get_payment_details_by_id(
-                              created.payment_id
-                        ) AS details
+                  ) AS payment_id
                   `,
                   [
                         reservationId,
@@ -294,7 +284,7 @@ export const reverseChargeAdjustment = async (
                         data.description,
                   ],
             );
-            return result.rows[0];
+            return await requirePaymentById(result.rows[0]?.payment_id);
       } catch (error: any) {
             logger.error("Failed to reverse charge adjustment", {
                   message: error.message,
