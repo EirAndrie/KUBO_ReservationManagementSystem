@@ -84,6 +84,8 @@ JWT_EXPIRES_IN=8h
 
 Never commit `.env` files or credentials.
 
+The team shares everything except `DB_*` through Infisical; see [`docs/infisical.md`](docs/infisical.md) for setup and `infisical run` usage.
+
 ### 3. Run
 
 Run commands from `backend/`, because `.env` and `logs/` are resolved relative to the working directory.
