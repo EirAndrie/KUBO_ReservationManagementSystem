@@ -23,7 +23,7 @@ const router = Router();
 // any authenticated employee (Administrators review reservations read-only).
 router.post(
       "/",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       validateBody(CreateReservationSchema),
       createReservationController,
 );
@@ -35,34 +35,34 @@ router.get(
 );
 router.patch(
       "/:reservationId",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(UpdateReservationSchema),
       updateReservationController,
 );
 router.patch(
       "/:reservationId/confirm",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       confirmReservationController,
 );
 router.patch(
       "/:reservationId/cancel",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       validateBody(CancelReservationSchema),
       cancelReservationController,
 );
 router.patch(
       "/:reservationId/no-show",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       markReservationNoShowController,
 );
 // Repair-only action; normal operations use cancellation.
 router.delete(
       "/:reservationId",
-      authorizeRoles("Staff"),
+      authorizeRoles("staff"),
       requireUuidParam("reservationId"),
       deleteReservationController,
 );

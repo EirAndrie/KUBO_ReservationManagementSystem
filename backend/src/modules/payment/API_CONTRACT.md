@@ -3,7 +3,7 @@
 Payment, refund, and payment-status endpoints for the Kubo Reservation Management
 System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mounts:**
   - `/reservations/:reservationId/payments`
   - `/payments`

@@ -2,7 +2,7 @@
 
 Reservation lifecycle endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/reservations`
 - **Source files:** `reservation.routes.ts`, `reservation.controllers.ts`, `reservation.services.ts`, `repository/reservation.schema.ts`, `repository/reservation.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
@@ -28,7 +28,7 @@ Reservation lifecycle endpoints for the Kubo Reservation Management System.
 | Operation | Required business role |
 |---|---|
 | `GET /reservations`, `GET /reservations/:reservationId` | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE`, `/confirm`, `/cancel`, `/no-show` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE`, `/confirm`, `/cancel`, `/no-show` | `Staff` (stored `role_name` equals `staff`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`. Administrators can read reservations

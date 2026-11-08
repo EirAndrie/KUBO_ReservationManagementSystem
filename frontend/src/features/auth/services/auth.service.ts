@@ -3,8 +3,8 @@ import type {
   AuthUser,
   EmployeeStatus,
   LoginCredentials,
-  UserRole,
 } from '../types/auth.types';
+import { toUserRole } from '../utils/role.utils';
 
 /** Shape of `POST /auth/login` (see backend auth.controllers.ts). */
 interface LoginResponse {
@@ -21,9 +21,14 @@ interface LoginResponse {
   };
 }
 
-/** BUG-01: maps the backend's `employee` + `accessToken` into the app's `AuthUser`. */
+/**
+ * Maps the backend's `employee` + `accessToken` into the app's `AuthUser`.
+ *
+ * Role names are canonical lowercase values; an unsupported name throws so the
+ * sign-in is blocked instead of silently granting Staff access.
+ */
 function toAuthUser(employee: LoginResponse['employee'], accessToken: string): AuthUser {
-  const role: UserRole = employee.roleName === 'Administrator' ? 'Administrator' : 'Staff';
+  const role = toUserRole(employee.roleName);
   return {
     employeeId: employee.employeeId,
     username: employee.username,

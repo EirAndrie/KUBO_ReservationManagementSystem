@@ -11,6 +11,7 @@ import { CheckInOutPage } from '@/features/check-in-out';
 import { AuthProvider, LoginPage, ProtectedRoute, useAuth } from '@/features/auth';
 import { AdminDashboardPage, StaffDashboardPage } from '@/features/dashboard';
 import { AuditLogListPage } from '@/features/audit-logs';
+import { AdditionalChargeCatalogPage } from '@/features/additional-charge-catalog';
 import { ThemeProvider } from '@/theme';
 
 /** Sends `/` and unknown paths to the role's home page. */
@@ -106,6 +107,14 @@ export function App() {
               element={
                 <ProtectedRoute allowedRoles={['Administrator']}>
                   <AuditLogListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/additional-charge-catalog"
+              element={
+                <ProtectedRoute allowedRoles={['Administrator']}>
+                  <AdditionalChargeCatalogPage />
                 </ProtectedRoute>
               }
             />

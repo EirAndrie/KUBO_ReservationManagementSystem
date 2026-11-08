@@ -18,7 +18,7 @@ import { authorizeRoles } from "../auth/auth.middleware";
 const router = Router();
 
 // Employee management is Administrator-only (BR-008, BR-004 status changes).
-router.use(authorizeRoles("Administrator"));
+router.use(authorizeRoles("administrator"));
 
 router.post("/", validateBody(CreateEmployeeSchema), createEmployeeController);
 router.get("/", getAllEmployeesController);

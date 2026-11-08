@@ -11,7 +11,7 @@ import { authorizeRoles } from "../auth/auth.middleware";
 const router = Router();
 
 // Audit-log review is Administrator-only (BR-005 permission matrix).
-router.use(authorizeRoles("Administrator"));
+router.use(authorizeRoles("administrator"));
 
 // General audit log endpoints
 router.get("/", searchAuditLogsController);

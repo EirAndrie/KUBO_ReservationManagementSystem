@@ -1,0 +1,33 @@
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keep-backend-awake
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping health endpoint
+        env:
+          HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
+        run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "Set the BACKEND_HEALTH_URL repository variable first." >&2
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            --max-time 90 \
+            --retry 2 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            "$HEALTH_URL"

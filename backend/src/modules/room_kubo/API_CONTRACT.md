@@ -2,7 +2,7 @@
 
 Kubo (accommodation unit) endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/kubos`
 - **Source files:** `kubo.routes.ts`, `kubo.controllers.ts`, `kubo.services.ts`, `repository/kubo.schema.ts`, `repository/kubo.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
@@ -27,7 +27,7 @@ Kubo (accommodation unit) endpoints for the Kubo Reservation Management System.
 | Operation | Required business role |
 |---|---|
 | All `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.

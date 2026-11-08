@@ -2,7 +2,7 @@
 
 Read-only audit-log endpoints for the Kubo Reservation Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/audit-logs`
 - **Source files:** `audit-logs.routes.ts`, `audit-logs.controllers.ts`, `audit-logs.services.ts`, `repository/audit-log.schema.ts`, `repository/audit-log.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
@@ -29,7 +29,7 @@ Read-only audit-log endpoints for the Kubo Reservation Management System.
 | Stored `role_name` | Access |
 |---|---|
 | `Admin` | Yes |
-| `Administrator` | Yes (case-insensitive) |
+| `Administrator` | Yes (stored `role_name` equals `administrator`, exact) |
 | Anything else | No — `403 Insufficient privileges` |
 
 The authenticated employee must have status `Active`; otherwise the authentication

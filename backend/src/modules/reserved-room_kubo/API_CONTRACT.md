@@ -3,7 +3,7 @@
 Kubo assignment and check-in/check-out endpoints for the Kubo Reservation
 Management System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/reservations/:reservationId/kubos`
 - **Source files:** `reserved-room_kubo.routes.ts`, `reserved-room_kubo.controllers.ts`, `reserved-room_kubo.services.ts`, `repository/reserved-kubo.schema.ts`, `repository/reserved-kubo.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
@@ -28,7 +28,7 @@ Management System.
 | Operation | Required business role |
 |---|---|
 | `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE` | `Staff` (stored `role_name` equals `staff`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.

@@ -38,7 +38,7 @@ src/
 ├── config/                 # Environment variables, app configuration
 ├── constants/              # Global constants and enums (NO magic strings)
 ├── features/               # Feature-based modules
-│   ├── additional-charge/  # Additional charges management
+│   ├── additional-charge/  # Catalog, applied charges, and custom request approval
 │   ├── audit-log/          # Audit logging and viewing
 │   ├── employee/           # Employee/staff management
 │   ├── guest/              # Guest CRUD records

@@ -11,8 +11,20 @@ import additinalChargesRoutes from "../modules/additional-charges/additional-cha
 import auditLogsRoutes from "../modules/audit-logs/audit-logs.routes";
 import authRoutes from "./auth/auth.routes";
 import { authenticate } from "./auth/auth.middleware";
+import { db } from "../config/connectDB";
 
 const router = Router();
+
+// Health check route
+router.get("/health", async (_req, res) => {
+    await db.query("SELECT 1"); // Ensure DB connection is alive
+
+    res.status(200).json({
+        success: true,
+        message: "API is running",
+        timestamp: new Date().toISOString(),
+    });
+});
 
 // Authentication is public; it is mounted before the global auth guard.
 router.use("/auth", authRoutes);

@@ -2,12 +2,14 @@
 
 A reservation management system for KUBO Beach Resort, built with PostgreSQL, Express, React, and Node.js (PERN) in TypeScript.
 
+> **Project architecture:** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) explains every folder in plain language, with comments, a request walkthrough, and a "where to find things" table.
+
 The backend manages employees and roles, guests, kubo types and kubos, reservations and kubo assignments, additional charges, payments and refunds, authentication, and an append-only audit log.
 
 | Part        | Status                                                                                |
 | ----------- | ------------------------------------------------------------------------------------- |
 | `backend/`  | Runnable Express API. Core modules, JWT authentication, RBAC, and audit logging work. |
-| `frontend/` | Vite + React scaffold only. UI planning lives in `frontend/docs/`.                    |
+| `frontend/` | React 19 + Vite app, deployed on Vercel. See `docs/development-progress.md`.            |
 | `docs/`     | Business rules, architecture, database, API, and validation documentation.            |
 | `postman/`  | Postman collection with read-only checks and self-cleaning write tests.               |
 
@@ -28,9 +30,6 @@ See [`docs/development-progress.md`](docs/development-progress.md) for per-modul
 | Frontend        | React 19, Vite (scaffold)                  |
 | API testing     | Postman collection (v3 YAML), Postman CLI  |
 | CI              | GitHub Actions: `npm ci`, typecheck, build |
-
-> The project does **not** use an ORM. Drizzle ORM, `drizzle-kit`, and `drizzle-zod` are not used. The `db:generate` and `db:migrate` npm scripts are leftovers; do not run them.
-
 ---
 
 ## Quick Start
@@ -56,7 +55,9 @@ Copy `backend/example.env` to `backend/.env` and fill it in:
 
 ```env
 PORT=8080
+API_BASE_PATH=/KUBO_Resort/Management-System/v0.0.1
 NODE_ENV=development
+SERVE_FRONTEND=true
 FR_ORIGIN=http://localhost:5173
 
 DB_HOST=localhost
@@ -72,7 +73,9 @@ JWT_EXPIRES_IN=8h
 | Variable                                                      | Required | Notes                                                                |
 | ------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
 | `PORT`                                                        | Yes      | API port.                                                            |
+| `API_BASE_PATH`                                               | No       | Mount prefix for every API route. Defaults to `/api`; this project uses `/KUBO_Resort/Management-System/v0.0.1`. Must start with `/` and have no trailing slash. |
 | `NODE_ENV`                                                    | Yes      | `development` or `production`.                                       |
+| `SERVE_FRONTEND`                                              | No       | Serve `frontend/dist` in production. Defaults to `true`; set to `false` when the frontend is hosted separately (for example, on Vercel). |
 | `FR_ORIGIN`                                                   | Yes      | Allowed CORS origin for the frontend.                                |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Yes      | These are what the connection pool actually reads.                   |
 | `JWT_SECRET`                                                  | Yes      | Must be at least 32 characters in production.                        |
@@ -95,6 +98,15 @@ On startup the server connects to PostgreSQL, applies pending migrations, and th
 
 > **Production build caveat:** `npm run build` does not copy `src/migrations/*.sql` into `dist/`. Copy them to `dist/migrations/` before running `node dist/server.js`, or startup will fail.
 
+> **Serving the frontend in production:** when `NODE_ENV=production` and
+> `SERVE_FRONTEND=true` (the default), the backend serves the built SPA from
+> `frontend/dist` and falls back to `index.html` for client routes. Build the
+> frontend first (`cd frontend && npm run build`); startup fails with a clear error
+> when `frontend/dist/index.html` is missing. Set `SERVE_FRONTEND=false` when the
+> frontend is hosted separately (for example, on Vercel): the backend then runs
+> API-only and does not require `frontend/dist`. Unknown routes under
+> `API_BASE_PATH` return a JSON `404` in both modes.
+
 ---
 
 ## Database
@@ -108,6 +120,28 @@ PostgreSQL is accessed only through `pg`, almost always by calling stored functi
 The migrations **harden an existing database**. They add functions, constraints, the charge catalog and request tables, authentication, and audit infrastructure, but they do not create every base table (such as `employee`, `guest`, `reservation`, or `payment`). An empty database needs the team's base `kubo` schema loaded first. The additional-charge migration also expects the `kubo_additional_charges_management` schema to exist.
 
 To add a migration, create a new file named `YYYYMMDD_short_description.sql`. Do not edit migrations that have already been applied.
+
+### Sample data
+
+After migrations have applied, seed a development database with two demo accounts,
+four kubo types, eight kubos, and six catalog items:
+
+```bash
+cd backend
+npm run db:seed
+```
+
+The script is additive and idempotent: it inserts only missing rows, never overwrites
+existing data, and reports what it inserted or skipped.
+
+| Account | Password    | Role            |
+| ------- | ----------- | --------------- |
+| `admin` | `Admin@123` | `administrator` |
+| `staff` | `Staff@123` | `staff`         |
+
+The sample `admin` account is skipped when another active Administrator already exists
+(BR-006). Deactivate the existing administrator and re-run if you need the demo
+account.
 
 ### Rules
 
@@ -127,13 +161,15 @@ See [`docs/database.md`](docs/database.md) and [`docs/business_rules.md`](docs/b
 
 ## API
 
-All routes are mounted under:
+All routes are mounted under the path in `API_BASE_PATH` (default `/api`). This
+project's `backend/.env` uses:
 
 ```text
 /KUBO_Resort/Management-System/v0.0.1
 ```
 
-`backend/src/modules/index.ts` is the source of truth for mounted routes.
+The frontend's `VITE_API_BASE_URL` must include the same base path. `backend/src/modules/index.ts`
+is the source of truth for mounted routes.
 
 | Prefix                                                        | Purpose                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -177,7 +213,8 @@ There is no automated unit or integration test suite. Verification uses:
 - Read-only requests can run against your normal development database.
 - The `Write Tests (test DB only)` folder creates and cleans up its own data. It is skipped unless `allow_writes=true` is set. Run it only against a separate test database.
 
-Example (PowerShell, from the repository root):
+Example (PowerShell, from the repository root). Set `base_url` to
+`<host><API_BASE_PATH>` so it matches `backend/.env`:
 
 ```powershell
 postman collection run postman/collections/KUBO_ManagementSystem `
@@ -196,6 +233,8 @@ $env:DB_NAME = "kubo_beach_resort_system_test"; $env:PORT = "8081"; npx ts-node 
 ---
 
 ## Project Structure
+
+For a folder-by-folder explanation with comments, see [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
 
 ```text
 .
@@ -259,6 +298,7 @@ Route -> Controller -> Service -> Repository -> PostgreSQL function -> Tables
 
 | Document                                                             | Purpose                                                  |
 | -------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)             | Plain-language guide to every folder (start here)        |
 | [`AGENTS.md`](AGENTS.md)                                             | Current implementation state and rules for agents        |
 | [`docs/business_rules.md`](docs/business_rules.md)                   | Authoritative domain specification and known gaps        |
 | [`docs/development-progress.md`](docs/development-progress.md)       | Per-entity implementation status                         |

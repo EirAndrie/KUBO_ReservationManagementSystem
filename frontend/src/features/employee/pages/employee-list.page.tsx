@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { App, Button, Form, Input, Modal, Table, Tabs } from 'antd';
+import { App, Button, Form, Input, Modal, Select, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   ClockCircleOutlined,
@@ -13,7 +13,13 @@ import {
   SearchOutlined,
   UnlockOutlined,
 } from '@ant-design/icons';
-import { useAuth } from '@/features/auth';
+import {
+  ADMINISTRATOR_ROLE,
+  STAFF_ROLE,
+  formatRoleLabel,
+  isAdministratorRole,
+  useAuth,
+} from '@/features/auth';
 import {
   Avatar,
   EmptyState,
@@ -46,6 +52,12 @@ import styles from './employee-list.module.css';
 
 type Tab = 'members' | 'roles';
 
+/** The only two business roles; the database rejects any other name. */
+const ROLE_OPTIONS = [
+  { value: ADMINISTRATOR_ROLE, label: 'Administrator' },
+  { value: STAFF_ROLE, label: 'Staff' },
+];
+
 /** Create/edit form for the Roles tab. */
 const RoleFormModal: React.FC<{ role: Role | null | undefined; onClose: () => void }> = ({ role, onClose }) => {
   const [form] = Form.useForm<{ roleName: string; description: string }>();
@@ -56,8 +68,12 @@ const RoleFormModal: React.FC<{ role: Role | null | undefined; onClose: () => vo
   const submit = async () => {
     const v = await form.validateFields();
     try {
-      if (role) await update.mutateAsync({ roleId: role.roleId, payload: v });
-      else await create.mutateAsync(v);
+      if (role) {
+        // The role name is fixed once created; only the description is editable.
+        await update.mutateAsync({ roleId: role.roleId, payload: { description: v.description } });
+      } else {
+        await create.mutateAsync(v);
+      }
       onClose();
     } catch {
       // Server message shown by the mutation toast.
@@ -67,7 +83,7 @@ const RoleFormModal: React.FC<{ role: Role | null | undefined; onClose: () => vo
   return (
     <Modal
       open={open}
-      title={role ? `Edit ${role.roleName}` : 'New role'}
+      title={role ? `Edit ${formatRoleLabel(role.roleName)}` : 'New role'}
       okText={role ? 'Save changes' : 'Create role'}
       okButtonProps={{ loading: create.isPending || update.isPending }}
       onOk={submit}
@@ -76,8 +92,8 @@ const RoleFormModal: React.FC<{ role: Role | null | undefined; onClose: () => vo
       afterOpenChange={(visible) => visible && form.setFieldsValue({ roleName: role?.roleName ?? '', description: role?.description ?? '' })}
     >
       <Form form={form} layout="vertical" requiredMark={false}>
-        <Form.Item name="roleName" label="Name" rules={[{ required: true, whitespace: true, message: 'Enter a role name.' }]}>
-          <Input maxLength={50} />
+        <Form.Item name="roleName" label="Name" rules={[{ required: true, message: 'Choose a role.' }]}>
+          <Select disabled={Boolean(role)} options={ROLE_OPTIONS} placeholder="Select a role" />
         </Form.Item>
         <Form.Item name="description" label="Description" rules={[{ required: true, whitespace: true, message: 'Describe the role.' }]}>
           <Input.TextArea rows={3} maxLength={255} />
@@ -119,8 +135,8 @@ export const EmployeeListPage: React.FC = () => {
   const [roleForm, setRoleForm] = useState<Role | null | undefined>(undefined);
 
   const all = useMemo(() => employees.data ?? [], [employees.data]);
-  const activeAdmins = all.filter((e) => e.roleName === 'Administrator' && e.status === 'Active');
-  const isLastAdmin = (e: Employee) => e.roleName === 'Administrator' && e.status === 'Active' && activeAdmins.length <= 1;
+  const activeAdmins = all.filter((e) => isAdministratorRole(e.roleName) && e.status === 'Active');
+  const isLastAdmin = (e: Employee) => isAdministratorRole(e.roleName) && e.status === 'Active' && activeAdmins.length <= 1;
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -236,8 +252,8 @@ export const EmployeeListPage: React.FC = () => {
       width: 180,
       render: (_, e) => (
         <span className={styles.roleTag}>
-          {e.roleName === 'Administrator' && <SafetyCertificateOutlined aria-hidden="true" />}
-          {e.roleName ?? '—'}
+          {isAdministratorRole(e.roleName) && <SafetyCertificateOutlined aria-hidden="true" />}
+          {e.roleName ? formatRoleLabel(e.roleName) : '—'}
         </span>
       ),
     },
@@ -247,7 +263,7 @@ export const EmployeeListPage: React.FC = () => {
   ];
 
   const roleColumns: ColumnsType<Role> = [
-    { title: 'Role', render: (_, r) => <TwoLine primary={r.roleName} secondary={r.description} /> },
+    { title: 'Role', render: (_, r) => <TwoLine primary={formatRoleLabel(r.roleName)} secondary={r.description} /> },
     { title: 'Members', width: 120, align: 'right', render: (_, r) => <span className="tabular">{roleCounts.get(r.roleName) ?? 0}</span> },
     {
       key: 'menu',
@@ -257,7 +273,7 @@ export const EmployeeListPage: React.FC = () => {
         const used = (roleCounts.get(r.roleName) ?? 0) > 0;
         return (
           <RowMenu
-            label={`Actions for ${r.roleName}`}
+            label={`Actions for ${formatRoleLabel(r.roleName)}`}
             items={[
               { key: 'edit', label: 'Edit role', icon: <EditOutlined />, onClick: () => setRoleForm(r) },
               { key: 'd', divider: true },
@@ -270,7 +286,7 @@ export const EmployeeListPage: React.FC = () => {
                 reason: EMPLOYEE_POLICIES.ROLE_PROTECTION,
                 onClick: () =>
                   modal.confirm({
-                    title: `Delete the ${r.roleName} role?`,
+                    title: `Delete the ${formatRoleLabel(r.roleName)} role?`,
                     content: 'No employees have this role. It is removed permanently.',
                     okText: 'Delete role',
                     okButtonProps: { danger: true },
@@ -295,7 +311,13 @@ export const EmployeeListPage: React.FC = () => {
               Add employee
             </Button>
           ) : (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setRoleForm(null)}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setRoleForm(null)}
+              disabled={(roles.data?.length ?? 0) >= ROLE_OPTIONS.length}
+              title="Both business roles already exist."
+            >
               Add role
             </Button>
           )
@@ -326,7 +348,7 @@ export const EmployeeListPage: React.FC = () => {
             <FilterChip<string>
               name="Role"
               value={roleFilter}
-              options={(roles.data ?? []).map((r) => ({ value: r.roleName, label: r.roleName }))}
+              options={(roles.data ?? []).map((r) => ({ value: r.roleName, label: formatRoleLabel(r.roleName) }))}
               onChange={(v) => set({ role: v })}
             />
             <FilterChip<EmployeeStatus>

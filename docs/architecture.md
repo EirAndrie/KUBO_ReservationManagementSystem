@@ -58,7 +58,8 @@ Never reverse this direction. For example, repositories must not import controll
   `/auth` routes) verifies the token and re-reads the employee + role from the database
   on every request, so status and role changes take effect immediately.
 - The `authorizeRoles(...)` middleware enforces role-based access at the route level.
-  Role names are matched case-insensitively (`ADMIN`/`Administrator` and `STAFF`/`Staff`).
+  Role names are a closed set of canonical lowercase values (`administrator` and
+  `staff`) matched exactly; shorthand such as `admin` is not accepted.
 - The acting employee for audited mutations is always `req.auth.employeeId`; clients
   can no longer supply an `employeeId` to act on another employee's behalf.
 

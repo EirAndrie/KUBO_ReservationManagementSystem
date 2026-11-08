@@ -1,7 +1,9 @@
 import express, { Express } from "express";
+import { existsSync } from "fs";
 import path from "path";
 import cors from "cors";
 import logger from "./logger";
+import ENV from "../config/env";
 
 // Check port validity
 export function validateServerPort(port: string | undefined): number {
@@ -89,23 +91,70 @@ export function configureCors(
       );
 }
 
+const API_BASE_PATH = ENV.API_BASE_PATH || "/api";
+
+const isApiRequestPath = (pathname: string): boolean =>
+      pathname === API_BASE_PATH || pathname.startsWith(`${API_BASE_PATH}/`);
+
 // Configure environment routes based on production mode
 export function configureEnvironmentRoutes(
       app: Express,
       isProduction: boolean,
+      serveFrontend = true,
 ) {
       if (isProduction) {
-            const frontendPath = path.join(__dirname, "../../frontend");
+            if (!serveFrontend) {
+                  logger.info(
+                        "Frontend serving disabled (SERVE_FRONTEND=false); running API-only",
+                  );
+
+                  app.get("/", (_req, res) => {
+                        res.status(200).json({
+                              message: "API running successfully",
+                        });
+                  });
+
+                  app.use((req, res) => {
+                        if (isApiRequestPath(req.path)) {
+                              res.status(404).json({
+                                    message: "API endpoint not found",
+                              });
+                              return;
+                        }
+
+                        res.status(404).json({ message: "Not found" });
+                  });
+                  return;
+            }
+
+            // Resolves to <repo>/frontend/dist from both source (`src/utils`)
+            // and build (`dist/utils`) layouts.
+            const frontendPath = path.resolve(
+                  __dirname,
+                  "../../../frontend/dist",
+            );
+            const indexHtml = path.join(frontendPath, "index.html");
+
+            if (!existsSync(indexHtml)) {
+                  logger.error(
+                        `Production frontend build not found at ${indexHtml}. ` +
+                              `Run "npm run build" in frontend/ before starting the server, ` +
+                              `or set SERVE_FRONTEND=false when the frontend is hosted separately.`,
+                  );
+                  process.exit(1);
+            }
+
             app.use(express.static(frontendPath));
 
             app.get(/.*/, (req, res) => {
-                  if (!req.url.startsWith("/api")) {
-                        res.sendFile(path.join(frontendPath, "index.html"));
-                  } else {
+                  if (isApiRequestPath(req.path)) {
                         res.status(404).json({
                               message: "API endpoint not found",
                         });
+                        return;
                   }
+
+                  res.sendFile(indexHtml);
             });
             return;
       }

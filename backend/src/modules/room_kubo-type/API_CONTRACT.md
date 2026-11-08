@@ -3,7 +3,7 @@
 Kubo type (accommodation category) endpoints for the Kubo Reservation Management
 System.
 
-- **Base path:** `/KUBO_Resort/Management-System/v0.0.1`
+- **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mount:** `/kubo-types`
 - **Source files:** `kubo-type.routes.ts`, `kubo-type.controllers.ts`, `kubo-type.services.ts`, `repository/kubo-type.schema.ts`, `repository/kubo-type.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
@@ -28,7 +28,7 @@ System.
 | Operation | Required business role |
 |---|---|
 | `GET /kubo-types`, `GET /kubo-types/:kuboTypeId` | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
+| `POST`, `PATCH`, `DELETE` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.
