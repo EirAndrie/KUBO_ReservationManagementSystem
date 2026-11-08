@@ -3,7 +3,7 @@
 Ordered by database dependencies so each entity can be built on top of the
 previous one.
 
-**Last updated:** 2026-11-03
+**Last updated:** 2026-11-08
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
@@ -12,12 +12,12 @@ previous one.
 | 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes are in place (`id_number` masked). |
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). |
 | 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Writes are Administrator-only. Audit writes are in place. |
-| 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Charge application and payment settlement are available, so checkout can reach zero. Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
+| 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Unused reservation deletion removes assignment rows before the reservation and releases its kubos. Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
 | 7 | `reserved_kubo` | In progress | Add/update/remove assignments and per-assignment check-in/check-out are wired under `/reservations/:id/kubos`. Assignment writes are Staff-only and audited under the parent reservation. |
-| 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, and Administrator increase corrections are implemented with audit writes and role enforcement. Reduction via Adjustment/Reversal remains pending G-07. |
+| 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, Administrator increase corrections, and charge-specific reductions via Adjustment/Reversal payments are implemented with audit writes and role enforcement. |
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
-| 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds with net-paid limits, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Cumulative refunds are linked through audit descriptions. Adjustment/Reversal balance effects remain. |
+| 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds, charge-specific Adjustments and linked Reversals, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Payment corrections include a reason and explicit links; cash net paid is derived separately from non-cash charge reductions. |
 | 12 | `audit_log` | Complete | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All BR-067 events are audited: every tracked mutation plus successful login and logout. |
 
 ## Status legend
@@ -38,9 +38,8 @@ previous one.
 
 ## Next up
 
-1. Resolve G-07 and implement Administrator reductions through Adjustment/Reversal payments.
-2. Implement the planned frontend login flow and token handling.
-3. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
+1. Implement the planned frontend login flow and token handling.
+2. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
 
 ## Notes
 
@@ -52,7 +51,8 @@ previous one.
   `/reservations/:reservationId/payments` and `/payments`. Additional-charge routes
   are root-mounted under their own full paths.
 - Check-out is intentionally blocked until the outstanding balance is zero.
-  Completed payments reduce the balance, and refunds restore it.
+  Completed payments and charge Adjustments reduce it; refunds and Reversals restore
+  the corresponding balance. A negative balance represents a guest credit.
 - Payment creation is Staff-only and starts as `Pending`; completion is a separate
   status transition. Refunds require a completed original payment and cannot exceed
   the reservation's net paid amount.
@@ -60,10 +60,12 @@ previous one.
   `PartiallyRefunded`, or `Refunded` as received, with completed `Refund` rows
   offsetting them. This correction is required because BR-054 changes the original
   payment status after a refund.
-- Refund-to-original linkage is stored in the audit description because the schema has
-  no `original_payment_id` column.
+- Refund-to-original linkage remains in the audit description. Charge Reversals have a
+  `related_payment_id`, charge Adjustments and their Reversals have a
+  `related_charge_id`, and both correction types store a required description.
 - The cleanup-only payment delete route is Administrator-only and exists for
-  development/repair use. Normal corrections must use refunds.
+  development/repair use. Cash returns use Refund rows; applied-charge reductions
+  use audited Adjustment rows and can be offset by linked Reversal rows.
 - Payment, additional-charge, and reservation-creation mutations take the acting
   employee from the access token (`req.auth.employeeId`); a client-supplied
   `employeeId` is ignored. The reservation actor migration is committed on `main`
@@ -85,8 +87,8 @@ previous one.
   also available. Used catalog items must be deactivated rather than deleted, and
   applied-charge deletion is blocked after settlement. See
   `docs/additional-charge-hybrid-change-tracker.md`.
-- Administrator increase corrections are implemented. Reductions remain pending until
-  Adjustment/Reversal payment support is implemented (G-07).
+- Administrator increase corrections and charge-specific Adjustment/Reversal
+  corrections are implemented. G-07 is resolved; see BR-047, BR-057, and BR-081.
 - Audit writes are implemented for all tracked mutations plus successful login and
   logout. The audit read API includes general search, single-log reads, employee-scoped
   logs, and entity-history reads.
@@ -99,6 +101,7 @@ previous one.
   `kubo_auth_management.get_login_credentials` and `get_authenticated_employee`. The base
   `employee` table and `role_status` enum remain pre-existing schema and are not created
   by the migrations in this repository.
-- Role and employee management, audit-log reads, and configuration writes are
-  Administrator-only. Guest and reservation writes, assignments, check-in/out, payments,
-  and charge operations are Staff-only. All reads require an authenticated employee.
+- Role and employee management, audit-log reads, configuration writes, charge
+  Adjustments/Reversals, and request review are Administrator-only. Guest and
+  reservation writes, assignments, check-in/out, routine payments/refunds, and charge
+  operations are Staff-only. All reads require an authenticated employee.

@@ -5,6 +5,7 @@ import {
   CHARGE_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_TYPE_LABELS,
+  TRANSACTION_TYPE_LABELS,
 } from '../constants/payment.constants';
 import type { InvoiceBillingBreakdown, AdditionalChargeType, PaymentMethod, PaymentType } from '../types/payment.types';
 import styles from './print-invoice-modal.module.css';
@@ -197,6 +198,7 @@ export function PrintInvoiceModal({ open, onClose, invoice }: PrintInvoiceModalP
                 <tr>
                   <th>Date</th>
                   <th>Type</th>
+                  <th>Details</th>
                   <th>Method</th>
                   <th>Status</th>
                   <th>Amount</th>
@@ -206,12 +208,21 @@ export function PrintInvoiceModal({ open, onClose, invoice }: PrintInvoiceModalP
                 {invoice.payments.map((p) => (
                   <tr key={p.paymentId}>
                     <td>{dayjs(p.date).format('MMM D, YYYY')}</td>
-                    <td>{PAYMENT_TYPE_LABELS[p.type as PaymentType] || p.type}</td>
-                    <td>{PAYMENT_METHOD_LABELS[p.method as PaymentMethod] || p.method}</td>
+                    <td>
+                      {p.transactionType === 'Payment'
+                        ? PAYMENT_TYPE_LABELS[p.type as PaymentType] || p.type
+                        : TRANSACTION_TYPE_LABELS[p.transactionType]}
+                      {p.description ? ` · ${p.description}` : ''}
+                    </td>
+                    <td>
+                      {p.transactionType === 'Payment' || p.transactionType === 'Refund'
+                        ? PAYMENT_METHOD_LABELS[p.method as PaymentMethod] || p.method
+                        : '—'}
+                    </td>
                     <td>{p.status}</td>
                     <td>
-                      <span className={p.transactionType === 'Refund' ? styles.refundTag : styles.paymentTag}>
-                        {p.transactionType === 'Refund' ? '-' : '+'}
+                      <span className={p.transactionType === 'Refund' || p.transactionType === 'Reversal' ? styles.refundTag : styles.paymentTag}>
+                        {p.transactionType === 'Refund' || p.transactionType === 'Adjustment' ? '-' : '+'}
                         {formatCurrency(p.amount)}
                       </span>
                     </td>
@@ -242,6 +253,12 @@ export function PrintInvoiceModal({ open, onClose, invoice }: PrintInvoiceModalP
             <span>Net Payments Received:</span>
             <span style={{ color: '#16a34a' }}>- {formatCurrency(invoice.netPaid)}</span>
           </div>
+          {invoice.chargeReductions > 0 && (
+            <div className={styles.summaryRow}>
+              <span>Charge reductions:</span>
+              <span style={{ color: '#16a34a' }}>- {formatCurrency(invoice.chargeReductions)}</span>
+            </div>
+          )}
           <div className={styles.balanceRow}>
             <span>Outstanding Balance:</span>
             <span className={invoice.isSettled ? styles.balanceSettled : styles.balanceOwed}>

@@ -205,6 +205,7 @@ charges or submitting custom requests.
 | PostgreSQL code | HTTP status |
 |---|---:|
 | `23505` | `400` |
+| `23001` | `409` |
 | `23503` | `409` |
 | `23514` | `400` |
 | `22023` | `400` |

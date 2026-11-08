@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import type {
       CreatePaymentDTO,
       RefundPaymentDTO,
+      CreateChargeAdjustmentDTO,
+      ReverseChargeAdjustmentDTO,
       UpdatePaymentStatusDTO,
       PaymentFilterDTO,
 } from "./repository/payment.schema";
@@ -14,6 +16,8 @@ import {
       getPaymentByIdService,
       updatePaymentStatusService,
       refundPaymentService,
+      createChargeAdjustmentService,
+      reverseChargeAdjustmentService,
       getPaymentsService,
       deletePaymentCleanupService,
 } from "./payment.services";
@@ -145,6 +149,59 @@ export const refundPaymentController = async (req: Request, res: Response) => {
             });
       } catch (error: any) {
             logger.error("Failed to record refund", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+/** Records an audited Administrator credit against an applied charge. */
+export const createChargeAdjustmentController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const data = req.body as CreateChargeAdjustmentDTO;
+            const payments = await createChargeAdjustmentService(
+                  req.params.reservationId as string,
+                  { ...data, employeeId: req.auth!.employeeId },
+            );
+
+            res.status(201).json({
+                  success: true,
+                  message: "Successfully recorded charge reduction",
+                  payments,
+            });
+      } catch (error: any) {
+            logger.error("Failed to record charge reduction", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+/** Records an audited Administrator reversal of a previous charge Adjustment. */
+export const reverseChargeAdjustmentController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const data = req.body as ReverseChargeAdjustmentDTO;
+            const payments = await reverseChargeAdjustmentService(
+                  req.params.reservationId as string,
+                  req.params.adjustmentId as string,
+                  { ...data, employeeId: req.auth!.employeeId },
+            );
+
+            res.status(201).json({
+                  success: true,
+                  message: "Successfully reversed charge reduction",
+                  payments,
+            });
+      } catch (error: any) {
+            logger.error("Failed to reverse charge reduction", {
                   message: error.message,
                   stack: error.stack,
             });

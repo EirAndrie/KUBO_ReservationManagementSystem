@@ -85,6 +85,22 @@ const normalizePayment = (value: unknown) => {
       };
 };
 
+/** Normalize the public correction fields without accepting a caller-supplied actor. */
+const normalizeChargeCorrection = (value: unknown) => {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+            return value;
+      }
+
+      const input = value as Record<string, unknown>;
+
+      return {
+            paymentAmount: input.paymentAmount ?? input.payment_amount,
+            chargeId:
+                  input.chargeId ?? input.charge_id ?? input.related_charge_id,
+            description: input.description ?? input.reason,
+      };
+};
+
 /**
  * Internal wrapper adding the acting employee (sourced from the access token,
  * never from the client) to a validated mutation payload.
@@ -132,6 +148,48 @@ export const RefundPaymentSchema = z.preprocess(
 
 export type RefundPaymentDTO = z.infer<typeof RefundPaymentSchema>;
 
+const positiveCurrencyAmount = z
+      .number()
+      .positive({ message: "Amount must be positive" })
+      .refine((value) => Number(value.toFixed(2)) === value, {
+            message: "Amount cannot have more than 2 decimals",
+      });
+
+/** One audited credit reducing a specific applied additional charge. */
+export const CreateChargeAdjustmentSchema = z.preprocess(
+      normalizeChargeCorrection,
+      z.object({
+            chargeId: z.string().uuid({ message: "Charge ID is required" }),
+            paymentAmount: positiveCurrencyAmount,
+            description: z
+                  .string()
+                  .trim()
+                  .min(1, { message: "A reason is required" })
+                  .max(255),
+      }),
+);
+
+export type CreateChargeAdjustmentDTO = z.infer<
+      typeof CreateChargeAdjustmentSchema
+>;
+
+/** Reverses some or all of a prior Administrator charge Adjustment. */
+export const ReverseChargeAdjustmentSchema = z.preprocess(
+      normalizeChargeCorrection,
+      z.object({
+            paymentAmount: positiveCurrencyAmount,
+            description: z
+                  .string()
+                  .trim()
+                  .min(1, { message: "A reason is required" })
+                  .max(255),
+      }),
+);
+
+export type ReverseChargeAdjustmentDTO = z.infer<
+      typeof ReverseChargeAdjustmentSchema
+>;
+
 export const UpdatePaymentStatusSchema = z.preprocess(
       normalizePayment,
       z.object({
@@ -167,4 +225,7 @@ export type PaymentResponseDTO = {
       payment_method: (typeof PAYMENT_METHOD)[number];
       payment_status: (typeof PAYMENT_STATUS)[number];
       payment_date: string;
+      description: string | null;
+      related_payment_id: string | null;
+      related_charge_id: string | null;
 };

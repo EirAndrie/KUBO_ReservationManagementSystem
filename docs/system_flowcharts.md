@@ -408,12 +408,14 @@ flowchart TD
     D3 -->|View| E2([End: read-only review])
     D3 -->|Edit or delete charge| E3["Block: applied charges are append-only;<br/>record a new correction<br/>(BR-046, BR-081)"]
     D3 -->|Increase correction| I1["Create a new additional_charge<br/>with reason in description<br/>(BR-042, BR-081)"]
-    D3 -->|Reduction/reversal| I2["Record Adjustment/Reversal payment<br/>with required payment type and method<br/>(BR-049, BR-057, G-07)"]
+    D3 -->|Reduction| I2["Record completed Adjustment<br/>against the applied charge;<br/>store reason and charge link<br/>(BR-057, BR-081)"]
+    D3 -->|Undo reduction| I3["Record completed Reversal<br/>linked to the Adjustment;<br/>limit to remaining credit<br/>(BR-057, BR-081)"]
     I1 --> A5["Audit correction<br/>(BR-067, BR-068)"]
     I2 --> A5
+    I3 --> A5
     E3 --> A5
 
-    N1["Administrators do not apply routine catalog charges,<br/>record operational payments/refunds, or edit/delete<br/>applied charges. Reduction semantics remain<br/>unresolved (G-07)."]
+    N1["Administrators do not apply routine catalog charges,<br/>record operational payments/refunds, or edit/delete<br/>applied charges. Cash refunds remain separate from<br/>non-cash charge reductions (BR-054, BR-081)."]
     style N1 fill:#fff2cc,stroke:#d6b656
     style E1 fill:#f8cecc,stroke:#b85450
     style E3 fill:#f8cecc,stroke:#b85450

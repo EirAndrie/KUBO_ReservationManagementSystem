@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { App, Button, Progress, Steps, Table, Tooltip } from 'antd';
+import { App, Button, Drawer, Form, Input, InputNumber, Progress, Steps, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckOutlined,
   CloseCircleOutlined,
   CreditCardOutlined,
   DeleteOutlined,
+  EditOutlined,
   IdcardOutlined,
   LoginOutlined,
   LogoutOutlined,
@@ -29,6 +30,8 @@ import {
   RefundModal,
   useChargeRequests,
   useDeleteCharge,
+  useCreateChargeAdjustment,
+  useReverseChargeAdjustment,
   useReservationCharges,
   useReservationPayments,
   useWithdrawChargeRequest,
@@ -82,6 +85,15 @@ interface LedgerRow {
   payment?: Payment;
 }
 
+type CorrectionTarget =
+  | { kind: 'adjustment'; charge: AdditionalCharge; remainingAmount: number }
+  | { kind: 'reversal'; adjustment: Payment; remainingAmount: number };
+
+interface CorrectionFormValues {
+  paymentAmount: number;
+  description: string;
+}
+
 const COUNTED_PAYMENT_STATUSES = ['Completed', 'PartiallyRefunded', 'Refunded'];
 
 /** Lifecycle stepper; Cancelled and No-show end the line in red. */
@@ -133,7 +145,7 @@ function lifecycleSteps(r: Reservation) {
 export const ReservationDetailPage: React.FC = () => {
   const { reservationId = '' } = useParams<{ reservationId: string }>();
   const { modal } = App.useApp();
-  const { isStaff, user } = useAuth();
+  const { isAdmin, isStaff, user } = useAuth();
 
   const query = useReservation(reservationId);
   const reservation = query.data;
@@ -147,6 +159,8 @@ export const ReservationDetailPage: React.FC = () => {
   const noShow = useMarkNoShow();
   const checkOut = useCheckOutKubo();
   const deleteCharge = useDeleteCharge();
+  const createChargeAdjustment = useCreateChargeAdjustment();
+  const reverseChargeAdjustment = useReverseChargeAdjustment();
   const withdraw = useWithdrawChargeRequest();
 
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -155,12 +169,48 @@ export const ReservationDetailPage: React.FC = () => {
   const [refundOpen, setRefundOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [arrival, setArrival] = useState<ArrivalRecord | null>(null);
+  const [correctionTarget, setCorrectionTarget] = useState<CorrectionTarget | null>(null);
 
   useBreadcrumbLabel(reservation?.reference_code);
 
   const paymentList = useMemo(() => payments.data ?? [], [payments.data]);
   const chargeList = useMemo(() => charges.data ?? [], [charges.data]);
   const pendingRequests = (requests.data ?? []).filter((r) => r.status === 'Pending');
+  const netChargeReductions = paymentList.reduce((total, payment) => {
+    if (payment.payment_status !== 'Completed') return total;
+    if (payment.transaction_type === 'Adjustment') return total + payment.payment_amount;
+    if (payment.transaction_type === 'Reversal') return total - payment.payment_amount;
+    return total;
+  }, 0);
+
+  const remainingReductionForCharge = (charge: AdditionalCharge) => {
+    const appliedReduction = paymentList.reduce((total, payment) => {
+      if (payment.related_charge_id !== charge.additional_charge_id || payment.payment_status !== 'Completed') {
+        return total;
+      }
+      if (payment.transaction_type === 'Adjustment') return total + payment.payment_amount;
+      if (payment.transaction_type === 'Reversal') return total - payment.payment_amount;
+      return total;
+    }, 0);
+    return Math.max(0, charge.amount - appliedReduction);
+  };
+
+  const remainingReversalForAdjustment = (adjustment: Payment) => {
+    const alreadyReversed = paymentList
+      .filter((payment) =>
+        payment.transaction_type === 'Reversal' &&
+        payment.payment_status === 'Completed' &&
+        payment.related_payment_id === adjustment.payment_id,
+      )
+      .reduce((total, payment) => total + payment.payment_amount, 0);
+    return Math.max(0, adjustment.payment_amount - alreadyReversed);
+  };
+
+  const hasCorrectionHistory = (charge: AdditionalCharge) =>
+    paymentList.some((payment) =>
+      payment.related_charge_id === charge.additional_charge_id &&
+      (payment.transaction_type === 'Adjustment' || payment.transaction_type === 'Reversal'),
+    );
 
   const ledger: LedgerRow[] = useMemo(() => {
     const rows: LedgerRow[] = [
@@ -176,16 +226,26 @@ export const ReservationDetailPage: React.FC = () => {
         charge: c,
       })),
       ...paymentList.map((p) => {
-        const isRefund = p.transaction_type === 'Refund';
-        const counted = isRefund ? p.payment_status === 'Completed' : COUNTED_PAYMENT_STATUSES.includes(p.payment_status);
+        const isPayment = p.transaction_type === 'Payment';
+        const balanceEffect = p.transaction_type === 'Payment' || p.transaction_type === 'Adjustment'
+          ? -p.payment_amount
+          : p.payment_amount;
+        const counted = isPayment
+          ? COUNTED_PAYMENT_STATUSES.includes(p.payment_status)
+          : p.payment_status === 'Completed';
+        const description = p.transaction_type === 'Adjustment'
+          ? 'Charge reduction'
+          : p.transaction_type === 'Reversal'
+            ? 'Reduction reversal'
+            : `${label(p.transaction_type)} · ${label(p.payment_method)}`;
         return {
           key: `p-${p.payment_id}`,
           date: p.payment_date,
-          description: `${label(isRefund ? 'Refund' : p.payment_type)} · ${label(p.payment_method)}`,
-          detail: label(p.transaction_type),
+          description,
+          detail: p.description || (isPayment ? label(p.payment_type) : label(p.transaction_type)),
           by: p.employee_name,
           status: p.payment_status,
-          amount: isRefund ? p.payment_amount : -p.payment_amount,
+          amount: balanceEffect,
           counted,
           payment: p,
         };
@@ -211,11 +271,16 @@ export const ReservationDetailPage: React.FC = () => {
   const extras = Math.max(0, gross - accommodation);
   const netPaid = toAmount(reservation.net_paid);
   const balance = toAmount(reservation.outstanding_balance);
-  const paidPct = gross > 0 ? Math.min(100, Math.round((netPaid / gross) * 100)) : 0;
+  const paidPct = gross > 0
+    ? Math.min(100, Math.max(0, Math.round(((netPaid + netChargeReductions) / gross) * 100)))
+    : 0;
   const isClosed = ['Cancelled', 'NoShow'].includes(reservation.status);
   const isSettled =
     ['CheckedOut', 'Cancelled', 'NoShow'].includes(reservation.status) ||
-    paymentList.some((p) => p.payment_status === 'Completed' || p.payment_status === 'PartiallyRefunded' || p.payment_status === 'Refunded');
+    paymentList.some((p) =>
+      (p.transaction_type === 'Payment' && COUNTED_PAYMENT_STATUSES.includes(p.payment_status)) ||
+      (p.transaction_type === 'Refund' && p.payment_status === 'Completed'),
+    );
   const kuboStatus = (kuboId: string) => kubos.data?.find((k) => k.kuboId === kuboId)?.status;
   const firstReserved = reservation.assignments.find((a) => a.status === 'Reserved');
   const checkedInAssignments = reservation.assignments.filter((a) => a.status === 'CheckedIn');
@@ -239,6 +304,28 @@ export const ReservationDetailPage: React.FC = () => {
         }
       },
     });
+
+  const submitCorrection = async (values: CorrectionFormValues) => {
+    if (!correctionTarget) return;
+
+    if (correctionTarget.kind === 'adjustment') {
+      await createChargeAdjustment.mutateAsync({
+        reservationId,
+        chargeId: correctionTarget.charge.additional_charge_id,
+        paymentAmount: values.paymentAmount,
+        description: values.description,
+      });
+    } else {
+      await reverseChargeAdjustment.mutateAsync({
+        reservationId,
+        adjustmentPaymentId: correctionTarget.adjustment.payment_id,
+        paymentAmount: values.paymentAmount,
+        description: values.description,
+      });
+    }
+
+    setCorrectionTarget(null);
+  };
 
   // One primary action, chosen by status (Staff only; lifecycle is a Staff action).
   let primary: React.ReactNode = null;
@@ -329,11 +416,13 @@ export const ReservationDetailPage: React.FC = () => {
       type: p.payment_type,
       amount: p.payment_amount,
       status: p.payment_status,
+      description: p.description,
     })),
     accommodationTotal: accommodation,
     chargesTotal: extras,
     grossBilled: gross,
     netPaid,
+    chargeReductions: netChargeReductions,
     outstandingBalance: balance,
     isSettled: balance <= 0,
   };
@@ -398,33 +487,57 @@ export const ReservationDetailPage: React.FC = () => {
         </span>
       ),
     },
-    ...(isStaff && !isSettled
+    ...((isStaff && !isSettled) || isAdmin
       ? [
           {
             key: 'menu',
             width: 48,
-            render: (_: unknown, r: LedgerRow) =>
-              r.charge ? (
-                <RowMenu
-                  label="Charge actions"
-                  items={[
-                    {
-                      key: 'del',
-                      label: 'Remove charge',
-                      icon: <DeleteOutlined />,
-                      danger: true,
-                      onClick: () =>
-                        modal.confirm({
-                          title: 'Remove this charge?',
-                          content: `${r.description} (${formatMoney(r.amount)}) will be removed from the bill.`,
-                          okText: 'Remove',
-                          okButtonProps: { danger: true },
-                          onOk: () => deleteCharge.mutateAsync(r.charge!.additional_charge_id),
-                        }),
-                    },
-                  ]}
-                />
-              ) : null,
+            render: (_: unknown, r: LedgerRow) => {
+              const items: RowMenuItem[] = [];
+
+              if (r.charge && isStaff && !isSettled && !hasCorrectionHistory(r.charge)) {
+                items.push({
+                  key: 'del',
+                  label: 'Remove charge',
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  onClick: () =>
+                    modal.confirm({
+                      title: 'Remove this charge?',
+                      content: `${r.description} (${formatMoney(r.amount)}) will be removed from the bill.`,
+                      okText: 'Remove',
+                      okButtonProps: { danger: true },
+                      onOk: () => deleteCharge.mutateAsync(r.charge!.additional_charge_id),
+                    }),
+                });
+              }
+
+              if (r.charge && isAdmin) {
+                const remainingAmount = remainingReductionForCharge(r.charge);
+                if (remainingAmount > 0) {
+                  items.push({
+                    key: 'reduce',
+                    label: 'Reduce charge',
+                    icon: <EditOutlined />,
+                    onClick: () => setCorrectionTarget({ kind: 'adjustment', charge: r.charge!, remainingAmount }),
+                  });
+                }
+              }
+
+              if (r.payment && isAdmin && r.payment.transaction_type === 'Adjustment' && r.payment.payment_status === 'Completed') {
+                const remainingAmount = remainingReversalForAdjustment(r.payment);
+                if (remainingAmount > 0) {
+                  items.push({
+                    key: 'reverse',
+                    label: 'Reverse reduction',
+                    icon: <RollbackOutlined />,
+                    onClick: () => setCorrectionTarget({ kind: 'reversal', adjustment: r.payment!, remainingAmount }),
+                  });
+                }
+              }
+
+              return items.length ? <RowMenu label="Charge and payment actions" items={items} /> : null;
+            },
           },
         ]
       : []),
@@ -557,6 +670,8 @@ export const ReservationDetailPage: React.FC = () => {
               <dd className="tabular">{formatMoney(extras)}</dd>
               <dt>Paid</dt>
               <dd className={`tabular ${styles.credit}`}>{formatSignedMoney(-netPaid)}</dd>
+              <dt>Charge reductions</dt>
+              <dd className={`tabular ${styles.credit}`}>{formatSignedMoney(-netChargeReductions)}</dd>
             </dl>
             <Progress percent={paidPct} showInfo={false} size="small" aria-label={`${paidPct}% paid`} />
             <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
@@ -613,6 +728,56 @@ export const ReservationDetailPage: React.FC = () => {
         defaultAmount={paymentOpen?.amount}
       />
       <RefundModal open={refundOpen} onClose={() => setRefundOpen(false)} payments={paymentList} netPaid={netPaid} />
+      <Drawer
+        open={Boolean(correctionTarget)}
+        title={correctionTarget?.kind === 'reversal' ? 'Reverse charge reduction' : 'Reduce applied charge'}
+        onClose={() => setCorrectionTarget(null)}
+        width={440}
+      >
+        {correctionTarget && (
+          <>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {correctionTarget.kind === 'adjustment'
+                ? `Reduce ${correctionTarget.charge.catalog_name || correctionTarget.charge.description} by up to ${formatMoney(correctionTarget.remainingAmount)}.`
+                : `Restore up to ${formatMoney(correctionTarget.remainingAmount)} from this earlier reduction.`}
+            </p>
+            <Form<CorrectionFormValues>
+              key={`${correctionTarget.kind}-${correctionTarget.kind === 'adjustment' ? correctionTarget.charge.additional_charge_id : correctionTarget.adjustment.payment_id}`}
+              layout="vertical"
+              initialValues={{ paymentAmount: correctionTarget.remainingAmount }}
+              onFinish={submitCorrection}
+            >
+              <Form.Item
+                name="paymentAmount"
+                label="Amount (PHP)"
+                rules={[
+                  { required: true, message: 'Enter an amount.' },
+                  { type: 'number', min: 0.01, max: correctionTarget.remainingAmount, message: 'Enter a positive amount within the remaining limit.' },
+                ]}
+              >
+                <InputNumber min={0.01} max={correctionTarget.remainingAmount} precision={2} step={0.01} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="description"
+                label="Reason"
+                rules={[
+                  { required: true, whitespace: true, message: 'Enter a reason for this correction.' },
+                  { max: 255, message: 'The reason must be 255 characters or fewer.' },
+                ]}
+              >
+                <Input.TextArea rows={4} maxLength={255} showCount />
+              </Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={createChargeAdjustment.isPending || reverseChargeAdjustment.isPending}
+              >
+                {correctionTarget.kind === 'reversal' ? 'Record reversal' : 'Record reduction'}
+              </Button>
+            </Form>
+          </>
+        )}
+      </Drawer>
       <PrintInvoiceModal open={invoiceOpen} onClose={() => setInvoiceOpen(false)} invoice={invoice} />
       <CheckInDrawer
         arrival={arrival}

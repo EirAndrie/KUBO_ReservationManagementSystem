@@ -80,6 +80,9 @@ export interface Payment {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   payment_date: string;
+  description: string | null;
+  related_payment_id: string | null;
+  related_charge_id: string | null;
   notes?: string | null;
 }
 
@@ -149,6 +152,22 @@ export interface CreateRefundPayload {
   paymentMethod: PaymentMethod;
 }
 
+/** Creates a non-cash reduction against one applied charge. */
+export interface CreateChargeAdjustmentPayload {
+  reservationId: string;
+  chargeId: string;
+  paymentAmount: number;
+  description: string;
+}
+
+/** Reverses some or all of a previously recorded charge adjustment. */
+export interface ReverseChargeAdjustmentPayload {
+  reservationId: string;
+  adjustmentPaymentId: string;
+  paymentAmount: number;
+  description: string;
+}
+
 /** Applies an active catalog item to a reservation. */
 export interface ApplyCatalogChargePayload {
   reservationId: string;
@@ -209,11 +228,13 @@ export interface InvoiceBillingBreakdown {
     type: string;
     amount: number;
     status: string;
+    description: string | null;
   }>;
   accommodationTotal: number;
   chargesTotal: number;
   grossBilled: number;
   netPaid: number;
+  chargeReductions: number;
   outstandingBalance: number;
   isSettled: boolean;
 }
