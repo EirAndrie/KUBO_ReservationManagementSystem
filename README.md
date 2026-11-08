@@ -4,14 +4,14 @@ A reservation management system for KUBO Beach Resort, built with PostgreSQL, Ex
 
 > **Project architecture:** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) explains every folder in plain language, with comments, a request walkthrough, and a "where to find things" table.
 
-The backend manages employees and roles, guests, kubo types and kubos, reservations and kubo assignments, additional charges, payments and refunds, authentication, and an append-only audit log.
+The backend manages employees and roles, guests, kubo types and kubos, reservations and kubo assignments, additional charges, payments, refunds and charge adjustments, authentication, and an append-only audit log. The frontend gives staff and administrators screens for these workflows.
 
-| Part        | Status                                                                                |
-| ----------- | ------------------------------------------------------------------------------------- |
-| `backend/`  | Runnable Express API. Core modules, JWT authentication, RBAC, and audit logging work. |
-| `frontend/` | React 19 + Vite app, deployed on Vercel. See `docs/development-progress.md`.            |
-| `docs/`     | Business rules, architecture, database, API, and validation documentation.            |
-| `postman/`  | Postman collection with read-only checks and self-cleaning write tests.               |
+| Part        | Status                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `backend/`  | Runnable Express API, deployed on Render. Core modules, JWT authentication, RBAC, and audit logging work.     |
+| `frontend/` | React 19 + Vite app, deployed on Vercel: login, dashboards, guests, reservations, kubos, kubo types, employees, payments, audit logs, and the charge catalog. |
+| `docs/`     | Business rules, architecture, database, API, validation, and Infisical setup documentation.                   |
+| `postman/`  | Postman collection with read-only checks and self-cleaning write tests.                                       |
 
 See [`docs/development-progress.md`](docs/development-progress.md) for per-module status.
 
@@ -27,9 +27,12 @@ See [`docs/development-progress.md`](docs/development-progress.md) for per-modul
 | Validation      | Zod v4                                     |
 | Authentication  | JWT (`jsonwebtoken`), `bcrypt`             |
 | Logging         | `winston`                                  |
-| Frontend        | React 19, Vite (scaffold)                  |
+| Frontend        | React 19, Vite, TanStack Query, Ant Design, React Hook Form |
+| Secrets         | Infisical (shared config), local `.env` for `DB_*` |
+| Hosting         | Backend on Render, frontend on Vercel      |
 | API testing     | Postman collection (v3 YAML), Postman CLI  |
-| CI              | GitHub Actions: `npm ci`, typecheck, build |
+| CI              | GitHub Actions: backend (typecheck, build), frontend (typecheck, lint, build), keep-alive ping |
+
 ---
 
 ## Quick Start
@@ -45,20 +48,33 @@ See [`docs/development-progress.md`](docs/development-progress.md) for per-modul
 
 ```bash
 git clone https://github.com/EirAndrie/KUBO_ReservationManagementSystem.git
-cd KUBO_ReservationManagementSystem/backend
-npm ci
+cd KUBO_ReservationManagementSystem
+(cd backend && npm ci)
+(cd frontend && npm ci)
 ```
 
 ### 2. Configure
 
-Copy `backend/example.env` to `backend/.env` and fill it in:
+**Team setup (recommended): Infisical.** Shared values (`PORT`, `API_BASE_PATH`, `FR_ORIGIN`, `JWT_*`, `VITE_API_BASE_URL`, and so on) live in the team's Infisical project. Install the CLI, run `infisical login`, and create `backend/.env` with only your machine-specific `DB_*` values:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=<your-password>
+DB_NAME=<your-database>
+```
+
+Full guide: [`docs/infisical.md`](docs/infisical.md).
+
+**Without Infisical.** Copy `backend/example.env` to `backend/.env` and fill in every value. For the frontend, copy `frontend/.env.example` to `frontend/.env`.
 
 ```env
 PORT=8080
 API_BASE_PATH=/KUBO_Resort/Management-System/v0.0.1
 NODE_ENV=development
 SERVE_FRONTEND=true
-FR_ORIGIN=http://localhost:5173
+FR_ORIGIN=http://localhost:3000
 
 DB_HOST=localhost
 DB_PORT=5432
@@ -84,21 +100,28 @@ JWT_EXPIRES_IN=8h
 
 Never commit `.env` files or credentials.
 
-The team shares everything except `DB_*` through Infisical; see [`docs/infisical.md`](docs/infisical.md) for setup and `infisical run` usage.
-
 ### 3. Run
 
-Run commands from `backend/`, because `.env` and `logs/` are resolved relative to the working directory.
+Run backend commands from `backend/`, because `.env` and `logs/` are resolved relative to the working directory.
 
 ```bash
-npm run dev         # nodemon + ts-node src/server.ts
-npm run typecheck   # tsc --noEmit (required by CI)
-npm run build       # tsc -> dist/
+# backend (API on PORT, default 8080)
+cd backend
+infisical run --env=dev -- npm run dev   # or: npm run dev (all values in backend/.env)
+npm run typecheck                        # tsc --noEmit (required by CI)
+npm run build                            # tsc -> dist/, then copies migrations to dist/migrations
+
+# frontend (Vite on http://localhost:3000)
+cd frontend
+infisical run --env=dev -- npm run dev   # or: npm run dev (VITE_API_BASE_URL in frontend/.env)
+npm run typecheck && npm run lint && npm run build
 ```
+
+On Windows, run `infisical` from PowerShell or CMD; see the troubleshooting table in [`docs/infisical.md`](docs/infisical.md). The backend's `FR_ORIGIN` must match the frontend origin (`http://localhost:3000`) or the browser blocks API calls with a CORS error. `VITE_API_BASE_URL` must be `http://localhost:<PORT><API_BASE_PATH>`.
 
 On startup the server connects to PostgreSQL, applies pending migrations, and then listens on `PORT`. In development, `GET /` returns `API running successfully...`.
 
-> **Production build caveat:** `npm run build` does not copy `src/migrations/*.sql` into `dist/`. Copy them to `dist/migrations/` before running `node dist/server.js`, or startup will fail.
+The `postbuild` script copies `src/migrations` into `dist/migrations`, so `npm run build` followed by `node dist/server.js` (`npm start`) works without extra steps.
 
 > **Serving the frontend in production:** when `NODE_ENV=production` and
 > `SERVE_FRONTEND=true` (the default), the backend serves the built SPA from
@@ -175,6 +198,7 @@ is the source of truth for mounted routes.
 
 | Prefix                                                        | Purpose                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `/health`                                                     | Public health check (`SELECT 1`); pinged every 5 minutes by the keep-alive workflow |
 | `/auth`                                                       | `POST /login` (public), `POST /logout`, `GET /me`                         |
 | `/roles`                                                      | Role management                                                           |
 | `/employees`                                                  | Employee management (Administrator only)                                  |
@@ -183,7 +207,7 @@ is the source of truth for mounted routes.
 | `/kubos`                                                      | Kubos, status, and availability                                           |
 | `/reservations`                                               | Reservations and lifecycle (confirm, check-in, checkout, cancel, no-show) |
 | `/reservations/:reservationId/kubos`                          | Kubo assignments and per-kubo check-in/check-out                          |
-| `/reservations/:reservationId/payments`, `/payments`          | Payments, status transitions, and refunds                                 |
+| `/reservations/:reservationId/payments`, `/payments`          | Payments, status transitions, refunds, and charge Adjustments/Reversals   |
 | `/additional-charge-catalog`                                  | Charge catalog (Administrator writes)                                     |
 | `/additional-charges`, `/reservations/:reservationId/charges` | Applied charges                                                           |
 | `/additional-charge-requests`                                 | Custom charge requests and approval                                       |
@@ -243,6 +267,7 @@ For a folder-by-folder explanation with comments, see [`docs/PROJECT_STRUCTURE.m
 ├── AGENTS.md                 # Implementation state and rules for coding agents
 ├── backend/
 │   ├── example.env
+│   ├── .infisical.yaml   # Infisical project link
 │   └── src/
 │       ├── server.ts         # Startup: env checks, CORS, routes, migrations
 │       ├── config/           # env, auth config, shared pg pool (connectDB.ts)
@@ -261,8 +286,10 @@ For a folder-by-folder explanation with comments, see [`docs/PROJECT_STRUCTURE.m
 │           ├── additional-charges/
 │           ├── payment/
 │           └── audit-logs/
-├── docs/                     # Business rules, architecture, API, ERD, flowcharts
-├── frontend/                 # Vite + React scaffold and UI planning docs
+├── .github/workflows/        # backend-ci, frontend-ci, keep-alive
+├── docs/                     # Business rules, architecture, API, ERD, flowcharts, Infisical guide
+├── frontend/                 # Vite + React app (src/features/*, src/components, src/lib) and UI docs
+│   └── .infisical.yaml       # Infisical project link
 └── postman/                  # Postman collection, environment template, globals
 ```
 
@@ -311,6 +338,7 @@ Route -> Controller -> Service -> Repository -> PostgreSQL function -> Tables
 | [`docs/coding-standards.md`](docs/coding-standards.md)               | TypeScript, naming, errors, and security                 |
 | [`docs/system_flowcharts.md`](docs/system_flowcharts.md)             | System flowcharts                                        |
 | [`docs/audit-logging-checklist.md`](docs/audit-logging-checklist.md) | Audit coverage checklist                                 |
+| [`docs/infisical.md`](docs/infisical.md)                             | Team guide to Infisical secrets and `infisical run`      |
 | `docs/ERD.drawio`, `docs/ERD&Flowcharts.drawio`                      | ERD and flowchart diagrams (open with draw.io)           |
 | [`frontend/docs/`](frontend/docs)                                    | Frontend architecture, UI specification, API integration |
 
@@ -346,11 +374,12 @@ Some `docs/*.md` files describe an older target layout (for example an `/api` ba
 
 ## Known Limitations
 
-- Adjustment/Reversal payment effects and Administrator charge reductions are not implemented (gap G-07).
 - Overpayments are blocked; overpayment approval (BR-053) is not implemented.
 - Refunds are linked to their original payment through the audit description, because the schema has no `original_payment_id` column.
-- The frontend is a scaffold with no application screens yet.
-- `npm run build` does not copy migrations into `dist/`.
+- The frontend has no dedicated screen for reviewing custom additional-charge requests yet.
+- `GET /health` returns a generic `500` when the database is unreachable; a `503` JSON response is planned.
+- JWTs are stateless: logout is audited but does not revoke the token, and there is no refresh token.
+- The additional-charge migration skips its routines if the `kubo_additional_charges_management` schema does not exist.
 
 ---
 
