@@ -127,11 +127,19 @@
 
 .userCard {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 12px 14px;
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
+}
+
+.userIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .userText {
@@ -152,6 +160,24 @@
 .userRole {
   font-size: 11px;
   color: var(--color-muted);
+}
+
+.signOutButton {
+  align-self: flex-start;
+  margin-left: 8px;
+  padding-inline: 8px;
+  color: var(--color-muted);
+  border-radius: var(--radius-control);
+}
+
+.signOutButton:hover {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-soft) !important;
+}
+
+.signOutButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* ---- Main column ---- */

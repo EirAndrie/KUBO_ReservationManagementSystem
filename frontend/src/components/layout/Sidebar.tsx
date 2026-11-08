@@ -12,9 +12,10 @@ import {
   UserOutlined,
   BlockOutlined,
 } from '@ant-design/icons';
+import { Button } from 'antd';
 import { useAuth } from '@/features/auth';
 import { useCheckInOutQueue } from '@/features/check-in-out';
-import { Avatar, RowMenu } from '@/components/common';
+import { Avatar } from '@/components/common';
 import { useThemeMode } from '@/theme';
 import styles from './shell.module.css';
 
@@ -120,15 +121,22 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       <div className={styles.userCard}>
-        <Avatar name={displayName} size={30} />
-        <div className={styles.userText}>
-          <div className={styles.userName}>{displayName}</div>
-          <div className={styles.userRole}>{isAdmin ? 'Administrator' : 'Front desk'}</div>
+        <div className={styles.userIdentity}>
+          <Avatar name={displayName} size={34} />
+          <div className={styles.userText}>
+            <div className={styles.userName}>{displayName}</div>
+            <div className={styles.userRole}>{isAdmin ? 'Administrator' : 'Front desk'}</div>
+          </div>
         </div>
-        <RowMenu
-          label="Account menu"
-          items={[{ key: 'signout', label: 'Sign out', icon: <LogoutOutlined />, onClick: handleSignOut }]}
-        />
+        <Button
+          type="text"
+          size="small"
+          className={styles.signOutButton}
+          icon={<LogoutOutlined aria-hidden="true" />}
+          onClick={handleSignOut}
+        >
+          Sign out
+        </Button>
       </div>
     </aside>
   );
