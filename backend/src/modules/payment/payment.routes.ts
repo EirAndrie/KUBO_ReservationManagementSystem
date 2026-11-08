@@ -25,14 +25,14 @@ const router = Router();
 // Payments scoped under a reservation
 router.post(
       "/reservations/:reservationId/payments/adjustments",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("reservationId"),
       validateBody(CreateChargeAdjustmentSchema),
       createChargeAdjustmentController,
 );
 router.post(
       "/reservations/:reservationId/payments/adjustments/:adjustmentId/reversals",
-      authorizeRoles("Administrator"),
+      authorizeRoles("administrator"),
       requireUuidParam("reservationId"),
       requireUuidParam("adjustmentId"),
       validateBody(ReverseChargeAdjustmentSchema),
