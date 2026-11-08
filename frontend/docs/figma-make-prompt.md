@@ -70,8 +70,9 @@ Additional overrides:
   current nightly rate. Rate changes alone do not alter existing assignments.
 - Payments are recorded as `Pending`, then move through system-managed statuses.
   Refunds are separate completed records linked to an original payment.
-- `Adjustment` and `Reversal` are display-only values. Do not offer them as user
-  actions; the implemented flow supports payments and refunds only.
+- Administrators can record a reasoned non-cash `Adjustment` against an applied
+  charge and append a linked `Reversal` to restore some or all of that reduction.
+  These change the bill balance, not cash `net_paid`; cash returns remain Refunds.
 - The financial summary labels `charges_total` as **Grand Total**: accommodation plus
   additional charges.
 
@@ -101,7 +102,7 @@ Administrator restrictions:
 - Must not create or edit guest records.
 - Can view reservation, assignment, charge, payment, and balance information read-only.
 - Can manage the charge catalog, approve/reject/adjust custom requests, and record
-  additive corrections to applied charges.
+  audited increases and linked reductions/reversals for applied charges.
 - May use payment cleanup deletion only as an explicit repair action, with a strong
   warning that it does not repair the financial history.
 - Can view audit logs and entity history.
@@ -722,7 +723,8 @@ Administrator:
 - Reviews the ledger.
 - May use “Cleanup delete” in a clearly marked repair-only danger action, with a
   warning that it does not recalculate the ledger or restore refunded payments.
-- Do not offer Adjustment or Reversal creation.
+- Creates and reverses charge reductions from reservation detail, with a required
+  reason and per-charge remaining-amount limits.
 
 ### 8.14 Additional charges
 
@@ -795,10 +797,11 @@ Inside reservation detail:
 - Staff actions: View, Delete before settlement.
 - Administrator actions: View, Record Correction.
 - No Edit action for applied charges.
-- Correction is additive only: create a new additional charge with a reason. The
-  original charge is never edited or deleted.
-- There is no implemented reduction flow. Do not show Adjustment or Reversal actions.
-- Show: “Existing charges are append-only. Corrections create new records.”
+- Corrections append records: a reasoned Adjustment reduces an applied charge, and a
+  linked Reversal restores some or all of that reduction. The original charge is never
+  edited or deleted.
+- Show each correction reason in the reservation ledger. Neither correction changes
+  cash `net_paid`; a Reversal may increase the outstanding balance.
 - Settlement means the reservation is `CheckedOut`, `Cancelled`, or `NoShow`, or any
   payment/refund has completed. Disable Delete after settlement and explain why.
 
@@ -907,8 +910,10 @@ keep the underlying values consistent.
 - Adjustment
 - Reversal
 
-`Adjustment` and `Reversal` are display-only values. User actions create only
-`Payment` and `Refund` records.
+Administrator charge corrections create completed, positive-amount `Adjustment` and
+`Reversal` records. An Adjustment links to one applied charge; a Reversal links to its
+Adjustment. Both require a reason and affect outstanding balance only. Cash returns use
+the separate `Refund` flow.
 
 ### Payment type
 
@@ -1106,9 +1111,8 @@ Do not store or hard-code totals in the UI model. Show them as derived summaries
   payment/refund.
 - Administrators do not edit or delete applied charges.
 - Administrators manage the catalog and approve/reject/adjust custom requests.
-- Administrator corrections are additive: a new charge with a reason. The original is
-  never edited or deleted.
-- There is no implemented reduction flow; do not show Adjustment or Reversal actions.
+- Administrator corrections use linked Adjustment/Reversal records with a required
+  reason; they do not edit or delete the original charge.
 - Pending, rejected, and withdrawn custom requests do not affect the balance.
 - Approval creates the applied charge; rejection or withdrawal creates no charge.
 - Only the requesting Staff member may withdraw a `Pending` request.
@@ -1127,7 +1131,8 @@ Do not store or hard-code totals in the UI model. Show them as derived summaries
 - Refund amounts are positive and cannot exceed the net amount paid.
 - The original payment becomes `PartiallyRefunded` or `Refunded` based on the cumulative
   refund total.
-- Do not offer Adjustment or Reversal creation.
+- Charge Adjustment and Reversal actions are Administrator-only and available from
+  reservation detail, not the generic payment form.
 - Administrator payment cleanup deletion is a repair-only action and does not repair the
   ledger.
 
@@ -1252,7 +1257,7 @@ Generate:
     - Staff → Reservation Detail → Record Refund.
     - Admin → Charge Catalog → Create/Edit/Deactivate.
     - Admin → Charge Requests → Approve/Reject/Adjust.
-    - Admin → Applied Charges → Additive Correction.
+    - Admin → Reservation Detail → Reduce Charge → Reverse Reduction.
     - Admin → Payments → Review → Cleanup Delete (repair only).
     - Admin → Employees → Roles.
     - Admin → Audit Logs → Entity History.
@@ -1279,8 +1284,6 @@ Do **not** add:
 - Edit or delete actions for settled applied charges.
 - Administrator deletion of applied charges; Staff delete before settlement only.
 - Administrator overriding applied-charge prices; catalog prices are snapshotted.
-- Adjustment or Reversal creation actions.
-- A charge-reduction flow. Administrator corrections are additive only.
 - Payment forms that let the user choose the transaction type.
 - A role selector on login.
 - Receptionist, Manager, Housekeeping, or System Admin roles.
@@ -1312,5 +1315,6 @@ rules in this brief, especially:
 - Username-based employee sign-in.
 - Per-assignment stay dates and per-kubo check-in/check-out.
 - Catalog-based applied charges and approval-gated custom requests.
-- Additive applied-charge corrections with no reduction flow.
+- Administrator charge reductions and linked reversals, with reasons and per-charge
+  amount limits.
 - Derived financial totals, with `charges_total` shown as Grand Total.

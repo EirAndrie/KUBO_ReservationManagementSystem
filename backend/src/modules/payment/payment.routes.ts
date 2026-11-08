@@ -5,12 +5,16 @@ import {
       getPaymentByIdController,
       updatePaymentStatusController,
       refundPaymentController,
+      createChargeAdjustmentController,
+      reverseChargeAdjustmentController,
       getPaymentsController,
       deletePaymentCleanupController,
 } from "./payment.controllers";
 import {
       CreatePaymentSchema,
       RefundPaymentSchema,
+      CreateChargeAdjustmentSchema,
+      ReverseChargeAdjustmentSchema,
       UpdatePaymentStatusSchema,
 } from "./repository/payment.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
@@ -19,6 +23,21 @@ import { authorizeRoles } from "../auth/auth.middleware";
 const router = Router();
 
 // Payments scoped under a reservation
+router.post(
+      "/reservations/:reservationId/payments/adjustments",
+      authorizeRoles("administrator"),
+      requireUuidParam("reservationId"),
+      validateBody(CreateChargeAdjustmentSchema),
+      createChargeAdjustmentController,
+);
+router.post(
+      "/reservations/:reservationId/payments/adjustments/:adjustmentId/reversals",
+      authorizeRoles("administrator"),
+      requireUuidParam("reservationId"),
+      requireUuidParam("adjustmentId"),
+      validateBody(ReverseChargeAdjustmentSchema),
+      reverseChargeAdjustmentController,
+);
 router.post(
       "/reservations/:reservationId/payments",
       authorizeRoles("staff"),

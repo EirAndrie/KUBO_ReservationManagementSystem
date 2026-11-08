@@ -9,6 +9,8 @@ import type {
   PaymentStatus,
   CreatePaymentPayload,
   CreateRefundPayload,
+  CreateChargeAdjustmentPayload,
+  ReverseChargeAdjustmentPayload,
   ApplyCatalogChargePayload,
   CreateChargeRequestPayload,
 } from '../types/payment.types';
@@ -55,6 +57,26 @@ export function useIssueRefund() {
   return useAppMutation<Payment, CreateRefundPayload>({
     mutationFn: (payload) => paymentService.refund(payload),
     successMessage: 'Refund issued.',
+    onSuccess: () => invalidateMoney(queryClient),
+  });
+}
+
+/** Creates an Administrator-only non-cash credit against a charge. */
+export function useCreateChargeAdjustment() {
+  const queryClient = useQueryClient();
+  return useAppMutation<Payment, CreateChargeAdjustmentPayload>({
+    mutationFn: (payload) => paymentService.adjustCharge(payload),
+    successMessage: 'Charge reduction recorded.',
+    onSuccess: () => invalidateMoney(queryClient),
+  });
+}
+
+/** Appends an Administrator-only reversal against an earlier adjustment. */
+export function useReverseChargeAdjustment() {
+  const queryClient = useQueryClient();
+  return useAppMutation<Payment, ReverseChargeAdjustmentPayload>({
+    mutationFn: (payload) => paymentService.reverseChargeAdjustment(payload),
+    successMessage: 'Charge reduction reversed.',
     onSuccess: () => invalidateMoney(queryClient),
   });
 }

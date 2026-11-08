@@ -73,18 +73,22 @@ function rangeStart(range: DateRange): string | undefined {
   return undefined;
 }
 
-/** Signed cash-flow amount: refunds are negative. */
-const signed = (p: Payment) => (p.transaction_type === 'Refund' ? -p.payment_amount : p.payment_amount);
+/** Signed ledger amount: charge credits and refunds are negative; reversals restore the due amount. */
+const signed = (p: Payment) =>
+  p.transaction_type === 'Refund' || p.transaction_type === 'Adjustment'
+    ? -p.payment_amount
+    : p.payment_amount;
 
 function exportCsv(rows: Payment[], guestOf: (id: string) => string) {
-  const header = ['Date', 'Reservation', 'Guest', 'Transaction', 'Type', 'Method', 'Status', 'Amount', 'Recorded by'];
+  const header = ['Date', 'Reservation', 'Guest', 'Transaction', 'Type', 'Description', 'Method', 'Status', 'Amount', 'Recorded by'];
   const lines = rows.map((p) =>
     [
       resortTime(p.payment_date).format('YYYY-MM-DD HH:mm'),
       p.reservation_reference ?? '',
       guestOf(p.reservation_id),
       p.transaction_type,
-      label(p.payment_type),
+      p.transaction_type === 'Payment' ? label(p.payment_type) : label(p.transaction_type),
+      p.description ?? '',
       label(p.payment_method),
       label(p.payment_status),
       signed(p).toFixed(2),
@@ -212,7 +216,15 @@ export const PaymentListPage: React.FC = () => {
       title: 'Reservation',
       render: (_, p) => <TwoLine primary={<span className="mono">{p.reservation_reference ?? '—'}</span>} secondary={guestOf(p.reservation_id) || undefined} />,
     },
-    { title: 'Type', render: (_, p) => (p.transaction_type === 'Refund' ? 'Refund' : label(p.payment_type)) },
+    {
+      title: 'Type',
+      render: (_, p) => (
+        <TwoLine
+          primary={p.transaction_type === 'Payment' ? label(p.payment_type) : label(p.transaction_type)}
+          secondary={p.description ?? undefined}
+        />
+      ),
+    },
     { title: 'Method', render: (_, p) => label(p.payment_method) },
     { title: 'Date', width: 160, render: (_, p) => <span className="tabular">{formatDateTime(p.payment_date)}</span> },
     { key: 'menu', width: 48, align: 'center', render: (_, p) => <RowMenu items={menuFor(p)} label="Payment actions" /> },

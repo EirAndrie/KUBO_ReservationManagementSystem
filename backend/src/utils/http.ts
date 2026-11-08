@@ -37,6 +37,7 @@ export const mapDatabaseError = (
                         400,
                         databaseError.message ?? "Duplicate record",
                   );
+            case "23001":
             case "23503":
                   return new AppError(
                         409,

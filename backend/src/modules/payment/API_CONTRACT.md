@@ -30,8 +30,9 @@ System.
 | Operation | Required business role |
 |---|---|
 | `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH` | `Staff` (stored `role_name` equals `staff`, exact) |
-| `DELETE /payments/:paymentId` | `Administrator` (stored `role_name` equals `administrator`, exact) |
+| Routine payment `POST`, `PATCH` | `Staff` (stored `role_name` equals `Staff`, case-insensitive) |
+| Charge adjustment and reversal `POST` | `Administrator` |
+| `DELETE /payments/:paymentId` | `Administrator` (`Admin` or `Administrator`, case-insensitive) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.
@@ -78,13 +79,16 @@ an array; on single operations it is an object. There is no `data` wrapper.
 | `payment_method` | string | No | See §1.8 |
 | `payment_status` | string | No | See §1.9 |
 | `payment_date` | string (ISO 8601) | No | Server-controlled timestamp |
+| `description` | string or `null` | Yes | Required for `Adjustment` and `Reversal` |
+| `related_payment_id` | string (UUID) or `null` | Yes | A Reversal references the Adjustment it offsets |
+| `related_charge_id` | string (UUID) or `null` | Yes | Applied charge corrected by an Adjustment or Reversal |
 
 ### 1.6 Transaction types
 
 `Payment`, `Refund`, `Adjustment`, `Reversal`.
 
-Only `Payment` and `Refund` are created by this module. `Adjustment` and `Reversal`
-are recognized values but have no implemented endpoint or balance effect.
+All four transaction types are created by this module. Administrators create
+`Adjustment` and `Reversal` rows through the charge-correction endpoints in §9.
 
 ### 1.7 Payment types
 
@@ -119,6 +123,10 @@ Setting the same status is a no-op that returns the current payment.
 - A `Payment` transaction counts as received when its status is `Completed`,
   `PartiallyRefunded`, or `Refunded`.
 - A `Refund` transaction reduces net paid only when its status is `Completed`.
+- A completed `Adjustment` reduces the outstanding balance by its positive amount;
+  it is a non-cash credit and does not change `net_paid`.
+- A completed `Reversal` offsets a prior Adjustment and increases the outstanding
+  balance by its positive amount; it does not change `net_paid`.
 - `Pending`, `Processing`, `Failed`, and `Cancelled` rows do not affect the balance.
 - Reservation `net_paid` and `outstanding_balance` are always derived, never stored.
 
@@ -142,6 +150,8 @@ Request bodies accept these aliases:
 | `paymentMethod` | `payment_method` |
 | `status` | `paymentStatus`, `payment_status` |
 | `originalPaymentId` | `original_payment_id` |
+| `chargeId` | `charge_id`, `related_charge_id` |
+| `description` | `reason` |
 
 The response always uses snake_case.
 
@@ -154,6 +164,9 @@ fields are stripped by Zod.
 `paymentAmount` must be a JSON **number**, not a numeric string. Amounts may have
 at most 2 decimal places.
 
+Adjustment and reversal amounts must be positive. Their description/reason is
+required and limited to 255 characters.
+
 ### 1.14 Path parameter validation
 
 `reservationId` and `paymentId` must be UUIDs matching the shared UUID pattern
@@ -164,6 +177,7 @@ at most 2 decimal places.
 | PostgreSQL code | HTTP status |
 |---|---:|
 | `23505` | `400` |
+| `23001` | `409` |
 | `23503` | `409` |
 | `23514` | `400` |
 | `22023` | `400` |
@@ -180,6 +194,8 @@ at most 2 decimal places.
 | `POST` | `/reservations/:reservationId/payments` | Staff | Record a pending payment |
 | `GET` | `/reservations/:reservationId/payments` | Authenticated | List all transactions for a reservation |
 | `POST` | `/reservations/:reservationId/payments/refund` | Staff | Record a refund |
+| `POST` | `/reservations/:reservationId/payments/adjustments` | Administrator | Reduce an applied charge |
+| `POST` | `/reservations/:reservationId/payments/adjustments/:adjustmentId/reversals` | Administrator | Reverse a charge reduction |
 | `GET` | `/payments` | Authenticated | Filtered, paginated payment list |
 | `GET` | `/payments/:paymentId` | Authenticated | Get one payment |
 | `PATCH` | `/payments/:paymentId/status` | Staff | Apply a status transition |
@@ -604,29 +620,84 @@ Behavior notes:
 
 ---
 
-## 9. `DELETE /payments/:paymentId`
+## 9. Administrator charge corrections
 
-Cleanup-only hard deletion. Normal corrections use refunds.
+### `POST /reservations/:reservationId/payments/adjustments`
 
-### 9.1 Access
+Creates a completed, non-cash credit against one applied additional charge.
+
+- **Access:** Active Administrator only.
+- **Body:**
+
+```json
+{
+  "chargeId": "<applied-charge-uuid>",
+  "paymentAmount": 250.00,
+  "description": "Corrected duplicate minibar charge"
+}
+```
+
+- `chargeId` must identify an applied charge belonging to the reservation.
+- `paymentAmount` must be positive and no greater than the charge's remaining
+  reducible amount after earlier Adjustments and Reversals.
+- The transaction is stored as `Adjustment`, `Completed`, `AdditionalCharge`, and
+  `Other`. It decreases the outstanding balance without changing cash `net_paid`.
+  After payment was collected, this may leave a credit balance until a normal Refund
+  is recorded.
+- Success returns `201 Created` with the new payment object under `payments`,
+  including `description` and `related_charge_id`.
+- The payment row and audit event are atomic. Staff receive `403`; a missing or
+  unrelated charge receives `404`; an excessive amount receives `400`.
+
+### `POST /reservations/:reservationId/payments/adjustments/:adjustmentId/reversals`
+
+Appends a positive Reversal that undoes some or all of a prior charge Adjustment.
+
+- **Access:** Active Administrator only.
+- **Body:**
+
+```json
+{
+  "paymentAmount": 100.00,
+  "description": "Reinstated amount after review"
+}
+```
+
+- `adjustmentId` must identify a completed Adjustment for the same reservation.
+- The amount must not exceed the un-reversed portion of that Adjustment.
+- The Reversal references its Adjustment through `related_payment_id` and increases
+  the outstanding balance by its amount.
+- Success returns `201 Created` with the new payment object under `payments`.
+- Reversals cannot target a Payment, Refund, or another Reversal. Use the Refund
+  endpoint for money actually returned to a guest.
+
+Both endpoints accept `payment_amount` in place of `paymentAmount`, and `reason` in
+place of `description`.
+
+## 10. `DELETE /payments/:paymentId`
+
+Cleanup-only hard deletion. Cash returned to a guest uses a Refund; applied-charge
+reductions use Adjustment/Reversal records.
+
+### 10.1 Access
 
 Administrator only.
 
-### 9.2 Path parameters
+### 10.2 Path parameters
 
 | Parameter | Type | Required | Constraints |
 |---|---|---:|---|
 | `paymentId` | string (UUID) | Yes | Must match the shared UUID pattern |
 
-### 9.3 Request body
+### 10.3 Request body
 
 None.
 
-### 9.4 Success response — `204 No Content`
+### 10.4 Success response — `204 No Content`
 
 No response body.
 
-### 9.5 Business rules and failures
+### 10.5 Business rules and failures
 
 | Condition | Status | Message |
 |---|---:|---|
@@ -645,7 +716,7 @@ Behavior notes:
   records. Deleting a refund does not restore the original payment’s status.
 - The audit row is written after the delete and records the deleted row.
 
-### 9.6 Side effects
+### 10.6 Side effects
 
 - Deletes one `kubo.payment` row.
 - Inserts one `kubo.audit_log` row with `action = Delete`, `entityType = payment`,
@@ -653,7 +724,7 @@ Behavior notes:
 
 ---
 
-## 10. Known contract quirks
+## 11. Known contract quirks
 
 - Refunds have no stored link to the original payment. The relationship exists only
   in the audit description.

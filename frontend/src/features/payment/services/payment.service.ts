@@ -7,6 +7,8 @@ import type {
   ChargeRequestStatus,
   CreatePaymentPayload,
   CreateRefundPayload,
+  CreateChargeAdjustmentPayload,
+  ReverseChargeAdjustmentPayload,
   ApplyCatalogChargePayload,
   CreateChargeRequestPayload,
   PaymentFilterParams,
@@ -57,7 +59,10 @@ function mapPaymentRecord(row: Row): Payment {
     payment_method: matchEnum<PaymentMethod>(PAYMENT_METHODS, row.payment_method, 'Other'),
     payment_status: normalizePaymentStatus(row.payment_status),
     payment_date: String(row.payment_date ?? row.created_at ?? ''),
-    notes: row.notes ? String(row.notes) : null,
+    description: row.description ? String(row.description) : null,
+    related_payment_id: row.related_payment_id ? String(row.related_payment_id) : null,
+    related_charge_id: row.related_charge_id ? String(row.related_charge_id) : null,
+    notes: row.description ? String(row.description) : row.notes ? String(row.notes) : null,
   };
 }
 
@@ -173,6 +178,28 @@ export const paymentService = {
       paymentType: payload.paymentType,
       paymentMethod: payload.paymentMethod,
     });
+    return mapPaymentRecord(oneOf(res, 'payments'));
+  },
+
+  /** Records an audited Administrator credit linked to an applied charge. */
+  adjustCharge: async (payload: CreateChargeAdjustmentPayload): Promise<Payment> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/payments/adjustments`, {
+      chargeId: payload.chargeId,
+      paymentAmount: Number(payload.paymentAmount.toFixed(2)),
+      description: payload.description,
+    });
+    return mapPaymentRecord(oneOf(res, 'payments'));
+  },
+
+  /** Reverses a previous charge Adjustment; this does not issue a cash refund. */
+  reverseChargeAdjustment: async (payload: ReverseChargeAdjustmentPayload): Promise<Payment> => {
+    const res = await apiClient.post(
+      `/reservations/${payload.reservationId}/payments/adjustments/${payload.adjustmentPaymentId}/reversals`,
+      {
+        paymentAmount: Number(payload.paymentAmount.toFixed(2)),
+        description: payload.description,
+      },
+    );
     return mapPaymentRecord(oneOf(res, 'payments'));
   },
 

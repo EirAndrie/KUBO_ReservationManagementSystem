@@ -4,6 +4,8 @@ import {
       getPaymentById,
       updatePaymentStatus,
       recordRefund,
+      recordChargeAdjustment,
+      reverseChargeAdjustment,
       getPayments,
       deletePaymentCleanup,
 } from "./repository/payment.repository";
@@ -11,6 +13,8 @@ import { AppError } from "../../utils/http";
 import type {
       CreatePaymentDTO,
       RefundPaymentDTO,
+      CreateChargeAdjustmentDTO,
+      ReverseChargeAdjustmentDTO,
       UpdatePaymentStatusDTO,
       WithActor,
 } from "./repository/payment.schema";
@@ -54,6 +58,26 @@ export const refundPaymentService = async (
 ) => {
       return recordRefund(reservationId, data);
 };
+
+/**
+ * Applies an Administrator's non-cash reduction to one applied charge.
+ * The database enforces the role, charge ownership, remaining reducible amount,
+ * audit write, and atomic balance-ledger insert.
+ */
+export const createChargeAdjustmentService = async (
+      reservationId: string,
+      data: WithActor<CreateChargeAdjustmentDTO>,
+) => recordChargeAdjustment(reservationId, data);
+
+/**
+ * Appends a partial or full reversal of an earlier charge Adjustment.
+ * Actual cash returned to a guest remains a Staff Refund operation.
+ */
+export const reverseChargeAdjustmentService = async (
+      reservationId: string,
+      adjustmentPaymentId: string,
+      data: WithActor<ReverseChargeAdjustmentDTO>,
+) => reverseChargeAdjustment(reservationId, adjustmentPaymentId, data);
 
 export const getPaymentsService = async (params: {
       reservationId?: string;

@@ -87,11 +87,11 @@ export const PAYMENT_STATUS_TAGS: Record<PaymentStatus, { color: string }> = {
 export const PAYMENT_POLICIES = {
   DERIVED_BALANCE: 'The balance is worked out from bookings, charges and payments; it is never typed in.',
   APPEND_ONLY_CHARGES: 'Charges can’t be edited after settlement. Corrections are added as new entries.',
-  BALANCE_FORMULA: 'Balance due = accommodation + applied charges − (payments − refunds).',
+  BALANCE_FORMULA: 'Balance due = accommodation + applied charges − net payments − charge reductions.',
   CURRENCY: 'Amounts are in Philippine pesos with two decimal places.',
   NO_OVERPAYMENT: 'A payment can’t be more than the balance due.',
   REFUND_LIMIT: 'Refunds can’t be more than what the guest has paid.',
-  NO_HARD_DELETION: 'Payments are permanent records. Use a refund to correct one.',
+  NO_HARD_DELETION: 'Payments are permanent records. Use a refund for cash returned or a linked reversal for a charge reduction.',
 } as const;
 
 /** Select dropdown options */

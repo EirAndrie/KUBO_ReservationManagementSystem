@@ -597,10 +597,13 @@ instead (retained from old rule `l`).
   reservation is checked out, it must not be silently edited or deleted. Corrections
   must be recorded as a new, audited charge/payment adjustment. Pending, rejected, or
   withdrawn custom requests are not applied charges and do not affect the bill.
-  The DDL has no charge status or void flag, so this is an operational control.
+  An applied charge referenced by an Adjustment/Reversal must remain as the ledger
+  source even before settlement. The DDL has no charge status or void flag, so this is
+  an operational control plus a restrictive payment foreign key.
 - **Entities:** `additional_charge`, `additional_charge_request`, `payment`,
   `audit_log`
-- **Enforcement:** Application policy and audit trail.
+- **Enforcement:** Application policy and audit trail; a restrictive foreign key
+  retains charges referenced by an Adjustment or Reversal.
 
 #### BR-047 — Derived billing amounts
 - **Rule:** The following definitions apply:
@@ -613,16 +616,22 @@ instead (retained from old rule `l`).
                         for applied charges only
 
   net_paid            = Σ payment_amount where transaction_type = 'Payment'
-                        and payment_status = 'Completed'
+                        and payment_status in ('Completed', 'PartiallyRefunded', 'Refunded')
                       − Σ payment_amount where transaction_type = 'Refund'
                         and payment_status = 'Completed'
 
-  outstanding_balance = charges_total − net_paid
+  net_charge_reductions = Σ payment_amount where transaction_type = 'Adjustment'
+                           and payment_status = 'Completed'
+                         − Σ payment_amount where transaction_type = 'Reversal'
+                           and payment_status = 'Completed'
+
+  outstanding_balance = charges_total − net_paid − net_charge_reductions
   ```
 
   Pending, rejected, and withdrawn custom requests are excluded from billing.
-  `Adjustment` and `Reversal` transactions do not alter `net_paid` until their
-  semantics are confirmed (see gap G-07).
+  Adjustments and Reversals change the outstanding balance, but never change cash
+  `net_paid`. A negative outstanding balance represents a credit due to the guest;
+  a cash payout must be represented by a separate Refund.
 - **Entities:** `reserved_kubo`, `additional_charge`,
   `additional_charge_request`, `payment`
 - **Enforcement:** Application/reporting-level aggregation. No stored totals.
@@ -683,7 +692,10 @@ instead (retained from old rule `l`).
 #### BR-052 — Completed payments count toward the balance
 - **Rule:** Only `Completed` `Payment` transactions increase `net_paid`, and only
   `Completed` `Refund` transactions decrease it. `Pending`, `Processing`, `Failed`, and
-  `Cancelled` records do not affect the balance.
+  `Cancelled` records do not affect the balance. A completed `Adjustment` is a
+  non-cash credit that reduces the outstanding balance; a completed `Reversal`
+  offsets a prior Adjustment and increases the outstanding balance. Neither changes
+  `net_paid`.
 - **Entities:** `payment`
 - **Enforcement:** Application-level aggregation (BR-047).
 
@@ -724,10 +736,11 @@ instead (retained from old rule `l`).
 - **Rule:** A completed payment must not be hard-deleted. Staff refund it as a
   `Refund` transaction (BR-054). An Administrator may record an audited
   `Adjustment`/`Reversal` as an administrative correction after review (BR-081); these
-  transactions are not part of routine Staff payment entry (BR-005). The DDL permits
-  deletion of a payment row, so the no-deletion policy is application-level.
-  The effect of `Adjustment` and `Reversal` on the derived balance is unresolved
-  (gap G-07).
+  transactions are not part of routine Staff payment entry (BR-005). An Adjustment
+  reduces one applied charge by a positive amount; a Reversal references and offsets
+  some or all of that Adjustment. Both require a reason, are completed at creation,
+  and are append-only. The DDL permits cleanup deletion, which remains restricted to
+  Administrators and must be audited.
 - **Entities:** `payment`, `audit_log`
 - **Enforcement:** Application policy and authorization; no DDL protection against
   deleting a payment row.
@@ -989,9 +1002,12 @@ instead (retained from old rule `l`).
     a reason in `description`;
   - a **reduction** cannot be stored as a negative `additional_charge` because
     `amount >= 0`; it must be recorded as a `payment` with
-    `transaction_type = 'Adjustment'` or `'Reversal'` and the required
-    `payment_type`/`payment_method` (BR-049), whose balance semantics remain
-    unresolved (G-07); and
+    `transaction_type = 'Adjustment'`, a positive amount, a reason, and a link to the
+    applied charge. The reduction cannot exceed the charge's remaining unadjusted
+    amount. A `Reversal` references a prior Adjustment and restores up to the amount
+    of that credit. Both are completed, audited, and change the derived outstanding
+    balance without changing cash `net_paid`. An actual cash return remains a
+    `Refund` transaction; and
   - the correction must be attributable to the Administrator through `employee_id`
     and must be audited (BR-067, BR-068).
 - **Rule:** Rejecting a custom request and adjusting its approved amount require a
@@ -1061,7 +1077,7 @@ instead (retained from old rule `l`).
 | **G-04** | No soft-delete flag on `guest` or `kubo`. | Records without references can be hard-deleted; history policy must be enforced operationally. |
 | **G-05** | No database constraint requires at least one `reserved_kubo` per reservation. | Header-only reservations are possible unless the procedure enforces the invariant. |
 | **G-06** | The DDL has no `total_reservation_amount`, but the ERD/backend code still reference a total amount, and the ERD's `AUDIT_LOG` has `ip_address`, which the DDL lacks. | Totals must be derived; the ERD and backend schema are stale and must not be treated as the source of truth. |
-| **G-07** | `payment` has no reference to an original payment, no description, and `Adjustment`/`Reversal` semantics are undefined. | Refund/reversal traceability is limited to the audit log; balance effects cannot be computed reliably. |
+| **G-07 (resolved 2026-11-08)** | Payment corrections now store a description and links to the applied charge or Adjustment they reference. Completed Adjustments reduce the bill; completed Reversals offset an Adjustment. | Actual refunds remain separate Refund transactions; Adjustment/Reversal amounts are derived separately from cash `net_paid`. |
 | **G-08** | No party-size/guest-count column on `reservation` or `reserved_kubo`. | The system cannot validate occupancy against `kubo_type.capacity`; staff must do it manually. |
 | **G-09** | No shift schedule, attendance, `date_hired`, emergency-contact, or middle-initial fields (removed from the DDL). | Old staff-scheduling and attendance rules cannot be implemented. |
 | **G-10** | Additional charges now use a managed catalog plus custom requests. | There is still no generic service catalog beyond `additional_charge_catalog`; free-form services remain unsupported. |
