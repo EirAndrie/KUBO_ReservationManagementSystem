@@ -1131,3 +1131,281 @@ The companion diagrams are:
 | Additional Charge Management Flow (Administrator) | BR-046, BR-057, BR-081 |
 | Check-in and Check-out Flow (Staff) | BR-058–BR-066 |
 | Status Lifecycles | BR-021, BR-033, BR-051 |
+
+---
+
+## 17. Addendum — Day-Use and Exclusive-Event Bookings
+
+| | |
+|---|---|
+| **Added** | 2026-11-10 |
+| **Source** | Confirmed client rules for day-use and exclusive-event bookings |
+| **Implemented by** | `backend/src/migrations/20261110_add_day_use_and_event_bookings.sql` and the reservation, reserved-kubo, and kubo-type modules |
+| **Numbering** | Continues the existing sequences: BR-083–BR-093, A-12–A-23, G-17–G-24 |
+
+This addendum adds booking types to the reservation model. Overnight bookings keep
+every existing rule except where Section 17.3 amends it. Where the addendum and an
+earlier section disagree, the addendum wins for the behavior it describes.
+
+### 17.1 Confirmed client pricing
+
+| Item | Amount (PHP) | Unit | Stored in |
+|---|---:|---|---|
+| Day use | 800 | per kubo, good for 2 persons, same for every kubo type | `kubo_type.day_use_rate` |
+| Day use upgraded to overnight | +700 | per upgraded kubo, on top of the day-use fee (1,500 total for one night) | catalog item `Day-use to overnight upgrade` |
+| Early check-in or late check-out | 150 | per hour | catalog item `Early/late fee` |
+| Entrance fee (swimming only) | 50 | per person | catalog item `Entrance fee` |
+| Exclusive-use package (whole resort) | 6,000 | per night, all kubos | catalog item `Exclusive-use package` |
+| Electricity and utilities (event) | 1,000 | per night | catalog item `Electricity and utilities` |
+| Extra person (event) | 500 | per person above 8, per night | catalog item `Extra person` |
+| Extra mattress | 500 | each | catalog item `Extra mattress` |
+| Extra breakfast | 150 | each | catalog item `Extra breakfast` |
+| Deposit — overnight | 500 | per assigned kubo | derived (BR-090) |
+| Deposit — event | 3,500 | per event | derived (BR-090) |
+| Deposit — day use | none | | |
+
+Standard check-in and check-out are 12:00 to 12:00. A deposit is refundable only when
+the client cancels within 15 days after booking (BR-091). The resort has exactly 4
+kubos, and an event admits at least 8 persons.
+
+### 17.2 Rules
+
+#### BR-083 — Booking types
+- **Rule:** Every reservation has one `booking_type`: `Overnight` (the default),
+  `DayUse`, or `Event`. Reservations that existed before this addendum are
+  `Overnight`. The type is chosen when the reservation is created and is never edited
+  afterwards. The only type change is the day-use upgrade (BR-085).
+- **Entities:** `reservation`
+- **Enforcement:** `kubo.booking_type` enum on `reservation.booking_type`,
+  `NOT NULL DEFAULT 'Overnight'`. The date shape and pricing that depend on the type
+  are enforced in the stored routines (BR-029 as amended).
+
+#### BR-084 — Day-use booking
+- **Rule:** A day-use booking occupies a kubo for one date and ends at 17:00.
+  - `check_out_date` equals `check_in_date`. If the client omits the check-out date,
+    it defaults to the check-in date.
+  - `price_at_booking` is copied from `kubo_type.day_use_rate` when the assignment is
+    created or re-dated. Day use is a flat fee per kubo, not a nightly rate, and it is
+    the same for every kubo type (800 for all existing types).
+  - A day-use assignment counts as one night in every derived total (BR-093).
+  - `scheduled_check_out_time` defaults to 17:00 when it is not supplied.
+  - No deposit is required (BR-090).
+  - A kubo type used in a day-use booking must have a non-null `day_use_rate` that is
+    greater than or equal to zero. A type without one cannot be booked as day use.
+  - A day-use assignment may be checked in on its booked date. The BR-059 rule that
+    rejects check-in on `check_out_date` does not apply to `DayUse`.
+  - Day use is a walk-in product that is paid upfront. This is operational policy.
+    The system does not restrict `booking_source` and does not require payment before
+    check-in; the zero-balance check-out guard (BR-064) is the only payment gate
+    (G-18).
+  - The 2-person allowance is informational. No per-person charge or capacity check
+    applies to the day-use fee (G-17).
+- **Entities:** `reservation`, `reserved_kubo`, `kubo_type`
+- **Enforcement:** `kubo_type.day_use_rate numeric(10,2) CHECK (day_use_rate >= 0)`,
+  nullable. The same-date rule, the non-null rate requirement, the price snapshot,
+  and the 17:00 default are enforced in the create, add, and update routines.
+
+#### BR-085 — Day-use to overnight upgrade
+- **Rule:** Staff may convert an active `DayUse` reservation (`Pending`, `Confirmed`,
+  or `CheckedIn`) into an `Overnight` reservation for a requested number of nights
+  (a positive integer). The operation is atomic and audited:
+  1. Every `Reserved` or `CheckedIn` assignment gets
+     `check_out_date = check_in_date + nights`. The upgrade is rejected when any
+     assignment is already `CheckedOut`, or when there is no assignment to upgrade.
+  2. Availability is re-validated for the extended range under BR-092, excluding the
+     reservation's own assignments, with the row locking of BR-032.
+  3. `price_at_booking` is not changed and keeps the day-use snapshot. Extra nights
+     are billed at that snapshot (A-15). `scheduled_check_out_time` is cleared
+     because the 17:00 day-use default no longer applies.
+  4. The reservation becomes `Overnight`.
+  5. The catalog item `Day-use to overnight upgrade` is applied once per upgraded
+     kubo through the normal catalog path, so quantity and unit price are
+     snapshotted (BR-042, BR-045).
+
+  For a single night the amount per kubo is 800 (accommodation) + 700 (upgrade) =
+  1,500.
+- **Entities:** `reservation`, `reserved_kubo`, `additional_charge`, `audit_log`
+- **Enforcement:** Stored routine in one transaction; Staff-only at the route and in
+  the routine.
+
+#### BR-086 — Standard times and time-based or per-unit fees
+- **Rule:** Standard check-in and check-out are 12:00 to 12:00. Early check-in or late
+  check-out costs 150 per hour. The entrance fee is 50 per person (swimming only).
+  An extra mattress is 500 and an extra breakfast is 150. Each is a catalog item that
+  Staff apply with a `quantity` equal to the hours, persons, or units (BR-042–BR-044).
+  The system does not derive hours from the actual timestamps and does not apply
+  these fees automatically (G-19).
+- **Entities:** `additional_charge_catalog`, `additional_charge`
+- **Enforcement:** Seeded catalog items (A-17); the existing Staff catalog path.
+
+#### BR-087 — Guest count
+- **Rule:** A reservation may store a `guest_count`, a positive whole number. It is
+  required, and at least 8, for an `Event`. It is optional for `Overnight` and
+  `DayUse`, and it is informational there: it is not compared with
+  `kubo_type.capacity` (G-17). It may be corrected on a `Pending` or `Confirmed`
+  non-event reservation. It is fixed for an `Event` because the extra-person charge
+  is applied at creation (A-20).
+- **Entities:** `reservation`
+- **Enforcement:** `CHECK (guest_count IS NULL OR guest_count > 0)` and
+  `CHECK (booking_type <> 'Event' OR guest_count >= 8)`. Partly resolves G-08.
+
+#### BR-088 — Exclusive-event booking
+- **Rule:** An event reserves the whole resort for a normal overnight date range
+  (`check_out_date > check_in_date`, not in the past).
+  - Staff supply the date range and the guest count. They do not choose kubos.
+  - The system assigns every kubo (A-16) with `price_at_booking = 0`, so the
+    accommodation total of an event is 0 and its price is carried by catalog charges.
+    The event is rejected if any kubo is not bookable under the existing kubo status
+    rules.
+  - No other guest may stay during the event dates. The event is rejected when any
+    `Reserved` or `CheckedIn` assignment of an active reservation on any kubo overlaps
+    the range (BR-092). By the same rule, any later booking that overlaps an active
+    event is rejected.
+  - At creation the system applies these catalog items through the existing catalog
+    path, so each charge snapshots its quantity and unit price and is audited
+    (A-13, A-14):
+    - `Exclusive-use package` × nights;
+    - `Electricity and utilities` × nights;
+    - `Extra person` × (`guest_count` − 8) × nights, only when `guest_count` > 8.
+  - Event assignments cannot be added, re-dated, or removed after creation (A-20).
+- **Entities:** `reservation`, `reserved_kubo`, `kubo`, `additional_charge`
+- **Enforcement:** Stored routine in one transaction with kubo row locks (BR-032).
+
+#### BR-089 — Event approval (Administrator carve-out)
+- **Rule:** An `Event` is created `Pending` by Staff and is confirmed only by an
+  Administrator. Confirmation is the approval. It follows BR-033 and BR-034 and also
+  requires the deposit in BR-090. Staff cannot confirm an `Event`, and an
+  Administrator cannot confirm any other booking type. This is the only reservation
+  lifecycle action open to an Administrator. Creating, modifying, cancelling, marking
+  no-show, and checking in or out remain Staff-only, including for events.
+- **Entities:** `reservation`, `audit_log`
+- **Enforcement:** The confirm route accepts both roles; the service then checks the
+  role against the booking type, and the routine rejects a non-Administrator actor
+  for an `Event`. The acting employee is always the authenticated employee.
+
+#### BR-090 — Deposits and confirmation
+- **Rule:** The required deposit is derived, never stored:
+
+  | Booking type | Required deposit |
+  |---|---|
+  | `Overnight` | 500 × the number of assignments on the reservation |
+  | `Event` | 3,500 |
+  | `DayUse` | none |
+
+  Confirming an `Overnight` or `Event` reservation requires completed deposit
+  payments of at least the required deposit. A completed deposit payment is a `Payment`
+  transaction with `payment_type = 'Deposit'` and `payment_status = 'Completed'`. A
+  deposit payment that has since been refunded no longer counts. `DayUse` is exempt.
+  Deposits are recorded through the normal payment flow (BR-049–BR-053) and count
+  toward `net_paid`, so they are credited against the final balance. This supersedes
+  A-06 for `Overnight` and `Event`.
+- **Entities:** `reservation`, `payment`
+- **Enforcement:** Checked inside the confirm routine; amounts are constants in the
+  routines (A-19, G-20).
+
+#### BR-091 — Deposit refund window
+- **Rule:** A refund of a payment recorded as `Deposit` is allowed only when the
+  reservation is `Cancelled` and `cancelled_at` is no later than 15 days after
+  `reserved_at` (A-12). Otherwise the refund routine rejects it. A deposit is not
+  refundable on a reservation that is not cancelled, including a no-show. The window
+  is judged at cancellation time, so a refund recorded after day 15 is still allowed
+  when the cancellation itself was on time. All other refund rules in BR-054 are
+  unchanged.
+- **Rule (refund linkage):** The schema still has no link from a refund to its original
+  payment (BR-054). Staff pass the original payment ID to the refund routine, which
+  loads that payment and its reservation to apply the window. The link is then stored,
+  as before, in the refund's audit description (`Recorded refund of <amount> against
+  payment <payment_id>`), and that description is how cumulative refunds of one
+  original are totalled. The 15-day check reads the original payment directly, so it
+  does not depend on the description. Cancelling does not refund automatically
+  (BR-035). The cancellation audit entry records whether the deposit is still
+  refundable.
+- **Entities:** `payment`, `reservation`, `audit_log`
+- **Enforcement:** Validation added to the existing refund routine.
+
+#### BR-092 — Availability with same-date ranges (amends BR-031)
+- **Rule:** Every assignment occupies the half-open effective range
+  `[check_in_date, GREATEST(check_out_date, check_in_date + 1))`. Two assignments of
+  the same kubo conflict when their effective ranges overlap
+  (`a.start < b.end` and `b.start < a.end`) and the existing assignment is `Reserved`
+  or `CheckedIn` under an active reservation (`Pending`, `Confirmed`, or `CheckedIn`).
+
+  | New booking | Existing booking | Result |
+  |---|---|---|
+  | Day use on D | Day use on D | Conflict |
+  | Day use on D | Overnight D to D+1, or any stay covering D | Conflict |
+  | Day use on D | Overnight that checks out on D | No conflict |
+  | Overnight that checks out on D | Day use on D | No conflict |
+  | Overnight D to D+1 | Day use on D | Conflict |
+  | Event D to D+n | Any active assignment covering a night in the range | Conflict |
+
+  The rule applies to creation, adding or re-dating an assignment, the day-use upgrade,
+  event creation, and the availability search. A search with `checkIn` equal to
+  `checkOut` returns the kubos free for day use on that date. BR-032 is unchanged:
+  affected kubo rows are locked in a fixed order and the check and the write happen
+  in one transaction.
+- **Entities:** `reserved_kubo`, `kubo`
+- **Enforcement:** Stored routines; the DDL cannot enforce it (G-01). The
+  `reserved_kubo_dates_check` constraint is relaxed from `check_out_date > check_in_date`
+  to `check_out_date >= check_in_date`, because it cannot see `booking_type`. The
+  type-specific shape is enforced in the routines (G-23).
+
+#### BR-093 — Derived totals for day-use and event bookings (amends BR-039 and BR-047)
+- **Rule:** For each assignment, `nights = GREATEST(check_out_date − check_in_date, 1)`
+  and `accommodation_amount = nights × price_at_booking`. A day-use assignment is
+  therefore its flat fee, and an event assignment is 0. Reservation totals, charges,
+  net paid, and outstanding balance remain derived (BR-040). Reservation reads also
+  expose the derived `required_deposit` and `deposit_paid`.
+- **Entities:** `reserved_kubo`, `additional_charge`, `payment`
+- **Enforcement:** The balance and assignment-listing routines.
+
+### 17.3 Amendments to existing rules
+
+| Existing rule | Amendment |
+|---|---|
+| Section 3.2, BR-005, BR-076, BR-077, BR-082 | Confirming an `Event` is an Administrator action (BR-089). Every other reservation lifecycle action stays Staff-only. |
+| BR-016, BR-019 | `kubo_type` gains a nullable `day_use_rate`. `price_per_night` remains the only nightly rate. Administrators manage `day_use_rate` like the other type fields (BR-018). |
+| BR-029 | `check_out_date` must be later than `check_in_date` for `Overnight` and `Event`, and equal to it for `DayUse`. The table constraint is `>=` (BR-092). |
+| BR-030 | `price_at_booking` is the day-use flat fee for `DayUse` and 0 for `Event`. It is the nightly rate only for `Overnight`. |
+| BR-031, BR-032 | Overlap uses the effective ranges of BR-092. |
+| BR-034, A-06 | Confirmation of `Overnight` and `Event` reservations requires the deposit in BR-090. |
+| BR-035, BR-054 | A `Deposit` refund must satisfy BR-091. |
+| BR-037 | The assignments of an `Event` cannot be modified. A re-dated `DayUse` assignment is re-snapshotted from `day_use_rate`. |
+| BR-039, BR-047 | Nights are counted as in BR-093. |
+| BR-059 | A `DayUse` assignment may be checked in on `check_in_date` (BR-084). |
+| Section 1, G-08 | `guest_count` now stores party size (BR-087). Capacity is still not validated (G-17). |
+| BR-067 | The day-use upgrade, event confirmation, and the `day_use_rate` change are audited. |
+
+### 17.4 Assumptions requiring owner confirmation
+
+| ID | Assumption | Impact if wrong |
+|---|---|---|
+| **A-12** | The 15-day refund window is counted from `reservation.reserved_at` (the reservation's creation time) to `cancelled_at`. | The window start and the refund validation would change. |
+| **A-13** | Electricity and extra-person charges apply per night of the event. | The charge quantities at event creation would change. |
+| **A-14** | The package covers the 8-person minimum. Each guest above 8 is one `Extra person` unit per night. | Event totals for larger groups would change. |
+| **A-15** | The 700 upgrade is flat for every kubo type and is charged once per upgraded kubo. On a multi-night upgrade, the extra nights are billed at the day-use snapshot (800) per night; the client rule only defines the one-night total of 1,500. | Multi-night upgrade totals would change. |
+| **A-16** | An event assigns every row in `kubo.kubo`. The resort has exactly 4 kubos, but the count is not enforced, and the package is a flat price whatever the count. | An event would need a fixed kubo list or a count check. |
+| **A-17** | Catalog items with no matching `charge_type` use `Other` (`Entrance fee`, `Early/late fee`, `Exclusive-use package`, `Electricity and utilities`, `Day-use to overnight upgrade`). `Extra person` uses `ExtraPerson`, `Extra mattress` uses `ExtraBed`, and `Extra breakfast` uses `FoodAndBeverage`. Names already in the catalog are kept as they are, with their existing price and status. | Charge-type reports and catalog prices would change. |
+| **A-18** | The event and upgrade routines find their catalog items by case-insensitive name, and the items must stay active. | Renaming or deactivating them would block events or upgrades (G-24). |
+| **A-19** | Deposit amounts (500 per kubo, 3,500 per event) and the 8-guest minimum are constants in the database routines and a table constraint, not configuration. | A rate change needs a migration. |
+| **A-20** | Event assignments and the event guest count cannot be edited after creation. Changing an event means cancelling and creating a new one. | An event edit workflow would be needed, including recalculating the per-night charges. |
+| **A-21** | Only payments recorded with `payment_type = 'Deposit'` count as the deposit and fall under the refund window. | A deposit recorded under another payment type would escape both rules. |
+| **A-22** | An upgraded reservation is `Overnight` for every later rule, including the deposit check at confirmation and the refund window. | Upgraded reservations would need their own deposit rule. |
+| **A-23** | An Administrator confirming an `Event` writes the audit entry under the Administrator's own ID. | The audit attribution would change. |
+
+### 17.5 Remaining gaps
+
+| ID | Gap | Consequence |
+|---|---|---|
+| **G-17** | `guest_count` is not compared with `kubo_type.capacity`, and no rule limits a day-use kubo to 2 persons. | Staff must check occupancy manually. |
+| **G-18** | Walk-in source and payment before check-in for day use are policy only. | A day-use booking can use any booking source and be checked in unpaid. |
+| **G-19** | Hourly early/late fees and per-person entrance fees are not computed. | Staff must enter the correct quantity. |
+| **G-20** | Deposit amounts and the event minimum are hard-coded (A-19). | Changing them requires a migration. |
+| **G-21** | The refund-to-payment link still lives in the audit description, and the deposit refund rule depends on the payment type label (A-21). A deposit that was overpaid cannot be partly refunded outside the window. | Refund reconciliation relies on the audit log. |
+| **G-22** | Multi-night upgrade pricing is not defined by the client (A-15). | Owner confirmation is needed before multi-night upgrades are relied on. |
+| **G-23** | The booking-type date shape, the event rules, and deposit gating are enforced in stored routines. Only the guest-count constraints are declarative. | Direct SQL can bypass them. |
+| **G-24** | Event and upgrade routines depend on catalog names (A-18). | An Administrator can break event or upgrade creation by renaming or deactivating an item. |
+
+**Migration impact:** `Pending` overnight reservations that exist when the migration
+runs now need completed deposit payments before they can be confirmed (BR-090).
+Confirmed and later reservations are not affected.
