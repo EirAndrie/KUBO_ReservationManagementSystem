@@ -12,17 +12,53 @@ import auditLogsRoutes from "../modules/audit-logs/audit-logs.routes";
 import authRoutes from "./auth/auth.routes";
 import { authenticate } from "./auth/auth.middleware";
 import { db } from "../config/connectDB";
+import logger from "../utils/logger";
 
 const router = Router();
 
-// Health check route
+const HEALTH_DB_TIMEOUT_MS = 5000;
+
+/**
+ * Public health check used by the keep-alive workflow and hosting probes.
+ * Returns 200 when the API can reach PostgreSQL and 503 (JSON, not a generic
+ * 500) when the database is unreachable, so monitors can tell the API process
+ * is up but its dependency is down.
+ */
 router.get("/health", async (_req, res) => {
-    await db.query("SELECT 1"); // Ensure DB connection is alive
+    const timestamp = new Date().toISOString();
+
+    let timer: NodeJS.Timeout | undefined;
+    try {
+        // The pool has no connection timeout, so bound the probe; an
+        // unreachable host would otherwise hang the request.
+        await Promise.race([
+            db.query("SELECT 1"),
+            new Promise((_resolve, reject) => {
+                timer = setTimeout(
+                    () => reject(new Error("Database health probe timed out")),
+                    HEALTH_DB_TIMEOUT_MS,
+                );
+            }),
+        ]);
+    } catch (error: any) {
+        logger.error("Health check failed: database unreachable", {
+            message: error?.message,
+        });
+        return res.status(503).json({
+            success: false,
+            message: "Database unavailable",
+            database: "down",
+            timestamp,
+        });
+    } finally {
+        clearTimeout(timer);
+    }
 
     res.status(200).json({
         success: true,
         message: "API is running",
-        timestamp: new Date().toISOString(),
+        database: "up",
+        timestamp,
     });
 });
 
