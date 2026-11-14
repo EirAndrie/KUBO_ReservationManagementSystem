@@ -1,0 +1,49 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "backend-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "backend",
+        "run",
+        "dev"
+      ],
+      "env": {
+        "DB_NAME": "kubo_beach_resort_system_test",
+        "PORT": "8081",
+        "FR_ORIGIN": "http://localhost:3002"
+      },
+      "port": 8081
+    },
+    {
+      "name": "frontend-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3001"
+      ],
+      "env": {
+        "VITE_API_BASE_URL": "http://localhost:8081/KUBO_Resort/Management-System/v0.0.1"
+      },
+      "port": 3001
+    }
+  ]
+}
