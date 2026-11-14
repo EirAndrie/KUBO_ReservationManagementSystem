@@ -8,6 +8,9 @@ import {
       reverseChargeAdjustment,
       getPayments,
       deletePaymentCleanup,
+      getOverpaymentApprovals,
+      createOverpaymentApproval,
+      revokeOverpaymentApproval,
 } from "./repository/payment.repository";
 import { AppError } from "../../utils/http";
 import type {
@@ -16,10 +19,16 @@ import type {
       CreateChargeAdjustmentDTO,
       ReverseChargeAdjustmentDTO,
       UpdatePaymentStatusDTO,
+      CreateOverpaymentApprovalDTO,
       WithActor,
 } from "./repository/payment.schema";
 import type { Pagination } from "../../utils/pagination";
 
+/**
+ * Records a Pending payment. A payment above the outstanding balance needs an
+ * Administrator overpayment approval (BR-053); the database checks and
+ * consumes it atomically with the insert.
+ */
 export const createPaymentService = async (
       reservationId: string,
       data: WithActor<CreatePaymentDTO>,
@@ -117,4 +126,38 @@ export const deletePaymentCleanupService = async (
       if (!deleted) {
             throw new AppError(404, "Payment not found");
       }
+};
+
+export const getOverpaymentApprovalsService = async (reservationId: string) =>
+      getOverpaymentApprovals(reservationId);
+
+/**
+ * BR-053/BR-005: an Administrator authorizes an overpayment; Staff still
+ * record the payment. Returns the created approval record.
+ */
+export const createOverpaymentApprovalService = async (
+      reservationId: string,
+      data: WithActor<CreateOverpaymentApprovalDTO>,
+) => {
+      const approvalId = await createOverpaymentApproval(reservationId, data);
+      const approvals = await getOverpaymentApprovals(reservationId);
+      const created = approvals.find((a) => a.approval_id === approvalId);
+      if (!created) {
+            throw new AppError(500, "The overpayment approval was not returned after saving.");
+      }
+      return created;
+};
+
+/** Revokes an unused approval and returns its updated record. */
+export const revokeOverpaymentApprovalService = async (
+      approvalId: string,
+      employeeId: string,
+) => {
+      const reservationId = await revokeOverpaymentApproval(approvalId, employeeId);
+      const approvals = await getOverpaymentApprovals(reservationId);
+      const revoked = approvals.find((a) => a.approval_id === approvalId);
+      if (!revoked) {
+            throw new AppError(404, "Overpayment approval not found");
+      }
+      return revoked;
 };
