@@ -9,13 +9,17 @@ import {
       type RoleName,
 } from "../../utils/auth";
 import { ADMINISTRATOR_ROLE } from "../../utils/role-names";
-import { getAuthenticatedEmployee } from "./repository/auth.repository";
+import {
+      getAuthenticatedEmployee,
+      isTokenRevoked,
+} from "./repository/auth.repository";
 import logger from "../../utils/logger";
 
 /**
- * Verifies the Bearer token, then re-reads the employee + role from the
- * database so that role and status changes take effect immediately (BR-004,
- * BR-005). The actor identity is attached to `req.auth`.
+ * Verifies the Bearer token, rejects it if it was revoked by a logout, then
+ * re-reads the employee + role from the database so that role and status
+ * changes take effect immediately (BR-004, BR-005). The actor identity and the
+ * token's id/expiry are attached to `req.auth`.
  */
 export const authenticate = async (
       req: Request,
@@ -33,6 +37,15 @@ export const authenticate = async (
             }
 
             const claims = verifyAccessToken(token);
+
+            // Tokens issued before revocation existed have no jti and cannot
+            // be revoked, so they are refused; the user simply signs in again.
+            if (!claims.jti || (await isTokenRevoked(claims.jti))) {
+                  return handleControllerError(
+                        res,
+                        new AppError(401, "Session has ended. Please sign in again"),
+                  );
+            }
 
             const employee = await getAuthenticatedEmployee(claims.employeeId);
 
@@ -58,6 +71,10 @@ export const authenticate = async (
                   lastName: employee.lastName,
                   username: employee.username,
                   status: employee.status,
+                  tokenId: claims.jti,
+                  tokenExpiresAt: claims.exp
+                        ? new Date(claims.exp * 1000)
+                        : undefined,
             };
 
             req.auth = auth;

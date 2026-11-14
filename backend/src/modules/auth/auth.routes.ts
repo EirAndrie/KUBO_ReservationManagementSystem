@@ -12,7 +12,7 @@ const router = Router();
 
 // Checked
 router.post("/login", validateBody(LoginSchema), loginController);
-// Checked – audit-only; JWTs are stateless and are not revoked.
+// Revokes the presented token (by jti) and audits the logout.
 router.post("/logout", authenticate, logoutController);
 // Checked
 router.get("/me", authenticate, getMeController);

@@ -88,3 +88,44 @@ export const getAuthenticatedEmployee = async (
             );
       }
 };
+
+/**
+ * Revokes one access token by its `jti` until the token's own expiry
+ * (POST /auth/logout). Idempotent: revoking an already-revoked token is a
+ * no-op. The routine also prunes revocation rows whose tokens have expired.
+ */
+export const revokeToken = async (
+      tokenId: string,
+      employeeId: string,
+      expiresAt: Date,
+): Promise<void> => {
+      try {
+            await db.query(
+                  `SELECT kubo_auth_management.revoke_token($1, $2, $3)`,
+                  [tokenId, employeeId, expiresAt],
+            );
+      } catch (error: any) {
+            logger.error("Failed to revoke access token", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to revoke access token");
+      }
+};
+
+/** Whether an access token's `jti` has been revoked by a logout. */
+export const isTokenRevoked = async (tokenId: string): Promise<boolean> => {
+      try {
+            const result = await db.query(
+                  `SELECT kubo_auth_management.is_token_revoked($1) AS revoked`,
+                  [tokenId],
+            );
+            return result.rows[0]?.revoked === true;
+      } catch (error: any) {
+            logger.error("Failed to check token revocation", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to check token revocation");
+      }
+};
