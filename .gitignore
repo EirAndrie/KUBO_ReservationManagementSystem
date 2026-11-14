@@ -4,3 +4,4 @@ dist/
 logs
 *.log
 tests
+.claude/
