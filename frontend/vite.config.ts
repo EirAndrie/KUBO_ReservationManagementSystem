@@ -12,5 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // Backend CORS only allows FR_ORIGIN (http://localhost:3000); fail loudly instead of drifting to another port.
+    strictPort: true,
   },
 })
