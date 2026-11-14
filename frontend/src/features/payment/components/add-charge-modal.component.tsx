@@ -5,6 +5,12 @@ import { useApplyCatalogCharge, useCreateChargeRequest } from '../hooks/use-paym
 import { formatMoney } from '@/lib/format';
 import { Callout } from '@/components/common';
 
+/** Validated as a rule rather than InputNumber `min`, which would silently clamp bad input. */
+const QUANTITY_RULES = [
+  { required: true, message: 'Enter a quantity.' },
+  { type: 'number' as const, min: 1, message: 'Quantity must be at least 1.' },
+];
+
 export interface AddChargeModalProps {
   open: boolean;
   onClose: () => void;
@@ -103,8 +109,8 @@ export function AddChargeModal({ open, onClose, reservationId }: AddChargeModalP
                 options={active.map((c) => ({ value: c.catalog_id, label: `${c.name} · ${formatMoney(c.unit_price)}` }))}
               />
             </Form.Item>
-            <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
-              <InputNumber<number> min={1} precision={0} style={{ width: '100%' }} />
+            <Form.Item name="quantity" label="Quantity" rules={QUANTITY_RULES}>
+              <InputNumber<number> precision={0} style={{ width: '100%' }} />
             </Form.Item>
             {selected && (
               <Callout>
@@ -122,16 +128,19 @@ export function AddChargeModal({ open, onClose, reservationId }: AddChargeModalP
               <Input maxLength={255} placeholder="e.g. Bonfire setup" />
             </Form.Item>
             <div style={{ display: 'flex', gap: 12 }}>
-              <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]} style={{ flex: 1 }}>
-                <InputNumber<number> min={1} precision={0} style={{ width: '100%' }} />
+              <Form.Item name="quantity" label="Quantity" rules={QUANTITY_RULES} style={{ flex: 1 }}>
+                <InputNumber<number> precision={0} style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item
                 name="proposedUnitAmount"
                 label="Unit price"
-                rules={[{ required: true, message: 'Enter a price.' }]}
+                rules={[
+                  { required: true, message: 'Enter a price.' },
+                  { type: 'number', min: 0, message: 'Price cannot be negative.' },
+                ]}
                 style={{ flex: 1 }}
               >
-                <InputNumber<number> min={0} step={0.01} precision={2} prefix="₱" style={{ width: '100%' }} />
+                <InputNumber<number> step={0.01} precision={2} prefix="₱" style={{ width: '100%' }} />
               </Form.Item>
             </div>
             <Callout tone="warn">

@@ -118,26 +118,37 @@ export const KuboTypeDrawer: React.FC<KuboTypeDrawerProps> = ({
             name="kuboTypeCapacity"
             label="Max guests"
             style={{ flex: 1 }}
-            rules={[{ required: true, message: 'Enter a capacity.' }]}
+            // Bounds are enforced as rules, not InputNumber min/max, which would silently clamp
+            // out-of-range input (e.g. 0 -> 1) instead of showing an error.
+            rules={[
+              { required: true, message: 'Enter a capacity.' },
+              {
+                type: 'number',
+                min: KUBO_TYPE_LIMITS.MIN_CAPACITY,
+                max: KUBO_TYPE_LIMITS.MAX_CAPACITY,
+                message: `Capacity must be between ${KUBO_TYPE_LIMITS.MIN_CAPACITY} and ${KUBO_TYPE_LIMITS.MAX_CAPACITY}.`,
+              },
+            ]}
           >
-            <InputNumber<number>
-              style={{ width: '100%' }}
-              min={KUBO_TYPE_LIMITS.MIN_CAPACITY}
-              max={KUBO_TYPE_LIMITS.MAX_CAPACITY}
-              precision={0}
-            />
+            <InputNumber<number> style={{ width: '100%' }} precision={0} />
           </Form.Item>
           <Form.Item
             name="pricePerNight"
             label="Nightly rate"
             style={{ flex: 1 }}
-            rules={[{ required: true, message: 'Enter a rate.' }]}
+            rules={[
+              { required: true, message: 'Enter a rate.' },
+              {
+                type: 'number',
+                min: KUBO_TYPE_LIMITS.MIN_PRICE,
+                max: KUBO_TYPE_LIMITS.MAX_PRICE,
+                message: 'Rate cannot be negative or above ₱1,000,000.',
+              },
+            ]}
           >
             <InputNumber<number>
               style={{ width: '100%' }}
               prefix="₱"
-              min={KUBO_TYPE_LIMITS.MIN_PRICE}
-              max={KUBO_TYPE_LIMITS.MAX_PRICE}
               precision={2}
               onChange={(v) => setRate(v ?? null)}
             />

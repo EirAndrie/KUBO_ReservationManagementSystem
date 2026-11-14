@@ -106,7 +106,7 @@ export function RecordPaymentModal({
             { type: 'number', min: 0.01, message: 'Amount must be greater than zero.' },
           ]}
         >
-          <InputNumber<number> style={{ width: '100%' }} min={0.01} step={0.01} precision={2} prefix="₱" />
+          <InputNumber<number> style={{ width: '100%' }} step={0.01} precision={2} prefix="₱" />
         </Form.Item>
         {isOver && (
           <Callout tone="warn" style={{ marginTop: -8, marginBottom: 16 }}>

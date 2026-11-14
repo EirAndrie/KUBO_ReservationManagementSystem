@@ -102,7 +102,7 @@ export function RefundModal({ open, onClose, payments, netPaid, originalPaymentI
               { type: 'number', min: 0.01, message: 'Amount must be greater than zero.' },
             ]}
           >
-            <InputNumber<number> style={{ width: '100%' }} min={0.01} step={0.01} precision={2} prefix="₱" />
+            <InputNumber<number> style={{ width: '100%' }} step={0.01} precision={2} prefix="₱" />
           </Form.Item>
           <Form.Item name="paymentMethod" label="Refund method" rules={[{ required: true }]} style={{ marginBottom: 0 }}>
             <Select options={PAYMENT_METHOD_OPTIONS} />

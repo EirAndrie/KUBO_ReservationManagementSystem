@@ -97,11 +97,13 @@ export const AdditionalChargeCatalogDrawer: React.FC<AdditionalChargeCatalogDraw
         <Form.Item
           name="unitPrice"
           label="Default unit price"
-          rules={[{ required: true, message: 'Enter a unit price.' }]}
+          rules={[
+            { required: true, message: 'Enter a unit price.' },
+            { type: 'number', min: 0, message: 'Price cannot be negative.' },
+          ]}
         >
           <InputNumber<number>
             style={{ width: '100%' }}
-            min={0}
             precision={2}
             prefix="₱"
             decimalSeparator="."

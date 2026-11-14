@@ -755,7 +755,7 @@ export const ReservationDetailPage: React.FC = () => {
                   { type: 'number', min: 0.01, max: correctionTarget.remainingAmount, message: 'Enter a positive amount within the remaining limit.' },
                 ]}
               >
-                <InputNumber min={0.01} max={correctionTarget.remainingAmount} precision={2} step={0.01} style={{ width: '100%' }} />
+                <InputNumber precision={2} step={0.01} style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item
                 name="description"
