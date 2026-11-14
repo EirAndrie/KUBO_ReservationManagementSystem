@@ -42,10 +42,13 @@ Use a disposable database with one active Staff account and the active Administr
 
 - [ ] Record a payment on an eligible reservation. Confirm the server sets its status to `Pending` and supplies the timestamp; neither value is controlled by the client.
 - [ ] Move the payment through valid transitions (`Pending` to `Processing` and then `Completed`, or directly to a terminal result allowed by the API). Confirm only completed payments reduce the outstanding balance.
-- [ ] Submit a payment larger than the outstanding balance. Confirm overpayment is rejected and no payment is completed. The current backend blocks overpayment; an Administrator overpayment approval flow is not implemented.
-- [ ] Refund part of a completed payment on the same reservation. Confirm the refund is a positive amount, the original payment becomes `PartiallyRefunded`, the balance increases by the refunded amount, and the audit description identifies the original payment.
+- [ ] Submit a payment larger than the outstanding balance with no approval. Confirm it is rejected and the dialog asks for an Administrator overpayment approval.
+- [ ] Ask an Administrator to approve an overpayment (maximum excess and reason) on the reservation page. Record a payment up to that excess and choose the approval. Confirm the payment is accepted, the approval shows **Used**, the balance becomes a guest credit, and the reservation page asks for the credit to be refunded before check-out.
+- [ ] Try an excess larger than the approval and try reusing a used approval. Confirm both are rejected.
+- [ ] Cancel a pending payment that used an approval. Confirm the approval becomes **Available** again.
+- [ ] Refund part of a completed payment on the same reservation. Confirm the refund is a positive amount, its `related_payment_id` is the original payment, the original payment becomes `PartiallyRefunded`, and the balance increases by the refunded amount.
 - [ ] Refund the remaining amount. Confirm the original payment becomes `Refunded`.
-- [ ] Try refunding more than the net paid amount, refunding a non-completed payment, or referencing a completed payment from another reservation. Confirm each request is rejected.
+- [ ] Try refunding more than the net paid amount, more than the original payment's unrefunded amount, refunding a non-completed payment, or referencing a completed payment from another reservation. Confirm each request is rejected.
 
 ### 6. Check out at zero balance
 
@@ -77,7 +80,8 @@ Use a disposable database with one active Staff account and the active Administr
 - [ ] Update the name, description, price, and active state. Confirm already-applied charges retain their recorded amounts.
 - [ ] Delete an unused catalog item. Confirm the item is removed and the delete is audited.
 - [ ] Apply a catalog item to a test reservation, then try to delete it. Confirm deletion is rejected with a conflict and the used item can be deactivated instead.
-- [ ] Review pending custom requests, approve one, adjust another with a reason, and reject another with a reason. Confirm all decisions are audited and only approvals create applied charges.
+- [ ] Open **Charge requests** (`/charge-requests`). Review pending custom requests, approve one, adjust another with a reason, and reject another with a reason. Confirm all decisions are audited, only approvals create applied charges, and the Status filter shows reviewed, rejected, and withdrawn history.
+- [ ] Approve an overpayment on a reservation, then revoke it while unused. Confirm the approval shows **Revoked**, a used approval cannot be revoked, and both actions are audited.
 
 ### 10. Inspect audit history and role boundaries
 
@@ -86,10 +90,11 @@ Use a disposable database with one active Staff account and the active Administr
 - [ ] Try to update or delete an audit row through the application. Confirm no such write operation is available.
 - [ ] Sign in as Staff and try an Administrator action such as catalog mutation, employee management, rate adjustment, request approval, or audit-log access. Confirm access is denied.
 - [ ] Sign in as Administrator and try Staff-only reservation creation, check-in/check-out, catalog charge application, payment creation, or refund. Confirm access is denied.
+- [ ] Sign out, then reuse the old token (for example from Postman). Confirm it is rejected with `401` while another signed-in session of the same employee keeps working.
 
 ## Business-rule guards
 
-- [ ] **Overpayment:** verify a payment above the derived outstanding balance is rejected.
+- [ ] **Overpayment:** verify a payment above the derived outstanding balance is rejected unless an unused Administrator overpayment approval covers the excess.
 - [ ] **Settlement lock:** before settlement, verify Staff can remove an applied charge. After any completed payment/refund or a terminal reservation status (`CheckedOut`, `Cancelled`, or `NoShow`), verify deletion is blocked.
 - [ ] **Last Administrator:** verify a second active Administrator is rejected and the last active Administrator cannot be deactivated, terminated, reassigned, or deleted.
 - [ ] **Derived totals:** verify accommodation, applied charges, net paid, and outstanding balance change from their source records; do not expect a stored reservation total.
@@ -98,5 +103,5 @@ Use a disposable database with one active Staff account and the active Administr
 ## Known behavior to account for
 
 - Pending, rejected, and withdrawn custom requests do not affect the balance.
-- Applied-charge reductions and `Adjustment`/`Reversal` balance semantics remain deferred; this checklist does not expect them to change the derived balance.
-- The backend currently blocks overpayment; the Administrator approval exception described in the business rules is not implemented.
+- Completed `Adjustment`s reduce the outstanding balance and completed `Reversal`s restore it; neither changes cash net paid (G-07 resolved).
+- An approved overpayment leaves a guest credit (negative balance). Check-out requires exactly ₱0.00, so refund the credit first.

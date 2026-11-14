@@ -82,6 +82,9 @@ const normalizePayment = (value: unknown) => {
             status: input.status ?? input.paymentStatus ?? input.payment_status,
             originalPaymentId:
                   input.originalPaymentId ?? input.original_payment_id,
+            overpaymentApprovalId:
+                  input.overpaymentApprovalId ??
+                  input.overpayment_approval_id,
       };
 };
 
@@ -121,6 +124,14 @@ export const CreatePaymentSchema = z.preprocess(
                   }),
             paymentType: PaymentTypeSchema,
             paymentMethod: PaymentMethodSchema,
+            /**
+             * BR-053: required only when the amount exceeds the outstanding
+             * balance; names an Administrator approval covering the excess.
+             */
+            overpaymentApprovalId: z
+                  .string()
+                  .uuid({ message: "Invalid overpayment approval ID" })
+                  .optional(),
       }),
 );
 
@@ -189,6 +200,52 @@ export const ReverseChargeAdjustmentSchema = z.preprocess(
 export type ReverseChargeAdjustmentDTO = z.infer<
       typeof ReverseChargeAdjustmentSchema
 >;
+
+/**
+ * BR-053: an Administrator authorizes one payment on a reservation to exceed
+ * the outstanding balance by at most `maxOverpaymentAmount`.
+ */
+export const CreateOverpaymentApprovalSchema = z.preprocess(
+      (value) => {
+            if (value === null || typeof value !== "object" || Array.isArray(value)) {
+                  return value;
+            }
+            const input = value as Record<string, unknown>;
+            return {
+                  maxOverpaymentAmount:
+                        input.maxOverpaymentAmount ??
+                        input.max_overpayment_amount,
+                  reason: input.reason ?? input.description,
+            };
+      },
+      z.object({
+            maxOverpaymentAmount: positiveCurrencyAmount,
+            reason: z
+                  .string()
+                  .trim()
+                  .min(1, { message: "A reason is required" })
+                  .max(255),
+      }),
+);
+
+export type CreateOverpaymentApprovalDTO = z.infer<
+      typeof CreateOverpaymentApprovalSchema
+>;
+
+export type OverpaymentApprovalResponseDTO = {
+      approval_id: string;
+      reservation_id: string;
+      approved_by: string;
+      approved_by_name: string;
+      max_overpayment_amount: string;
+      reason: string;
+      status: "Available" | "Used" | "Revoked";
+      payment_id: string | null;
+      revoked_by: string | null;
+      revoked_by_name: string | null;
+      revoked_at: string | null;
+      created_at: string;
+};
 
 export const UpdatePaymentStatusSchema = z.preprocess(
       normalizePayment,

@@ -198,7 +198,7 @@ is the source of truth for mounted routes.
 
 | Prefix                                                        | Purpose                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `/health`                                                     | Public health check (`SELECT 1`); pinged every 5 minutes by the keep-alive workflow |
+| `/health`                                                     | Public health check (`SELECT 1`, 5 s limit): `200` when the database is up, `503` JSON when it is not; pinged every 5 minutes by the keep-alive workflow |
 | `/auth`                                                       | `POST /login` (public), `POST /logout`, `GET /me`                         |
 | `/roles`                                                      | Role management                                                           |
 | `/employees`                                                  | Employee management (Administrator only)                                  |
@@ -208,6 +208,7 @@ is the source of truth for mounted routes.
 | `/reservations`                                               | Reservations and lifecycle (confirm, check-in, checkout, cancel, no-show) |
 | `/reservations/:reservationId/kubos`                          | Kubo assignments and per-kubo check-in/check-out                          |
 | `/reservations/:reservationId/payments`, `/payments`          | Payments, status transitions, refunds, and charge Adjustments/Reversals   |
+| `/reservations/:reservationId/overpayment-approvals`, `/overpayment-approvals/:approvalId/revoke` | Administrator overpayment approvals (BR-053); Staff use them when a payment exceeds the balance |
 | `/additional-charge-catalog`                                  | Charge catalog (Administrator writes)                                     |
 | `/additional-charges`, `/reservations/:reservationId/charges` | Applied charges                                                           |
 | `/additional-charge-requests`                                 | Custom charge requests and approval                                       |
@@ -219,7 +220,7 @@ is the source of truth for mounted routes.
 2. Send the returned token as `Authorization: Bearer <token>` on every other request.
 3. Routes enforce the `Administrator` or `Staff` role where required.
 
-The acting employee always comes from the token; a client-supplied `employeeId` is ignored. JWTs are stateless, so `POST /auth/logout` records an audit entry but does not revoke the token.
+The acting employee always comes from the token; a client-supplied `employeeId` is ignored. Each token carries a unique id (`jti`). `POST /auth/logout` revokes that token until it expires and records an audit entry; the employee's other sessions stay signed in. There are no refresh tokens: when a token expires (`JWT_EXPIRES_IN`, default `8h`), sign in again.
 
 Response envelopes differ by module (for example `payments`, `guests`, or `data`), and list endpoints generally include `count`. Check the module you are calling; [`docs/api.md`](docs/api.md) describes conventions but is not an exact contract.
 
@@ -359,7 +360,7 @@ Some `docs/*.md` files describe an older target layout (for example an `/api` ba
 
 - Branch from `main` (for example `feat/payment-adjustments`).
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): short description`, such as `fix(payment): block refunds above net paid`.
-- Open a pull request against `main`. CI must pass.
+- Open a pull request against `main` and fill in every section of [`.github/pull_request_template.md`](.github/pull_request_template.md). GitHub pre-fills it in the browser, but `gh pr create --body` does not; use `gh pr create --body-file` with a filled copy. CI must pass.
 
 ### Development rules
 
@@ -374,12 +375,17 @@ Some `docs/*.md` files describe an older target layout (for example an `/api` ba
 
 ## Known Limitations
 
-- Overpayments are blocked; overpayment approval (BR-053) is not implemented.
-- Refunds are linked to their original payment through the audit description, because the schema has no `original_payment_id` column.
-- The frontend has no dedicated screen for reviewing custom additional-charge requests yet.
-- `GET /health` returns a generic `500` when the database is unreachable; a `503` JSON response is planned.
-- JWTs are stateless: logout is audited but does not revoke the token, and there is no refresh token.
+- There are no refresh tokens. Sessions end when the access token expires (`JWT_EXPIRES_IN`, default `8h`).
+- Tokens issued before token revocation was deployed have no `jti` and are refused once; affected users sign in again.
+- Refunds recorded before `20261114_link_refunds_to_original_payment.sql` are linked by a backfill from their audit description; any refund whose description could not be matched stays unlinked.
+- Page-1 of the draw.io ERDs predates the uuid keys and derived totals. The "Charges, payments & auth (2026-11)" page covers the newer tables; the migrations remain the source of truth.
 - The additional-charge migration skips its routines if the `kubo_additional_charges_management` schema does not exist.
+
+---
+
+## Roadmap
+
+- **Day-use and exclusive-event bookings (BR-083 to BR-093): the team will resume and complete this feature in December 2026.** This work is deliberately kept off `main` until then. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) are on the [`feat/day-use-bookings`](https://github.com/EirAndrie/KUBO_ReservationManagementSystem/tree/feat/day-use-bookings) branch, whose `docs/day-use-bookings-status.md` lists the remaining work; the reservation, kubo type, and upgrade routes still need to be wired. Do not add day-use code to `main` before December. See [`docs/development-progress.md`](docs/development-progress.md#planned-work).
 
 ---
 

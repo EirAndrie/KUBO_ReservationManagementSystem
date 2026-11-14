@@ -74,6 +74,7 @@ No stack trace, SQL statement, password hash, or raw PostgreSQL error is returne
 | Scheme is not Bearer, or token is missing | `401` | `Authentication required` |
 | Token expired | `401` | `Token has expired` |
 | Token signature/claims invalid | `401` | `Invalid token` |
+| Token has no `jti`, or was revoked by `POST /auth/logout` | `401` | `Session has ended. Please sign in again` |
 | Token employee no longer exists | `401` | `Authentication required` |
 | Employee status is not `Active` | `403` | `Account is not active` |
 | Unexpected authentication/database failure | `500` | `Authentication failed` |
@@ -111,7 +112,7 @@ Auth repository calls translate PostgreSQL errors through the shared mapper:
 | Method | Path | Access | Purpose |
 |---|---|---|---|
 | `POST` | `/auth/login` | Public | Verify credentials and issue an access token |
-| `POST` | `/auth/logout` | Authenticated | Record a logout audit event |
+| `POST` | `/auth/logout` | Authenticated | Revoke the presented token and record a logout audit event |
 | `GET` | `/auth/me` | Authenticated | Return the current employee profile |
 
 ---
@@ -200,13 +201,15 @@ Behavior notes:
 ### 3.5 Side effects
 
 - Inserts one row into `kubo.audit_log`.
-- No session is stored server-side.
+- No session is stored server-side. Each token carries a unique `jti` claim so it
+  can be revoked individually at logout.
 
 ---
 
 ## 4. `POST /auth/logout`
 
-Record a logout audit event for the authenticated employee.
+Revoke the presented access token and record a logout audit event for the
+authenticated employee.
 
 ### 4.1 Access
 
@@ -226,17 +229,22 @@ No response body.
 |---|---:|---|
 | Missing/invalid/expired token | `401` | See §1.4 |
 | Employee not active | `403` | `Account is not active` |
-| Audit write fails | `500` | Database/fallback error |
+| Revocation or audit write fails | `500` | Database/fallback error |
 
 Behavior notes:
 
-- JWTs are stateless. Logout does **not** invalidate or revoke the presented token;
-  it remains usable until expiry.
+- Logout revokes only the presented token, by its `jti`, until that token's
+  expiry. Later requests with it get `401`. Other sessions of the same employee
+  stay valid. Revocation runs before the audit write.
+- There are no refresh tokens. When a token expires (`JWT_EXPIRES_IN`, default
+  `8h`), the employee signs in again.
 - The acting employee is always `req.auth.employeeId`; clients cannot specify a
   different employee.
 
 ### 4.5 Side effects
 
+- Inserts one row into `kubo_auth_management.revoked_token` (pruning rows whose
+  tokens have already expired).
 - Inserts one audit row (`action = Logout`, `entityType = employee`,
   `entityId = authenticated employeeId`).
 
@@ -320,7 +328,8 @@ any role check.
   database-backed modules, which return snake_case rows.
 - `POST /logout` returns `204` but the controller calls `res.status(204).json()`;
   clients must treat the response as an empty `204`.
-- Logout is audit-only and does not revoke the JWT.
+- Tokens issued before token revocation was deployed have no `jti` and are
+  refused with `401`; affected users sign in again once.
 - `GET /auth/me` can return `404` even after successful authentication if the
   employee row is removed between the middleware lookup and the service lookup.
 - Login failures always use the same `401` message for unknown usernames and wrong

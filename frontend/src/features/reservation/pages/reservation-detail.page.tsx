@@ -25,11 +25,13 @@ import { useGuest } from '@/features/guest';
 import { useKubos } from '@/features/kubo';
 import {
   AddChargeModal,
+  OverpaymentApprovalsSection,
   PrintInvoiceModal,
   RecordPaymentModal,
   RefundModal,
   useChargeRequests,
   useDeleteCharge,
+  useOverpaymentApprovals,
   useCreateChargeAdjustment,
   useReverseChargeAdjustment,
   useReservationCharges,
@@ -152,6 +154,7 @@ export const ReservationDetailPage: React.FC = () => {
   const payments = useReservationPayments(reservationId);
   const charges = useReservationCharges(reservationId);
   const requests = useChargeRequests({ reservationId }, Boolean(reservationId));
+  const overpaymentApprovals = useOverpaymentApprovals(reservationId);
   const guest = useGuest(reservation?.guest_id);
   const kubos = useKubos();
 
@@ -275,6 +278,7 @@ export const ReservationDetailPage: React.FC = () => {
     ? Math.min(100, Math.max(0, Math.round(((netPaid + netChargeReductions) / gross) * 100)))
     : 0;
   const isClosed = ['Cancelled', 'NoShow'].includes(reservation.status);
+  const hasOverpaymentApproval = (overpaymentApprovals.data ?? []).some((a) => a.status === 'Available');
   const isSettled =
     ['CheckedOut', 'Cancelled', 'NoShow'].includes(reservation.status) ||
     paymentList.some((p) =>
@@ -602,7 +606,7 @@ export const ReservationDetailPage: React.FC = () => {
                       Add charge
                     </Button>
                   )}
-                  {balance > 0 && (
+                  {(balance > 0 || hasOverpaymentApproval) && (
                     <Button size="small" icon={<CreditCardOutlined />} onClick={() => setPaymentOpen({})}>
                       Record payment
                     </Button>
@@ -657,6 +661,8 @@ export const ReservationDetailPage: React.FC = () => {
               </ul>
             </Section>
           )}
+
+          {!isClosed && <OverpaymentApprovalsSection reservationId={reservationId} canManage={isAdmin} />}
         </div>
 
         <aside className={styles.sideCol}>
@@ -685,6 +691,11 @@ export const ReservationDetailPage: React.FC = () => {
             {reservation.status === 'CheckedIn' && balance > 0 && (
               <Callout tone="warn" style={{ marginTop: 12 }}>
                 Check-out unlocks when the balance reaches ₱0.
+              </Callout>
+            )}
+            {!isClosed && balance < 0 && (
+              <Callout tone="warn" style={{ marginTop: 12 }}>
+                The guest has a credit of {formatMoney(-balance)}. Refund it so the balance reaches ₱0 before check-out.
               </Callout>
             )}
           </Section>
@@ -726,6 +737,7 @@ export const ReservationDetailPage: React.FC = () => {
         outstandingBalance={balance}
         netPaid={netPaid}
         defaultAmount={paymentOpen?.amount}
+        overpaymentApprovals={overpaymentApprovals.data}
       />
       <RefundModal open={refundOpen} onClose={() => setRefundOpen(false)} payments={paymentList} netPaid={netPaid} />
       <Drawer

@@ -6,6 +6,7 @@ import type {
   ChargeCatalogItem,
   ChargeRequest,
   ChargeRequestStatus,
+  OverpaymentApproval,
   PaymentFilterParams,
 } from '../types/payment.types';
 
@@ -18,6 +19,7 @@ export const paymentKeys = {
   catalog: ['additional-charge-catalog'] as const,
   requests: (params?: { status?: ChargeRequestStatus; reservationId?: string }) =>
     ['additional-charge-requests', params ?? {}] as const,
+  overpaymentApprovals: (reservationId: string) => ['overpayment-approvals', reservationId] as const,
 };
 
 /** Hook to retrieve the payments ledger. */
@@ -66,5 +68,15 @@ export function useChargeRequests(params?: { status?: ChargeRequestStatus; reser
     queryFn: () => paymentService.getChargeRequests(params),
     enabled,
     staleTime: 1000 * 30,
+  });
+}
+
+/** BR-053 overpayment approvals recorded for one reservation. */
+export function useOverpaymentApprovals(reservationId: string, enabled = true) {
+  return useQuery<OverpaymentApproval[], Error>({
+    queryKey: paymentKeys.overpaymentApprovals(reservationId),
+    queryFn: () => paymentService.getOverpaymentApprovals(reservationId),
+    enabled: enabled && Boolean(reservationId),
+    staleTime: 1000 * 15,
   });
 }

@@ -7,14 +7,13 @@ import { useAuth } from '@/features/auth';
 import { useKubos } from '@/features/kubo';
 import { useKuboTypes } from '@/features/kubo-type';
 import { useReservations } from '@/features/reservation';
-import { useChargeRequests, usePayments } from '@/features/payment';
+import { ApproveRequestModal, RejectRequestModal, useChargeRequests, usePayments } from '@/features/payment';
 import type { ChargeRequest } from '@/features/payment';
 import { useAuditLogs, describeAuditLog } from '@/features/audit-logs';
 import { useEmployees } from '@/features/employee';
 import { Avatar, EmptyState, ErrorState, KpiStrip, ListSkeleton, ResortBanner, Section, TwoLine } from '@/components/common';
 import { formatMoney, formatMoneyWhole, label, pluralize, toAmount } from '@/lib/format';
 import { resortTime } from '@/lib/time';
-import { ApproveRequestModal, RejectRequestModal } from '../components/review-request-modals.component';
 import styles from './admin-dashboard.module.css';
 
 type Period = 'today' | '7d' | '30d';

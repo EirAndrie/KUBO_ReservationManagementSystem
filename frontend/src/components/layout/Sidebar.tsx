@@ -12,10 +12,12 @@ import {
   UserOutlined,
   BlockOutlined,
   TagsOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useAuth } from '@/features/auth';
 import { useCheckInOutQueue } from '@/features/check-in-out';
+import { useChargeRequests } from '@/features/payment';
 import { Avatar } from '@/components/common';
 import { useThemeMode } from '@/theme';
 import styles from './shell.module.css';
@@ -25,6 +27,8 @@ interface NavItem {
   to: string;
   icon: React.ReactNode;
   count?: number;
+  /** Accessible label for the count badge; defaults to "N today". */
+  countLabel?: string;
 }
 
 const NavItemLink: React.FC<{ item: NavItem }> = ({ item }) => (
@@ -37,7 +41,7 @@ const NavItemLink: React.FC<{ item: NavItem }> = ({ item }) => (
     </span>
     <span className={styles.navLabel}>{item.name}</span>
     {item.count !== undefined && item.count > 0 && (
-      <span className={styles.navCount} aria-label={`${item.count} today`}>
+      <span className={styles.navCount} aria-label={item.countLabel ?? `${item.count} today`}>
         {item.count}
       </span>
     )}
@@ -62,6 +66,8 @@ export const Sidebar: React.FC = () => {
   const { mode } = useThemeMode();
   const isAdmin = role === 'Administrator';
   const deskCount = useFrontDeskCount(!isAdmin && Boolean(role));
+  const pendingRequests = useChargeRequests({ status: 'Pending' }, isAdmin);
+  const pendingCount = pendingRequests.data?.length;
 
   const main: NavItem[] = isAdmin
     ? [
@@ -83,6 +89,13 @@ export const Sidebar: React.FC = () => {
     ? [
         { name: 'Employees', to: '/employees', icon: <TeamOutlined /> },
         { name: 'Charge catalog', to: '/additional-charge-catalog', icon: <TagsOutlined /> },
+        {
+          name: 'Charge requests',
+          to: '/charge-requests',
+          icon: <FileDoneOutlined />,
+          count: pendingCount,
+          countLabel: `${pendingCount ?? 0} pending`,
+        },
         { name: 'Audit log', to: '/audit-logs', icon: <FileTextOutlined /> },
       ]
     : [];

@@ -6,6 +6,7 @@ import type {
       ReverseChargeAdjustmentDTO,
       UpdatePaymentStatusDTO,
       PaymentFilterDTO,
+      CreateOverpaymentApprovalDTO,
 } from "./repository/payment.schema";
 import { PaymentFilterSchema } from "./repository/payment.schema";
 import { AppError, getPagination, handleControllerError } from "../../utils/http";
@@ -20,6 +21,9 @@ import {
       reverseChargeAdjustmentService,
       getPaymentsService,
       deletePaymentCleanupService,
+      getOverpaymentApprovalsService,
+      createOverpaymentApprovalService,
+      revokeOverpaymentApprovalService,
 } from "./payment.services";
 
 const zodMessage = (error: any) =>
@@ -259,6 +263,82 @@ export const deletePaymentCleanupController = async (
             res.status(204).json();
       } catch (error: any) {
             logger.error("Failed to cleanup-delete payment", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+// GET /reservations/:reservationId/overpayment-approvals – BR-053 approvals
+export const getOverpaymentApprovalsController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const overpaymentApprovals = await getOverpaymentApprovalsService(
+                  req.params.reservationId as string,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  count: overpaymentApprovals.length,
+                  message: "Successfully fetched overpayment approvals",
+                  overpaymentApprovals,
+            });
+      } catch (error: any) {
+            logger.error("Failed to fetch overpayment approvals", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+// POST /reservations/:reservationId/overpayment-approvals – Administrator authorizes an overpayment
+export const createOverpaymentApprovalController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const data = req.body as CreateOverpaymentApprovalDTO;
+            const overpaymentApprovals = await createOverpaymentApprovalService(
+                  req.params.reservationId as string,
+                  { ...data, employeeId: req.auth!.employeeId },
+            );
+
+            res.status(201).json({
+                  success: true,
+                  message: "Successfully approved overpayment",
+                  overpaymentApprovals,
+            });
+      } catch (error: any) {
+            logger.error("Failed to create overpayment approval", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+// PATCH /overpayment-approvals/:approvalId/revoke – Administrator revokes an unused approval
+export const revokeOverpaymentApprovalController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const overpaymentApprovals = await revokeOverpaymentApprovalService(
+                  req.params.approvalId as string,
+                  req.auth!.employeeId,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully revoked overpayment approval",
+                  overpaymentApprovals,
+            });
+      } catch (error: any) {
+            logger.error("Failed to revoke overpayment approval", {
                   message: error.message,
                   stack: error.stack,
             });

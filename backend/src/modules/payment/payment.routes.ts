@@ -9,6 +9,9 @@ import {
       reverseChargeAdjustmentController,
       getPaymentsController,
       deletePaymentCleanupController,
+      getOverpaymentApprovalsController,
+      createOverpaymentApprovalController,
+      revokeOverpaymentApprovalController,
 } from "./payment.controllers";
 import {
       CreatePaymentSchema,
@@ -16,6 +19,7 @@ import {
       CreateChargeAdjustmentSchema,
       ReverseChargeAdjustmentSchema,
       UpdatePaymentStatusSchema,
+      CreateOverpaymentApprovalSchema,
 } from "./repository/payment.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 import { authorizeRoles } from "../auth/auth.middleware";
@@ -57,6 +61,26 @@ router.post(
       validateBody(RefundPaymentSchema),
       refundPaymentController,
 ); // Checked
+
+// BR-053 overpayment approvals: Administrators authorize, Staff record the payment.
+router.get(
+      "/reservations/:reservationId/overpayment-approvals",
+      requireUuidParam("reservationId"),
+      getOverpaymentApprovalsController,
+);
+router.post(
+      "/reservations/:reservationId/overpayment-approvals",
+      authorizeRoles("administrator"),
+      requireUuidParam("reservationId"),
+      validateBody(CreateOverpaymentApprovalSchema),
+      createOverpaymentApprovalController,
+);
+router.patch(
+      "/overpayment-approvals/:approvalId/revoke",
+      authorizeRoles("administrator"),
+      requireUuidParam("approvalId"),
+      revokeOverpaymentApprovalController,
+);
 
 // Direct payment routes
 router.get("/payments", getPaymentsController); // Checked

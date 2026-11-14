@@ -6,6 +6,8 @@ import type {
       UpdatePaymentStatusDTO,
       PaymentResponseDTO,
       WithActor,
+      CreateOverpaymentApprovalDTO,
+      OverpaymentApprovalResponseDTO,
 } from "./payment.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -34,7 +36,8 @@ export const createPayment = async (
                         p_employee_id => $2,
                         p_payment_amount => $3,
                         p_payment_type => $4::kubo.payment_type,
-                        p_payment_method => $5::kubo.payment_method
+                        p_payment_method => $5::kubo.payment_method,
+                        p_overpayment_approval_id => $6
                   )
                   `,
                   [
@@ -43,6 +46,7 @@ export const createPayment = async (
                         data.paymentAmount,
                         data.paymentType,
                         data.paymentMethod,
+                        data.overpaymentApprovalId ?? null,
                   ],
             );
             return await requirePaymentById(result.rows[0].payment_id);
@@ -315,5 +319,93 @@ export const deletePaymentCleanup = async (
                   stack: error.stack,
             });
             throw mapDatabaseError(error, "Failed to cleanup-delete payment");
+      }
+};
+
+/** Lists a reservation's overpayment approvals (BR-053), newest first. */
+export const getOverpaymentApprovals = async (
+      reservationId: string,
+): Promise<OverpaymentApprovalResponseDTO[]> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_payment_management.fn_get_overpayment_approvals($1)
+                  `,
+                  [reservationId],
+            );
+            return result.rows;
+      } catch (error: any) {
+            logger.error("Failed to fetch overpayment approvals", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to fetch overpayment approvals");
+      }
+};
+
+/**
+ * Records an Administrator's overpayment approval for one reservation. The
+ * routine enforces the Administrator role, reservation status, amount, and
+ * reason, and writes an `Approve` audit row in the same transaction.
+ * Returns the new approval's id.
+ */
+export const createOverpaymentApproval = async (
+      reservationId: string,
+      data: WithActor<CreateOverpaymentApprovalDTO>,
+): Promise<string> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT kubo_payment_management.fn_create_overpayment_approval(
+                        p_reservation_id => $1,
+                        p_employee_id => $2,
+                        p_max_overpayment_amount => $3,
+                        p_reason => $4
+                  ) AS approval_id
+                  `,
+                  [
+                        reservationId,
+                        data.employeeId,
+                        data.maxOverpaymentAmount,
+                        data.reason,
+                  ],
+            );
+            return result.rows[0].approval_id;
+      } catch (error: any) {
+            logger.error("Failed to create overpayment approval", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to create overpayment approval");
+      }
+};
+
+/**
+ * Revokes an unused overpayment approval (audited as `Cancel`). Fails when the
+ * approval is already used by a payment or already revoked. Returns the
+ * approval's reservation id.
+ */
+export const revokeOverpaymentApproval = async (
+      approvalId: string,
+      employeeId: string,
+): Promise<string> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT kubo_payment_management.fn_revoke_overpayment_approval(
+                        p_approval_id => $1,
+                        p_employee_id => $2
+                  ) AS reservation_id
+                  `,
+                  [approvalId, employeeId],
+            );
+            return result.rows[0].reservation_id;
+      } catch (error: any) {
+            logger.error("Failed to revoke overpayment approval", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to revoke overpayment approval");
       }
 };

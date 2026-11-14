@@ -13,6 +13,8 @@ import type {
   ReverseChargeAdjustmentPayload,
   ApplyCatalogChargePayload,
   CreateChargeRequestPayload,
+  CreateOverpaymentApprovalPayload,
+  OverpaymentApproval,
 } from '../types/payment.types';
 
 /** Everything that shows money or charge state for a reservation. */
@@ -20,6 +22,7 @@ function invalidateMoney(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['payments'] });
   queryClient.invalidateQueries({ queryKey: ['additional-charges'] });
   queryClient.invalidateQueries({ queryKey: ['additional-charge-requests'] });
+  queryClient.invalidateQueries({ queryKey: ['overpayment-approvals'] });
   queryClient.invalidateQueries({ queryKey: reservationKeys.all });
   queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
 }
@@ -27,7 +30,8 @@ function invalidateMoney(queryClient: QueryClient) {
 /**
  * Records a payment (created Pending by the server). When `complete` is set,
  * the payment is then marked Completed so it counts toward the balance.
- * The server rejects amounts above the outstanding balance.
+ * The server rejects amounts above the outstanding balance unless an
+ * Administrator overpayment approval covering the excess is passed (BR-053).
  */
 export function useRecordPayment() {
   const queryClient = useQueryClient();
@@ -132,5 +136,25 @@ export function useWithdrawChargeRequest() {
     mutationFn: (requestId) => paymentService.withdrawChargeRequest(requestId),
     successMessage: 'Charge request withdrawn.',
     onSuccess: () => invalidateMoney(queryClient),
+  });
+}
+
+/** Administrator-only: authorize one payment to exceed the balance (BR-053). */
+export function useCreateOverpaymentApproval() {
+  const queryClient = useQueryClient();
+  return useAppMutation<OverpaymentApproval, CreateOverpaymentApprovalPayload>({
+    mutationFn: (payload) => paymentService.createOverpaymentApproval(payload),
+    successMessage: 'Overpayment approved. Staff can now record it.',
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['overpayment-approvals'] }),
+  });
+}
+
+/** Administrator-only: revoke an approval no payment has used yet. */
+export function useRevokeOverpaymentApproval() {
+  const queryClient = useQueryClient();
+  return useAppMutation<OverpaymentApproval, string>({
+    mutationFn: (approvalId) => paymentService.revokeOverpaymentApproval(approvalId),
+    successMessage: 'Overpayment approval revoked.',
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['overpayment-approvals'] }),
   });
 }

@@ -4,9 +4,10 @@ import type { LoginDTO, AuthenticatedEmployee } from "./repository/auth.schema";
 import {
       getLoginCredentials,
       getAuthenticatedEmployee,
+      revokeToken,
 } from "./repository/auth.repository";
 import { writeAuditLog } from "../audit-logs/repository/audit-log.repository";
-import { signAccessToken } from "../../utils/auth";
+import { signAccessToken, type AuthContext } from "../../utils/auth";
 
 /**
  * A precomputed bcrypt hash compared against when the username is unknown, so
@@ -70,15 +71,25 @@ export const loginService = async (data: LoginDTO): Promise<LoginResult> => {
 };
 
 /**
- * Records a logout audit event. JWTs are stateless (no revocation), so this
- * is audit-only; the token remains valid until its expiry.
+ * Ends the caller's session: revokes the presented access token by its `jti`
+ * until the token's own expiry, then records the logout audit event (BR-067).
+ * Only this token is revoked; the employee's other sessions stay valid.
+ *
+ * Revocation runs first so a failed audit write never leaves a "logged out"
+ * token usable. Both failures surface as an error to the caller.
  */
-export const logoutService = async (employeeId: string): Promise<void> => {
+export const logoutService = async (auth: AuthContext): Promise<void> => {
+      if (!auth.tokenId || !auth.tokenExpiresAt) {
+            throw new AppError(401, "Session has ended. Please sign in again");
+      }
+
+      await revokeToken(auth.tokenId, auth.employeeId, auth.tokenExpiresAt);
+
       await writeAuditLog({
-            employeeId,
+            employeeId: auth.employeeId,
             action: "Logout",
             entityType: "employee",
-            entityId: employeeId,
+            entityId: auth.employeeId,
             description: "Successful logout",
       });
 };

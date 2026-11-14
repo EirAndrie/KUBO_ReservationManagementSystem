@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import { AUTH_CONFIG } from "../config/auth";
 import {
@@ -21,6 +22,10 @@ export interface AuthContext {
       lastName: string;
       username: string;
       status: string;
+      /** The access token's unique id (`jti`); used to revoke it on logout. */
+      tokenId?: string;
+      /** When the access token expires; revocation rows are kept until then. */
+      tokenExpiresAt?: Date;
 }
 
 /** Claims carried inside a signed access token. */
@@ -41,7 +46,11 @@ export const isAdministrator = (roleName: string): boolean =>
 export const isStaff = (roleName: string): boolean =>
       roleName === STAFF_ROLE;
 
-/** Signs a short-lived access token for the given authenticated employee. */
+/**
+ * Signs a short-lived access token for the given authenticated employee. Each
+ * token gets a random `jti` so a single session can be revoked at logout
+ * without affecting the employee's other sessions.
+ */
 export const signAccessToken = (context: AuthContext): string => {
       const payload: AuthTokenClaims = {
             employeeId: context.employeeId,
@@ -54,6 +63,7 @@ export const signAccessToken = (context: AuthContext): string => {
             audience: AUTH_CONFIG.audience,
             expiresIn: AUTH_CONFIG.jwtExpiresIn as jwt.SignOptions["expiresIn"],
             subject: context.employeeId,
+            jwtid: randomUUID(),
       });
 };
 

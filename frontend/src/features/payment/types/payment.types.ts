@@ -141,6 +141,34 @@ export interface CreatePaymentPayload {
   paymentAmount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
+  /** BR-053: required when the amount exceeds the outstanding balance. */
+  overpaymentApprovalId?: string;
+}
+
+export type OverpaymentApprovalStatus = 'Available' | 'Used' | 'Revoked';
+
+/**
+ * BR-053: an Administrator's authorization for one payment on a reservation
+ * to exceed the outstanding balance by at most `max_overpayment_amount`.
+ * Staff still record the payment (BR-005).
+ */
+export interface OverpaymentApproval {
+  approval_id: string;
+  reservation_id: string;
+  approved_by_name: string;
+  max_overpayment_amount: number;
+  reason: string;
+  status: OverpaymentApprovalStatus;
+  payment_id: string | null;
+  revoked_by_name: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface CreateOverpaymentApprovalPayload {
+  reservationId: string;
+  maxOverpaymentAmount: number;
+  reason: string;
 }
 
 /** Input payload to refund part or all of a completed payment. */

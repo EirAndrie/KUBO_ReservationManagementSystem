@@ -26,10 +26,10 @@ export const loginController = async (req: Request, res: Response) => {
       }
 };
 
-/** POST /auth/logout – record a logout audit event (stateless, audit-only). */
+/** POST /auth/logout – revoke the presented access token and audit the logout. */
 export const logoutController = async (req: Request, res: Response) => {
       try {
-            await logoutService(req.auth!.employeeId);
+            await logoutService(req.auth!);
 
             res.status(204).json();
       } catch (error: any) {
