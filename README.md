@@ -1,5 +1,9 @@
 # KUBO Reservation Management System
 
+> **Branch `feat/day-use-bookings`: deferred work.** Day-use and exclusive-event
+> bookings will be resumed and completed in **December 2026**. Do not merge this branch
+> into `main` before then. See [`docs/day-use-bookings-status.md`](docs/day-use-bookings-status.md).
+
 A reservation management system for KUBO Beach Resort, built with PostgreSQL, Express, React, and Node.js (PERN) in TypeScript.
 
 > **Project architecture:** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) explains every folder in plain language, with comments, a request walkthrough, and a "where to find things" table.
