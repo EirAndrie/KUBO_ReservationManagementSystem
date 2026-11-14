@@ -16,8 +16,9 @@ Read these before doing anything else. They are not optional.
    checks you actually ran.
 2. **Conventional Commits** for every commit: `type(scope): short description`,
    lowercase imperative, no trailing period. One commit per coherent change.
-3. **Do not add day-use or exclusive-event booking code to `main` before December
-   2026.** See [Deferred Work](#deferred-work).
+3. **Day-use and exclusive-event bookings will be resumed and completed in December
+   2026.** Until then, do not add that code to `main`. The work lives on the
+   `feat/day-use-bookings` branch on GitHub. See [Deferred Work](#deferred-work).
 4. **Never run write tests against the shared database.** Use the test database
    (see [Testing](#testing)).
 5. **Update the docs that describe behavior you change** (see the PR template
@@ -234,12 +235,15 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
 
 ## Deferred Work
 
-- **Day-use and exclusive-event bookings (BR-083 to BR-093) are scheduled for
-  December 2026.** The business-rules addendum and the draft migration
-  `20261110_add_day_use_and_event_bookings.sql` live on the `feat/day-use-bookings`
-  branch, not on `main`. Do not add day-use code, migrations, or docs to `main` before
-  December. When work resumes: rebase that branch onto `main`, then wire the
-  reservation, kubo type, and upgrade routes and the frontend.
+- **Day-use and exclusive-event bookings (BR-083 to BR-093): the team will resume and
+  complete this feature in December 2026.** The business-rules addendum and the draft
+  migration `20261110_add_day_use_and_event_bookings.sql` live on the
+  `feat/day-use-bookings` branch on GitHub (`git fetch origin && git switch
+  feat/day-use-bookings`), not on `main`. Do not add day-use code, migrations, or docs
+  to `main`, and do not merge that branch, before December. The branch's
+  `docs/day-use-bookings-status.md` lists the remaining steps (rebase onto `main`,
+  rename the migration after the newest `main` migration, wire the reservation, kubo
+  type, and upgrade routes, then the frontend, tests, and docs).
 
 ## Testing
 

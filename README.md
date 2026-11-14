@@ -385,7 +385,7 @@ Some `docs/*.md` files describe an older target layout (for example an `/api` ba
 
 ## Roadmap
 
-- **Day-use and exclusive-event bookings (BR-083 to BR-093): planned for December 2026.** This work is deliberately kept off `main` until then. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) exist on the `feat/day-use-bookings` branch; the reservation, kubo type, and upgrade routes still need to be wired. Do not add day-use code to `main` before December. See [`docs/development-progress.md`](docs/development-progress.md#planned-work).
+- **Day-use and exclusive-event bookings (BR-083 to BR-093): the team will resume and complete this feature in December 2026.** This work is deliberately kept off `main` until then. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) are on the [`feat/day-use-bookings`](https://github.com/EirAndrie/KUBO_ReservationManagementSystem/tree/feat/day-use-bookings) branch, whose `docs/day-use-bookings-status.md` lists the remaining work; the reservation, kubo type, and upgrade routes still need to be wired. Do not add day-use code to `main` before December. See [`docs/development-progress.md`](docs/development-progress.md#planned-work).
 
 ---
 

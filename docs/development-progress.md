@@ -76,7 +76,7 @@ previous one.
 
 | Area | Target | Notes |
 |---|---|---|
-| Day-use and exclusive-event bookings (BR-083 to BR-093) | December 2026 | Kept off `main` until December. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) exist on the `feat/day-use-bookings` branch. Remaining: rebase onto `main`, then wire the reservation, kubo type, and upgrade routes and the frontend. Do not add day-use code to `main` before then. |
+| Day-use and exclusive-event bookings (BR-083 to BR-093) | December 2026 | The team will resume and complete this feature in December. Kept off `main` until then. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) are on the `feat/day-use-bookings` branch on GitHub; its `docs/day-use-bookings-status.md` tracks the remaining steps. Remaining: rebase onto `main`, then wire the reservation, kubo type, and upgrade routes and the frontend. Do not add day-use code to `main` before then. |
 
 ## Notes
 
