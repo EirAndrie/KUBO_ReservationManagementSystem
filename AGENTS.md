@@ -1,5 +1,12 @@
 # Kubo Reservation System - Agent Instructions
 
+> **Deferred feature branch: read this first.** This is `feat/day-use-bookings`.
+> Day-use and exclusive-event bookings (BR-083 to BR-093) are deferred; **the team will
+> resume and complete this feature in December 2026.** Until then, do not merge this
+> branch into `main`, do not copy its code, migrations, or docs elsewhere, and do not
+> apply its migration to the deployed database. Status and remaining work:
+> [`docs/day-use-bookings-status.md`](docs/day-use-bookings-status.md).
+
 ## Start Here
 
 - `backend/` is the only runnable app. `frontend/` contains planning documents only; there is no frontend `package.json` or source code yet.
