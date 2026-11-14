@@ -19,7 +19,7 @@ import type { CreateGuestDTO } from '@/features/guest';
 import { AddChargeModal, RecordPaymentModal } from '@/features/payment';
 import { ReservationPickerModal } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
-import { KpiStrip, PageHeader, Section, StatusBadge } from '@/components/common';
+import { KpiStrip, ResortBanner, Section, StatusBadge } from '@/components/common';
 import { formatMoney, pluralize, toAmount } from '@/lib/format';
 import styles from './staff-dashboard.module.css';
 
@@ -104,7 +104,7 @@ export const StaffDashboardPage: React.FC = () => {
 
   return (
     <div>
-      <PageHeader
+      <ResortBanner
         title={`Today, ${dayjs().format('MMMM D')}`}
         description={`${greeting()}, ${user?.firstName ?? 'there'}. ${pluralize(queue.arrivals.length, 'guest')} arriving, ${queue.departures.length} departing.`}
       />
@@ -117,14 +117,16 @@ export const StaffDashboardPage: React.FC = () => {
             label: 'Arrivals',
             value: queue.arrivals.length,
             hint: `${checkedInToday} checked in · ${queue.arrivals.length} expected`,
+            to: '/check-in-out',
           },
           {
             icon: <LogoutOutlined />,
             label: 'Departures',
             value: queue.departures.length,
             hint: `${formatMoney(departureBalance)} balance left to settle`,
+            to: '/check-in-out',
           },
-          { icon: <HomeOutlined />, label: 'In-house', value: inHouseGuests, hint: 'Guests staying tonight' },
+          { icon: <HomeOutlined />, label: 'In-house', value: inHouseGuests, hint: 'Guests staying tonight', to: '/reservations?tab=inhouse' },
           {
             icon: <HomeOutlined />,
             label: 'Ready kubos',
@@ -135,6 +137,7 @@ export const StaffDashboardPage: React.FC = () => {
               </>
             ),
             hint: `${cleaningCount} being cleaned`,
+            to: '/kubos?status=Available',
           },
         ]}
       />
