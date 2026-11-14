@@ -11,6 +11,9 @@ import type {
   ReverseChargeAdjustmentPayload,
   ApplyCatalogChargePayload,
   CreateChargeRequestPayload,
+  CreateOverpaymentApprovalPayload,
+  OverpaymentApproval,
+  OverpaymentApprovalStatus,
   PaymentFilterParams,
   TransactionType,
   PaymentType,
@@ -115,6 +118,21 @@ function mapRequestRecord(row: Row): ChargeRequest {
   };
 }
 
+function mapOverpaymentApproval(row: Row): OverpaymentApproval {
+  return {
+    approval_id: String(row.approval_id ?? ''),
+    reservation_id: String(row.reservation_id ?? ''),
+    approved_by_name: String(row.approved_by_name ?? ''),
+    max_overpayment_amount: Number(row.max_overpayment_amount ?? 0),
+    reason: String(row.reason ?? ''),
+    status: String(row.status ?? 'Available') as OverpaymentApprovalStatus,
+    payment_id: row.payment_id ? String(row.payment_id) : null,
+    revoked_by_name: row.revoked_by_name ? String(row.revoked_by_name) : null,
+    revoked_at: row.revoked_at ? String(row.revoked_at) : null,
+    created_at: String(row.created_at ?? ''),
+  };
+}
+
 function listOf(res: unknown, key: string): Row[] {
   if (Array.isArray(res)) return res as Row[];
   const value = (res as Record<string, unknown> | null)?.[key];
@@ -160,8 +178,30 @@ export const paymentService = {
       paymentAmount: Number(payload.paymentAmount.toFixed(2)),
       paymentType: payload.paymentType,
       paymentMethod: payload.paymentMethod,
+      ...(payload.overpaymentApprovalId ? { overpaymentApprovalId: payload.overpaymentApprovalId } : {}),
     });
     return mapPaymentRecord(oneOf(res, 'payments'));
+  },
+
+  /** BR-053 approvals for a reservation, newest first. */
+  getOverpaymentApprovals: async (reservationId: string): Promise<OverpaymentApproval[]> => {
+    const res = await apiClient.get(`/reservations/${reservationId}/overpayment-approvals`);
+    return listOf(res, 'overpaymentApprovals').map(mapOverpaymentApproval);
+  },
+
+  /** Administrator-only: authorize one payment to exceed the balance. */
+  createOverpaymentApproval: async (payload: CreateOverpaymentApprovalPayload): Promise<OverpaymentApproval> => {
+    const res = await apiClient.post(`/reservations/${payload.reservationId}/overpayment-approvals`, {
+      maxOverpaymentAmount: Number(payload.maxOverpaymentAmount.toFixed(2)),
+      reason: payload.reason,
+    });
+    return mapOverpaymentApproval(oneOf(res, 'overpaymentApprovals'));
+  },
+
+  /** Administrator-only: revoke an approval no payment has used yet. */
+  revokeOverpaymentApproval: async (approvalId: string): Promise<OverpaymentApproval> => {
+    const res = await apiClient.patch(`/overpayment-approvals/${approvalId}/revoke`);
+    return mapOverpaymentApproval(oneOf(res, 'overpaymentApprovals'));
   },
 
   /** Moves a payment along Pending → Processing → Completed / Failed / Cancelled. */

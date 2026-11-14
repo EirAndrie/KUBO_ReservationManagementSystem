@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Modal, Form, InputNumber, Select, Checkbox } from 'antd';
 import { useRecordPayment } from '../hooks/use-payment-mutations.hook';
 import { PAYMENT_METHOD_OPTIONS, PAYMENT_TYPE_OPTIONS } from '../constants/payment.constants';
-import type { PaymentMethod, PaymentType } from '../types/payment.types';
+import type { OverpaymentApproval, PaymentMethod, PaymentType } from '../types/payment.types';
 import { formatMoney } from '@/lib/format';
 import { Callout } from '@/components/common';
 import styles from './record-payment-modal.module.css';
@@ -17,6 +17,8 @@ export interface RecordPaymentModalProps {
   netPaid: number;
   /** Pre-fills the amount (e.g. "Collect ₱X" passes the balance). */
   defaultAmount?: number;
+  /** BR-053 approvals for this reservation; only `Available` ones are offered. */
+  overpaymentApprovals?: OverpaymentApproval[];
 }
 
 interface PaymentFormValues {
@@ -24,12 +26,14 @@ interface PaymentFormValues {
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
   complete: boolean;
+  overpaymentApprovalId?: string;
 }
 
 /**
  * Records a payment against a reservation. The server creates it as Pending
- * and rejects amounts above the outstanding balance; its message is shown
- * verbatim. "Mark as completed" completes it right away so it counts toward
+ * and rejects amounts above the outstanding balance unless an Administrator
+ * overpayment approval covering the excess is chosen (BR-053); its message is
+ * shown verbatim. "Mark as completed" completes it right away so it counts toward
  * the balance.
  */
 export function RecordPaymentModal({
@@ -40,11 +44,14 @@ export function RecordPaymentModal({
   outstandingBalance,
   netPaid,
   defaultAmount,
+  overpaymentApprovals = [],
 }: RecordPaymentModalProps) {
   const [form] = Form.useForm<PaymentFormValues>();
   const recordPayment = useRecordPayment();
   const amount = Form.useWatch('paymentAmount', form);
   const isOver = typeof amount === 'number' && amount > outstandingBalance;
+  const excess = isOver ? Number((amount - outstandingBalance).toFixed(2)) : 0;
+  const available = overpaymentApprovals.filter((a) => a.status === 'Available');
 
   useEffect(() => {
     if (open) {
@@ -67,6 +74,7 @@ export function RecordPaymentModal({
         paymentType: values.paymentType,
         paymentMethod: values.paymentMethod,
         complete: values.complete,
+        overpaymentApprovalId: isOver ? values.overpaymentApprovalId : undefined,
       });
       onClose();
     } catch {
@@ -108,10 +116,40 @@ export function RecordPaymentModal({
         >
           <InputNumber<number> style={{ width: '100%' }} step={0.01} precision={2} prefix="₱" />
         </Form.Item>
-        {isOver && (
+        {isOver && available.length === 0 && (
           <Callout tone="warn" style={{ marginTop: -8, marginBottom: 16 }}>
-            This is more than the balance due ({formatMoney(outstandingBalance)}). The server will reject overpayments.
+            This is {formatMoney(excess)} more than the balance due ({formatMoney(outstandingBalance)}). Ask an
+            Administrator to approve an overpayment on this reservation first.
           </Callout>
+        )}
+        {isOver && available.length > 0 && (
+          <Form.Item
+            name="overpaymentApprovalId"
+            label={`Overpayment approval (${formatMoney(excess)} over the balance)`}
+            dependencies={['paymentAmount']}
+            rules={[
+              { required: true, message: 'Choose the approval that covers this overpayment.' },
+              ({ getFieldValue }) => ({
+                validator: (_, id?: string) => {
+                  const chosen = available.find((a) => a.approval_id === id);
+                  const current = Number(getFieldValue('paymentAmount')) || 0;
+                  const over = Number((current - outstandingBalance).toFixed(2));
+                  return !chosen || over <= chosen.max_overpayment_amount
+                    ? Promise.resolve()
+                    : Promise.reject(new Error(`This approval covers up to ${formatMoney(chosen.max_overpayment_amount)} over.`));
+                },
+              }),
+            ]}
+            extra="The extra becomes a guest credit, which must be refunded before check-out."
+          >
+            <Select
+              placeholder="Choose an approval"
+              options={available.map((a) => ({
+                value: a.approval_id,
+                label: `Up to ${formatMoney(a.max_overpayment_amount)} · ${a.reason}`,
+              }))}
+            />
+          </Form.Item>
         )}
         <div className={styles.row}>
           <Form.Item name="paymentType" label="Type" rules={[{ required: true }]} style={{ flex: 1 }}>
