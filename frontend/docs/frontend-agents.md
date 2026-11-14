@@ -2,6 +2,11 @@
 
 Welcome to the AI Agent instruction manual for the **KUBO Reservation Management System (Frontend)**. As an AI agent working on this codebase, you must adhere strictly to the rules, conventions, and architectural patterns outlined below. This ensures high code quality, consistency, and strict alignment with the backend services.
 
+> **Read the root [`AGENTS.md`](../../AGENTS.md) first.** It holds the repository-wide rules agents
+> commonly skip: fill in `.github/pull_request_template.md` for every pull request (use
+> `gh pr create --body-file`), Conventional Commits, no day-use booking work on `main` before
+> December 2026, and write tests only against the test database.
+
 ## Project Context
 
 The frontend is a specialized resort admin dashboard built with modern React tools and practices.
