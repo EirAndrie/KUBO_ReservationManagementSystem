@@ -9,7 +9,7 @@ import { Callout } from '@/components/common';
 import styles from './login.module.css';
 
 /**
- * Split sign-in: a quiet form on the left and an ocean brand panel on the
+ * Split sign-in: a quiet form on the left and a resort photo panel on the
  * right (no live data before sign-in). The 6–12 character password rule and a
  * Caps Lock warning show before submit; server errors show inline.
  */
@@ -57,6 +57,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className={styles.formWrap}>
+          <p className={styles.eyebrow}>Kubo Beach Resort</p>
           <h1 className={styles.title}>Sign in</h1>
           <p className={styles.helper}>Use the username assigned by your administrator.</p>
 
@@ -114,18 +115,10 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className={styles.brandPanel} aria-hidden="true">
-        <svg className={styles.waves} viewBox="0 0 600 400" preserveAspectRatio="none">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <path
-              key={i}
-              d={`M0 ${40 + i * 36} C 150 ${20 + i * 36}, 300 ${70 + i * 36}, 600 ${36 + i * 36}`}
-              fill="none"
-              stroke="rgba(255,255,255,0.16)"
-              strokeWidth="1"
-            />
-          ))}
-        </svg>
-        <p className={styles.tagline}>Every arrival, every kubo, every peso — in one calm front desk.</p>
+        <div className={styles.panelText}>
+          <h2 className={styles.panelName}>Kubo Beach Resort</h2>
+          <p className={styles.tagline}>Every arrival, every kubo, every peso — in one calm front desk.</p>
+        </div>
       </div>
     </div>
   );

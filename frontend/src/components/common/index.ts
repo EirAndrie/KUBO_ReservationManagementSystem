@@ -1,7 +1,7 @@
 export { StatusBadge } from './StatusBadge';
 export type { StatusTone } from './StatusBadge';
 export { Avatar } from './Avatar';
-export { Section, KpiStrip, TabLabel, TwoLine, Callout } from './Section';
+export { Section, KpiStrip, ResortBanner, TabLabel, TwoLine, Callout } from './Section';
 export type { KpiItem } from './Section';
 export { ListSkeleton, EmptyState, ErrorState, QueryBoundary } from './States';
 export { RowMenu } from './RowMenu';

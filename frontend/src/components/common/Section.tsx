@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { RightOutlined } from '@ant-design/icons';
 import styles from './common.module.css';
 
 export interface SectionProps {
@@ -29,21 +31,54 @@ export interface KpiItem {
   value: React.ReactNode;
   hint?: React.ReactNode;
   icon?: React.ReactNode;
+  /** When set, the whole card links to this route (drill-down view). */
+  to?: string;
 }
 
 /** Horizontal strip of key numbers, separated by hairlines. */
 export const KpiStrip: React.FC<{ items: KpiItem[]; loading?: boolean }> = ({ items, loading }) => (
   <div className={styles.kpiStrip}>
-    {items.map((item, i) => (
-      <div className={styles.kpi} key={i}>
-        <div className={styles.kpiLabel}>
-          {item.icon}
-          {item.label}
+    {items.map((item, i) => {
+      const body = (
+        <>
+          <div className={styles.kpiLabel}>
+            {item.icon}
+            {item.label}
+          </div>
+          <div className={styles.kpiValue}>{loading ? '—' : item.value}</div>
+          {item.hint && <div className={styles.kpiHint}>{loading ? ' ' : item.hint}</div>}
+          {item.to && <RightOutlined className={styles.kpiArrow} aria-hidden="true" />}
+        </>
+      );
+      return item.to ? (
+        <Link to={item.to} className={`${styles.kpi} ${styles.kpiLink}`} key={i}>
+          {body}
+        </Link>
+      ) : (
+        <div className={styles.kpi} key={i}>
+          {body}
         </div>
-        <div className={styles.kpiValue}>{loading ? '—' : item.value}</div>
-        {item.hint && <div className={styles.kpiHint}>{loading ? ' ' : item.hint}</div>}
-      </div>
-    ))}
+      );
+    })}
+  </div>
+);
+
+/**
+ * Photo header for the dashboards: the resort name as an eyebrow, a title,
+ * one supporting line and optional right-aligned actions.
+ */
+export const ResortBanner: React.FC<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+}> = ({ title, description, action }) => (
+  <div className={styles.banner}>
+    <div>
+      <p className={styles.bannerEyebrow}>Kubo Beach Resort</p>
+      <h1 className={styles.bannerTitle}>{title}</h1>
+      {description && <p className={styles.bannerText}>{description}</p>}
+    </div>
+    {action && <div>{action}</div>}
   </div>
 );
 

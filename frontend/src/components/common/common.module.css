@@ -346,3 +346,80 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* ---- Actionable KPI cards ---- */
+.kpiLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.kpiLink:hover {
+  background: var(--color-bg, rgba(127, 127, 127, 0.07));
+}
+
+.kpiLink:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.kpiArrow {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 11px;
+  color: var(--color-muted);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.kpiLink:hover .kpiArrow {
+  color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+/* ---- Resort banner (photo header for dashboards) ---- */
+.banner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  min-height: 150px;
+  margin-bottom: 20px;
+  padding: 24px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  color: #ffffff;
+  background-color: #082f49;
+  background-image:
+    linear-gradient(90deg, rgba(8, 47, 73, 0.88) 0%, rgba(8, 47, 73, 0.55) 55%, rgba(8, 47, 73, 0.2) 100%),
+    url('/images/kubo-beach.webp');
+  background-size: cover;
+  background-position: center 62%;
+}
+
+.bannerEyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bannerTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #ffffff;
+}
+
+.bannerText {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.88);
+}

@@ -11,7 +11,7 @@ import { useChargeRequests, usePayments } from '@/features/payment';
 import type { ChargeRequest } from '@/features/payment';
 import { useAuditLogs, describeAuditLog } from '@/features/audit-logs';
 import { useEmployees } from '@/features/employee';
-import { Avatar, EmptyState, ErrorState, KpiStrip, ListSkeleton, PageHeader, Section, TwoLine } from '@/components/common';
+import { Avatar, EmptyState, ErrorState, KpiStrip, ListSkeleton, ResortBanner, Section, TwoLine } from '@/components/common';
 import { formatMoney, formatMoneyWhole, label, pluralize, toAmount } from '@/lib/format';
 import { resortTime } from '@/lib/time';
 import { ApproveRequestModal, RejectRequestModal } from '../components/review-request-modals.component';
@@ -20,6 +20,9 @@ import styles from './admin-dashboard.module.css';
 type Period = 'today' | '7d' | '30d';
 
 const PERIOD_LABEL: Record<Period, string> = { today: 'today', '7d': 'last 7 days', '30d': 'last 30 days' };
+
+/** Matching date-range chip on the payments page (its "month" is the calendar month). */
+const PERIOD_RANGE: Record<Period, string> = { today: 'today', '7d': 'week', '30d': 'month' };
 
 function periodStart(p: Period): string {
   const now = resortTime(new Date());
@@ -104,7 +107,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   return (
     <div>
-      <PageHeader
+      <ResortBanner
         title={`${greeting()}, ${user?.firstName ?? 'there'}`}
         description={`${dayjs().format('dddd, MMMM D')} · Here's what needs your attention.`}
         action={
@@ -126,21 +129,25 @@ export const AdminDashboardPage: React.FC = () => {
             label: 'Occupancy tonight',
             value: kubos.isLoading ? '—' : `${occupancy}%`,
             hint: `${occupied} of ${kuboList.length} kubos`,
+            to: '/kubos?status=Occupied',
           },
           {
             label: `Revenue, ${PERIOD_LABEL[period]}`,
             value: payments.isLoading ? '—' : formatMoneyWhole(revenue),
             hint: 'Completed payments, less refunds',
+            to: `/payments?tab=completed&range=${PERIOD_RANGE[period]}`,
           },
           {
             label: 'Outstanding balances',
             value: formatMoneyWhole(outstanding),
             hint: `Across ${pluralize(withBalance, 'active reservation')}`,
+            to: '/reservations',
           },
           {
             label: 'Average nightly rate',
             value: formatMoneyWhole(avgRate),
             hint: pluralize(types.length, 'kubo type'),
+            to: '/kubo-types',
           },
         ]}
       />
