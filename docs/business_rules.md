@@ -704,19 +704,27 @@ instead (retained from old rule `l`).
   transactions, and a final `FullPayment`/`BalancePayment`. The number of payments is
   not limited. A payment must not exceed the outstanding balance unless an
   Administrator approves and audits an explicit correction.
-- **Entities:** `payment`, `reservation`
-- **Enforcement:** Application-level balance check; the DDL has no balance column or
-  overpayment constraint.
+- **Entities:** `payment`, `reservation`, `overpayment_approval`
+- **Enforcement:** `fn_create_payment` / `fn_update_payment_status` balance checks. An
+  Administrator records an approval in `kubo.overpayment_approval` (maximum excess and
+  a required reason, audited as `Approve`); Staff pass it when recording the payment.
+  The approval is consumed by one payment, re-checked on completion, released if that
+  payment fails or is cancelled, and revocable while unused. Per BR-005 the
+  Administrator only authorizes; Staff record the payment. The resulting credit is
+  refunded before check-out (BR-064).
 
 #### BR-054 — Refunds
 - **Rule:** A refund may be recorded only against a completed payment of the same
   reservation. The refund amount must not exceed the net amount paid, and it is stored
   as a positive `payment_amount` with `transaction_type = 'Refund'`. The original
   payment's status becomes `PartiallyRefunded` or `Refunded` as appropriate. Refunds
-  must be audited. The DDL has no link from a refund to the original payment, so the
-  relationship must be recorded in the audit description.
+  must be audited. The refund's `related_payment_id` stores the original payment, and
+  cumulative refunds against one payment may not exceed its amount.
 - **Entities:** `payment`, `reservation`, `audit_log`
-- **Enforcement:** Application-level validation; amounts remain non-negative.
+- **Enforcement:** `fn_record_refund`; amounts remain non-negative. The
+  `payment_refund_link_check` constraint (NOT VALID, so older unlinkable rows are
+  tolerated) requires the link on new refunds. Refunds recorded before 2026-11-14 were
+  backfilled from their audit description.
 
 #### BR-055 — Allowed reservation states for financial transactions
 - **Rule:** New payments may be recorded for `Pending`, `Confirmed`, `CheckedIn`, or

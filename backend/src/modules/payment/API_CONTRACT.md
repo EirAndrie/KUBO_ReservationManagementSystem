@@ -6,10 +6,12 @@ System.
 - **Base path:** `API_BASE_PATH` (default `/api`; this repo uses `/KUBO_Resort/Management-System/v0.0.1`)
 - **Module mounts:**
   - `/reservations/:reservationId/payments`
+  - `/reservations/:reservationId/overpayment-approvals`
   - `/payments`
+  - `/overpayment-approvals`
 - **Source files:** `payment.routes.ts`, `payment.controllers.ts`, `payment.services.ts`, `repository/payment.schema.ts`, `repository/payment.repository.ts`
 - **Authentication:** All endpoints require a Bearer access token.
-- **Authorization:** Reads are open to any authenticated employee. Create, refund, and status updates require **Staff**. Cleanup deletion requires **Administrator**.
+- **Authorization:** Reads are open to any authenticated employee. Create, refund, and status updates require **Staff**. Cleanup deletion, charge corrections, and overpayment approvals require **Administrator**.
 
 > This document describes the API as implemented. Response keys are shown exactly
 > as they appear on the wire.
@@ -200,6 +202,9 @@ required and limited to 255 characters.
 | `GET` | `/payments/:paymentId` | Authenticated | Get one payment |
 | `PATCH` | `/payments/:paymentId/status` | Staff | Apply a status transition |
 | `DELETE` | `/payments/:paymentId` | Administrator | Cleanup-only deletion |
+| `GET` | `/reservations/:reservationId/overpayment-approvals` | Authenticated | List overpayment approvals (BR-053) |
+| `POST` | `/reservations/:reservationId/overpayment-approvals` | Administrator | Approve an overpayment |
+| `PATCH` | `/overpayment-approvals/:approvalId/revoke` | Administrator | Revoke an unused approval |
 
 ---
 
@@ -224,6 +229,7 @@ Staff only.
 | `paymentAmount` | number | Yes | Non-negative; at most 2 decimal places |
 | `paymentType` | string | Yes | One of the values in §1.7 |
 | `paymentMethod` | string | Yes | One of the values in §1.8 |
+| `overpaymentApprovalId` | string (UUID) | No | Required only when the amount exceeds the outstanding balance (§12) |
 
 `transaction_type` and `payment_status` are not accepted; the server forces
 `Payment` and `Pending`.
@@ -273,7 +279,11 @@ Staff only.
 | Payment type/method missing | `400` | `Payment type and method are required.` |
 | Reservation does not exist | `404` | `Reservation does not exist.` |
 | Reservation is `Cancelled` or `NoShow` | `400` | `Payments cannot be recorded for a <status> reservation.` |
-| Amount exceeds outstanding balance | `400` | `Payment exceeds the outstanding balance of <amount>.` |
+| Amount exceeds outstanding balance, no approval given | `400` | `Payment exceeds the outstanding balance of <amount>. An Administrator overpayment approval is required.` |
+| Approval does not exist | `404` | `Overpayment approval does not exist.` |
+| Approval is for another reservation | `400` | `Overpayment approval belongs to another reservation.` |
+| Approval already used or revoked | `400` | `Overpayment approval is no longer available.` |
+| Excess above the approved maximum | `400` | `Payment exceeds the outstanding balance of <amount> by more than the approved <max>.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
 | Audit write fails | `500` | Database/fallback error |
@@ -281,6 +291,8 @@ Staff only.
 Behavior notes:
 
 - Reservations in `Pending`, `Confirmed`, `CheckedIn`, or `CheckedOut` are eligible.
+- An approval passed with an amount that does not exceed the balance is ignored and
+  stays available.
 - A zero amount is accepted.
 - The payment is created as `transaction_type = Payment`, `payment_status = Pending`,
   with a server timestamp.
@@ -435,6 +447,7 @@ Staff only.
 | Original is not a completed payment | `400` | `Refunds require a completed original payment.` |
 | Reservation does not exist | `404` | `Reservation does not exist.` |
 | Refund exceeds net amount paid | `400` | `Refund exceeds the net amount paid of <amount>.` |
+| Cumulative refunds would exceed the original payment | `400` | `Refund exceeds the unrefunded amount of this payment (<amount>).` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
 | Audit write fails | `500` | Database/fallback error |
@@ -446,8 +459,10 @@ Refund behavior:
 - The refund row is created with `transaction_type = Refund`,
   `payment_status = Completed`, and a server timestamp.
 - The refund amount is stored as a **positive** number.
-- The cumulative refund total is tracked by summing prior refunds linked to the
-  original in the **audit description**. There is no `original_payment_id` column.
+- The refund stores `related_payment_id = originalPaymentId`. The cumulative refund
+  total is the sum of completed refunds with that link and may not exceed the original
+  payment amount. Refunds created before `20261114_link_refunds_to_original_payment.sql`
+  were backfilled from their audit description.
 - If cumulative refunds reach the original amount, the original becomes `Refunded`;
   otherwise it becomes `PartiallyRefunded`.
 - Refunds are allowed even when the reservation is `Cancelled` or `NoShow`, provided
@@ -597,7 +612,8 @@ Staff only.
 |---|---:|---|
 | Invalid UUID or missing status | `400` | Validation detail |
 | Invalid transition | `400` | `Invalid payment status transition from <from> to <to>.` |
-| Completing a payment that exceeds outstanding balance | `400` | `Payment exceeds the outstanding balance of <amount>.` |
+| Completing a payment that exceeds outstanding balance without a linked approval | `400` | `Payment exceeds the outstanding balance of <amount>.` |
+| Completing a payment whose excess is above its linked approval | `400` | `Payment exceeds the outstanding balance of <amount> by more than the approved <max>.` |
 | Payment does not exist | `404` | `Payment not found` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
@@ -609,7 +625,10 @@ Behavior notes:
 - `Refunded` and `PartiallyRefunded` cannot be set manually; they are produced by
   the refund routine.
 - Completing a payment re-checks the outstanding balance, so a previously valid
-  pending payment can be blocked if other payments were completed first.
+  pending payment can be blocked if other payments were completed first. A payment
+  created with an overpayment approval may exceed the balance by up to that approval.
+- Moving a payment to `Failed` or `Cancelled` releases its overpayment approval so it
+  can be used again (audited as an `Update` on `overpayment_approval`).
 - The update and audit row are written in one transaction.
 
 ### 8.6 Side effects
@@ -714,6 +733,8 @@ Behavior notes:
   transaction type. This is intentionally a development/repair escape hatch.
 - Deleting a completed payment or a refund does not recalculate or repair related
   records. Deleting a refund does not restore the original payment’s status.
+- A payment that refunds or reversals reference (`related_payment_id`) cannot be
+  deleted; the foreign key returns `409`. Delete the referencing rows first.
 - The audit row is written after the delete and records the deleted row.
 
 ### 10.6 Side effects
@@ -726,8 +747,6 @@ Behavior notes:
 
 ## 11. Known contract quirks
 
-- Refunds have no stored link to the original payment. The relationship exists only
-  in the audit description.
 - The refund response returns the new refund row, not the updated original.
 - The original payment can be `Completed` or `PartiallyRefunded` when refunded, even
   though the error message says “completed”.
@@ -743,3 +762,61 @@ Behavior notes:
   ledger. It is Administrator-only and intended for repair.
 - `DELETE` returns `204` but the controller calls `res.status(204).json()`; clients
   must treat it as an empty `204`.
+
+---
+
+## 12. Overpayment approvals (BR-053)
+
+A payment may exceed the outstanding balance only when an Administrator has approved
+it. Per BR-005 the Administrator only authorizes; Staff still record the payment.
+The resulting negative balance is a guest credit, which must be refunded before
+check-out (the check-out guard requires a zero balance).
+
+Approval object (`overpaymentApprovals`):
+
+| Field | Type | Notes |
+|---|---|---|
+| `approval_id` | UUID | |
+| `reservation_id` | UUID | |
+| `approved_by`, `approved_by_name` | UUID, string | The approving Administrator |
+| `max_overpayment_amount` | string (decimal) | Largest allowed excess over the balance |
+| `reason` | string | Required, at most 255 characters |
+| `status` | string | `Available`, `Used`, or `Revoked` (derived) |
+| `payment_id` | UUID or null | The payment that used it |
+| `revoked_by`, `revoked_by_name`, `revoked_at` | UUID, string, timestamp, or null | |
+| `created_at` | timestamp | |
+
+### `GET /reservations/:reservationId/overpayment-approvals`
+
+Any authenticated employee. Returns `{ success, count, message, overpaymentApprovals: [...] }`,
+newest first.
+
+### `POST /reservations/:reservationId/overpayment-approvals`
+
+Administrator only. Body: `{ "maxOverpaymentAmount": 500, "reason": "..." }`
+(aliases: `max_overpayment_amount`, `description`). Returns `201` with the created
+approval in `overpaymentApprovals`.
+
+| Condition | Status | Message |
+|---|---:|---|
+| Amount not positive or more than 2 decimals, or reason blank | `400` | Validation detail |
+| Reservation does not exist | `404` | `Reservation does not exist.` |
+| Reservation is `Cancelled` or `NoShow` | `400` | `Overpayments cannot be approved for a <status> reservation.` |
+| Not an Administrator | `403` | `Insufficient privileges` |
+
+Side effects: inserts one `kubo.overpayment_approval` row and one audit row
+(`action = Approve`, `entityType = overpayment_approval`).
+
+### `PATCH /overpayment-approvals/:approvalId/revoke`
+
+Administrator only. No body. Returns `200` with the revoked approval.
+
+| Condition | Status | Message |
+|---|---:|---|
+| Approval does not exist | `404` | `Overpayment approval does not exist.` |
+| Already revoked | `400` | `This overpayment approval is already revoked.` |
+| Already used by a payment | `400` | `This overpayment approval is already used by a payment.` |
+| Not an Administrator | `403` | `Insufficient privileges` |
+
+Side effects: sets `revoked_at`/`revoked_by` and writes one audit row
+(`action = Cancel`, `entityType = overpayment_approval`).

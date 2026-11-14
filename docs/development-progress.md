@@ -3,7 +3,7 @@
 Ordered by database dependencies so each entity can be built on top of the
 previous one.
 
-**Last updated:** 2026-11-08
+**Last updated:** 2026-11-14
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
@@ -17,14 +17,14 @@ previous one.
 | 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, Administrator increase corrections, and charge-specific reductions via Adjustment/Reversal payments are implemented with audit writes and role enforcement. |
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
-| 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds, charge-specific Adjustments and linked Reversals, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Payment corrections include a reason and explicit links; cash net paid is derived separately from non-cash charge reductions. |
+| 11 | `payment` | In progress | Pending creation, allowed status transitions, refunds, charge-specific Adjustments and linked Reversals, filters, and Administrator-only cleanup deletion are implemented with role enforcement. Payment corrections include a reason and explicit links; cash net paid is derived separately from non-cash charge reductions. Refunds now store `related_payment_id` (backfilled for older refunds) and cannot exceed the original payment. Overpayments are allowed only with an audited Administrator overpayment approval (BR-053). |
 | 12 | `audit_log` | Complete | Append-only table, write/read routines, entity-history query, and a validated Administrator-only read API exist. All BR-067 events are audited: every tracked mutation plus successful login and logout. |
 
 ## Frontend
 
 | Area | Status | Notes |
 |---|---|---|
-| Frontend app | Deployed | React 19 + Vite + TanStack Query app. Implemented: authentication, role-based dashboards, guests, reservations, kubos, kubo types, employees/roles, payments, audit logs, and the additional-charge catalog. Deployed on Vercel with `VITE_API_BASE_URL` pointing at the Render API. A dedicated custom additional-charge request review screen is not implemented. |
+| Frontend app | Deployed | React 19 + Vite + TanStack Query app. Implemented: authentication, role-based dashboards, guests, reservations, kubos, kubo types, employees/roles, payments, audit logs, the additional-charge catalog, the Administrator charge-request review page (`/charge-requests`), and overpayment approvals on the reservation page. Deployed on Vercel with `VITE_API_BASE_URL` pointing at the Render API. |
 
 ## Status legend
 
@@ -39,13 +39,13 @@ previous one.
 
 | Area | Status | Notes |
 |---|---|---|
-| Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. There is no refresh token or revocation. |
+| Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. Each token has a `jti`; `POST /auth/logout` revokes it (`kubo_auth_management.revoked_token`). There are no refresh tokens. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role names are canonical lowercase values (`administrator`, `staff`) matched exactly. |
 | Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
 | CI | Complete | Separate backend and frontend workflows. Backend runs typecheck and build; frontend runs typecheck, lint, and build. |
 | Deployment | Deployed | Backend on Render, frontend on Vercel. See [Deployment](#deployment). |
 | Seed data | Complete | `npm run db:seed` inserts demo administrator/staff accounts, kubo types, kubos, and catalog items. The script is additive and idempotent. |
-| Health and keep-alive | In progress | Public `GET <API_BASE_PATH>/health` performs a `SELECT 1`, and a GitHub Actions workflow pings it every 5 minutes. Database-failure handling still returns a generic `500` and needs a `503` JSON response. |
+| Health and keep-alive | Complete | Public `GET <API_BASE_PATH>/health` performs a `SELECT 1` with a 5-second limit and returns `200` (`database: "up"`) or `503` JSON (`database: "down"`). A GitHub Actions workflow pings it every 5 minutes. |
 
 ## Deployment
 
@@ -69,8 +69,14 @@ previous one.
 
 ## Next up
 
-1. Implement the planned frontend login flow and token handling.
-2. Package migrations with the production build (`dist/migrations`) and bootstrap the additional-charge management schema safely.
+1. Run the Postman collection (read-only and write tests) and the Admin/Staff checklist (`docs/admin-staff-test-checklist.md`) against the deployed stack before submission.
+2. Bootstrap the additional-charge management schema safely when it is absent (the migration currently skips its routines).
+
+## Planned work
+
+| Area | Target | Notes |
+|---|---|---|
+| Day-use and exclusive-event bookings (BR-083 to BR-093) | December 2026 | Kept off `main` until December. A business-rules addendum and a draft migration (`20261110_add_day_use_and_event_bookings.sql`) exist on the `feat/day-use-bookings` branch. Remaining: rebase onto `main`, then wire the reservation, kubo type, and upgrade routes and the frontend. Do not add day-use code to `main` before then. |
 
 ## Notes
 
@@ -91,9 +97,15 @@ previous one.
   `PartiallyRefunded`, or `Refunded` as received, with completed `Refund` rows
   offsetting them. This correction is required because BR-054 changes the original
   payment status after a refund.
-- Refund-to-original linkage remains in the audit description. Charge Reversals have a
-  `related_payment_id`, charge Adjustments and their Reversals have a
+- Refunds and charge Reversals both use `related_payment_id` (a Refund points at its
+  original Payment; `20261114_link_refunds_to_original_payment.sql` backfilled older
+  refunds from their audit description). Charge Adjustments and their Reversals have a
   `related_charge_id`, and both correction types store a required description.
+- BR-053 overpayments: an Administrator records an approval (maximum excess plus a
+  reason) on `kubo.overpayment_approval`; Staff choose it when a payment exceeds the
+  balance. The approval is consumed by that payment, re-checked on completion, released
+  if the payment fails or is cancelled, and revocable while unused. The resulting credit
+  must be refunded before check-out because the check-out guard requires a zero balance.
 - The cleanup-only payment delete route is Administrator-only and exists for
   development/repair use. Cash returns use Refund rows; applied-charge reductions
   use audited Adjustment rows and can be offset by linked Reversal rows.
@@ -104,8 +116,9 @@ previous one.
 - Authentication uses JWT bearer tokens issued by `POST /auth/login`; `GET /auth/me`
   returns the current profile. The token identifies the employee only, and the role and
   status are re-read from the database on every request.
-- `POST /auth/logout` records an audit-only `Logout` event and returns `204`. JWTs are
-  stateless and are not revoked, so the token remains valid until its expiry.
+- `POST /auth/logout` revokes the presented token by its `jti` until the token expires,
+  records a `Logout` audit event, and returns `204`. Tokens without a `jti` (issued before
+  this change) are refused.
 - RBAC is enforced at the route level. Reads require an authenticated employee;
   administrative and operational writes are separated according to the permission
   matrix. Role names are stored and matched as the canonical lowercase values
