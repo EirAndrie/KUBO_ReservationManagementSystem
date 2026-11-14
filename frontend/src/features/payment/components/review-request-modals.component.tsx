@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Input, InputNumber, Modal } from 'antd';
-import { useApproveChargeRequest, useRejectChargeRequest } from '@/features/payment';
-import type { ChargeRequest } from '@/features/payment';
+import { useApproveChargeRequest, useRejectChargeRequest } from '../hooks/use-payment-mutations.hook';
+import type { ChargeRequest } from '../types/payment.types';
 import { Callout } from '@/components/common';
 import { formatMoney } from '@/lib/format';
 

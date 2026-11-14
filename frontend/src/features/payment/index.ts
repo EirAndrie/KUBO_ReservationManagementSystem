@@ -21,6 +21,8 @@ export type { AddChargeModalProps } from './components/add-charge-modal.componen
 export { PrintInvoiceModal } from './components/print-invoice-modal.component';
 export type { PrintInvoiceModalProps } from './components/print-invoice-modal.component';
 
+export { ApproveRequestModal, RejectRequestModal } from './components/review-request-modals.component';
+
 export { OverpaymentApprovalsSection } from './components/overpayment-approvals-section.component';
 export type { OverpaymentApprovalsSectionProps } from './components/overpayment-approvals-section.component';
 
@@ -85,6 +87,7 @@ export {
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
   ADDITIONAL_CHARGE_TYPES,
+  CHARGE_REQUEST_STATUSES,
 } from './types/payment.types';
 
 // Constants
