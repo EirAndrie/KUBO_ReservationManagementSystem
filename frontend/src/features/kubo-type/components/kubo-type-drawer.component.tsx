@@ -3,7 +3,7 @@ import { Button, Drawer, Form, Input, InputNumber } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Callout } from '@/components/common';
 import { formatMoneyWhole, pluralize, toAmount } from '@/lib/format';
-import { KUBO_TYPE_LIMITS } from '../constants/kubo-type.constants';
+import { KUBO_TYPE_LIMITS, KUBO_TYPE_NAME_PATTERN, hasAtLeastTwoLetters } from '../constants/kubo-type.constants';
 import type { CreateKuboTypeDTO, KuboType } from '../types/kubo-type.types';
 
 export interface KuboTypeDrawerProps {
@@ -24,6 +24,19 @@ interface FormValues {
   kuboTypeDescription?: string;
   kuboTypeCapacity: number;
   pricePerNight: number;
+}
+
+/** Names are labels, not identifiers: digits alone or unsupported symbols are rejected. */
+function validateKuboTypeName(value?: string) {
+  const text = (value ?? '').trim();
+  if (!text) return Promise.resolve();
+  if (!KUBO_TYPE_NAME_PATTERN.test(text)) {
+    return Promise.reject(new Error('Use letters, numbers, spaces, and common punctuation only.'));
+  }
+  if (!hasAtLeastTwoLetters(text)) {
+    return Promise.reject(new Error('Name must include at least two letters.'));
+  }
+  return Promise.resolve();
 }
 
 /**
@@ -104,7 +117,9 @@ export const KuboTypeDrawer: React.FC<KuboTypeDrawerProps> = ({
           rules={[
             { required: true, whitespace: true, message: 'Enter a name.' },
             { max: KUBO_TYPE_LIMITS.MAX_NAME_LENGTH },
+            { validator: (_, value?: string) => validateKuboTypeName(value) },
           ]}
+          extra="Use a readable name such as “Deluxe Suite” or “2-Bedroom Villa”."
           validateStatus={serverError ? 'error' : undefined}
           help={serverError ?? undefined}
         >
@@ -142,7 +157,7 @@ export const KuboTypeDrawer: React.FC<KuboTypeDrawerProps> = ({
                 type: 'number',
                 min: KUBO_TYPE_LIMITS.MIN_PRICE,
                 max: KUBO_TYPE_LIMITS.MAX_PRICE,
-                message: 'Rate cannot be negative or above ₱1,000,000.',
+                message: 'Rate must be greater than ₱500.00 and no more than ₱1,000,000.',
               },
             ]}
           >

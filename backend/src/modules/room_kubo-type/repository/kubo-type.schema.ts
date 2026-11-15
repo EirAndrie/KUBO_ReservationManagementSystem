@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+/**
+ * Kubo type names are readable labels, not identifiers. They need at least two
+ * letters; digits are allowed only alongside letters, and the character set
+ * rejects underscores, emoji, and other symbols.
+ */
+const KUBO_TYPE_NAME_PATTERN = /^[\p{L}\p{M}0-9 '’.,&/()+%-]+$/u;
+
+const hasAtLeastTwoLetters = (value: string) =>
+      (value.match(/\p{L}/gu) ?? []).length >= 2;
+
 export const KuboTypeSchema = z.object({
       kuboTypeId: z.string().uuid(),
       kuboTypeName: z
@@ -8,6 +18,14 @@ export const KuboTypeSchema = z.object({
             .min(1, { message: "Kubo type name is required" })
             .max(100, {
                   message: "Kubo type name cannot exceed 100 characters",
+            })
+            .regex(KUBO_TYPE_NAME_PATTERN, {
+                  message:
+                        "Kubo type name may contain only letters, numbers, spaces, and common punctuation",
+            })
+            .refine(hasAtLeastTwoLetters, {
+                  message:
+                        "Kubo type name must include at least two letters",
             }),
       kuboTypeCapacity: z
             .number({
@@ -19,7 +37,7 @@ export const KuboTypeSchema = z.object({
             .number({
                   message: "Price per night is required and must be a number",
             })
-            .nonnegative({ message: "Price per night cannot be negative" })
+            .positive({ message: "Price per night must be greater than zero" })
             .finite()
             .refine((val) => Number(val.toFixed(2)) === val, {
                   message: "Price cannot have more than 2 decimal places",
