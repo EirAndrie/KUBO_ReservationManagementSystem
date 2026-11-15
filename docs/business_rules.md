@@ -197,9 +197,13 @@ The DDL has no permission table, so this matrix is enforced by the application.
 #### BR-009 — Required guest details
 - **Rule:** A guest must have `first_name`, `last_name`, `email`, `phone`,
   `valid_id_type`, and `id_number`. Address fields are optional. `created_at` and
-  `updated_at` default to the current timestamp.
+  `updated_at` default to the current timestamp. First and last names must start
+  with a letter; they may contain Unicode letters, spaces, hyphens, apostrophes,
+  and periods. Digits, emoji, and other symbols are rejected on create and update.
 - **Entities:** `guest`
-- **Enforcement:** `NOT NULL` constraints in the DDL.
+- **Enforcement:** `NOT NULL` constraints in the DDL; Zod validates names before
+  the controller runs, and the `guest_name_check` constraint enforces the same
+  character rule for new inserts and updates.
 
 #### BR-010 — Email is required and unique
 - **Rule:** Every guest must have a syntactically valid email address, and no two

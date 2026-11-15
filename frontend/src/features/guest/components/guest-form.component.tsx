@@ -14,6 +14,7 @@ import type { Guest, CreateGuestDTO, UpdateGuestDTO, ValidIdType } from '../type
 import {
   PHILIPPINE_PHONE_REGEX,
   GUEST_LIMITS,
+  GUEST_NAME_REGEX,
   ID_TYPE_OPTIONS,
   GUEST_POLICIES,
 } from '../constants/guest.constants';
@@ -44,6 +45,26 @@ interface FormValues {
   stateProvince?: string;
   zipPostalCode?: string;
   country?: string;
+}
+
+/**
+ * Shared First/Last Name validator for both registration and edits. Empty
+ * values are left to the `required` rule; whitespace-only and names containing
+ * digits or unsupported symbols are rejected.
+ */
+function validateGuestName(label: string) {
+  return (_: unknown, value?: string) => {
+    if (value == null || value === '') return Promise.resolve();
+    const text = value.trim();
+    if (!text) {
+      return Promise.reject(new Error(`${label} cannot consist of whitespace only.`));
+    }
+    return GUEST_NAME_REGEX.test(text)
+      ? Promise.resolve()
+      : Promise.reject(
+          new Error(`${label} may contain only letters, spaces, hyphens, apostrophes, and periods.`),
+        );
+  };
 }
 
 /**
@@ -168,12 +189,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
                   max: GUEST_LIMITS.MAX_FIRST_NAME,
                   message: `Cannot exceed ${GUEST_LIMITS.MAX_FIRST_NAME} characters.`,
                 },
-                {
-                  validator: (_, val) =>
-                    val && typeof val === 'string' && !val.trim()
-                      ? Promise.reject(new Error('First name cannot consist of whitespace only.'))
-                      : Promise.resolve(),
-                },
+                { validator: validateGuestName('First name') },
               ]}
             >
               <Input
@@ -194,12 +210,7 @@ export const GuestForm: React.FC<GuestFormProps> = ({
                   max: GUEST_LIMITS.MAX_LAST_NAME,
                   message: `Cannot exceed ${GUEST_LIMITS.MAX_LAST_NAME} characters.`,
                 },
-                {
-                  validator: (_, val) =>
-                    val && typeof val === 'string' && !val.trim()
-                      ? Promise.reject(new Error('Last name cannot consist of whitespace only.'))
-                      : Promise.resolve(),
-                },
+                { validator: validateGuestName('Last name') },
               ]}
             >
               <Input

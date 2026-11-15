@@ -158,7 +158,7 @@ This document serves as the comprehensive blueprint for every view within the fr
 - **UI Elements:**
   - Standard `antd Card`-based `antd Form`.
   - Fields (`Form.Item`): First Name, Last Name, Email, Phone Number, Address (optional), ID/Passport Number (optional).
-  - Validation rules configured in `Form.Item` for email format and phone numbers.
+  - Validation rules configured in `Form.Item`: required fields, email format, phone numbers, and names limited to letters, spaces, hyphens, apostrophes, and periods (digits and other symbols rejected).
 - **Data Required:** `POST /api/guests` or `PUT /api/guests/:id`.
 
 ---
