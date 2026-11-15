@@ -91,7 +91,6 @@ const normalizeReservationInput = (value: unknown) => {
  */
 export type WithActor<T> = T & { employeeId: string };
 
-export const MAX_STAY_NIGHTS = 30;
 
 export const ReservationAssignmentSchema = z.preprocess(
       normalizeAssignment,
@@ -113,21 +112,7 @@ export const ReservationAssignmentSchema = z.preprocess(
                   message: "Check-out must be later than check-in",
                   path: ["checkOutDate"],
             })
-            .refine(
-                  (value) => {
-                        const diffMs =
-                              value.checkOutDate.getTime() -
-                              value.checkInDate.getTime();
-                        const diffDays = Math.ceil(
-                              diffMs / (1000 * 60 * 60 * 24),
-                        );
-                        return diffDays <= MAX_STAY_NIGHTS;
-                  },
-                  {
-                        message: `Stay duration cannot exceed ${MAX_STAY_NIGHTS} nights`,
-                        path: ["checkOutDate"],
-                  },
-            )
+
             .refine(
                   (value) =>
                         value.scheduledCheckInTime === undefined ||

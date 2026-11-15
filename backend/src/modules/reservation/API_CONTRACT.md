@@ -233,7 +233,7 @@ Staff only.
 | `assignments` | array | Yes | At least one item |
 | `assignments[].kuboId` | string (UUID) | Yes | Must reference an existing kubo |
 | `assignments[].checkInDate` | date | Yes | Cannot be in the past |
-| `assignments[].checkOutDate` | date | Yes | Must be later than check-in; stay duration cannot exceed 30 nights |
+| `assignments[].checkOutDate` | date | Yes | Must be later than check-in |
 | `assignments[].scheduledCheckInTime` | string | No | `HH:MM` or `HH:MM:SS` |
 | `assignments[].scheduledCheckOutTime` | string | No | Must be later than scheduled check-in when both are supplied |
 

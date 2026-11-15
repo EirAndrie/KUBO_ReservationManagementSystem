@@ -139,9 +139,9 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
 
   // Validation before proceeding
   const canProceedStep0 = Boolean(selectedGuest);
-  const isOverMaxStay = nightsCount > RESERVATION_LIMITS.MAX_STAY_NIGHTS;
+  const isExtendedStay = nightsCount >= RESERVATION_LIMITS.EXTENDED_STAY_THRESHOLD_NIGHTS;
   const canProceedStep1 = Boolean(
-    dateRange && dateRange[0] && dateRange[1] && !isOverMaxStay && user?.employeeId
+    dateRange && dateRange[0] && dateRange[1] && user?.employeeId
   );
   const canProceedStep2 = selectedKubos.length > 0;
 
@@ -285,15 +285,20 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                   }}
                   disabledDate={(current) => current && current < dayjs().startOf('day')}
                   allowClear={false}
-                  status={isOverMaxStay ? 'error' : undefined}
+                  status={isExtendedStay ? 'warning' : undefined}
                 />
-                <div style={{ marginTop: 6, fontSize: '0.8rem', color: isOverMaxStay ? 'var(--status-red)' : 'var(--color-primary)', fontWeight: 600 }}>
+                <div style={{ marginTop: 6, fontSize: '0.8rem', color: isExtendedStay ? '#d48806' : 'var(--color-primary)', fontWeight: 600 }}>
                   Duration: {nightsCount} {nightsCount === 1 ? 'night' : 'nights'}
+                  {isExtendedStay && <Tag color="warning" style={{ marginLeft: 8 }}>Extended Stay (30+ nights)</Tag>}
                 </div>
-                {isOverMaxStay && (
-                  <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--status-red)' }}>
-                    Stay duration cannot exceed {RESERVATION_LIMITS.MAX_STAY_NIGHTS} nights.
-                  </div>
+                {isExtendedStay && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    style={{ marginTop: 8 }}
+                    message="Extended Stay Confirmation"
+                    description={`The guest has selected a stay of ${nightsCount} nights (30+ nights / over a month). Please verify and confirm with the guest that they intend to book an extended stay.`}
+                  />
                 )}
               </div>
 
@@ -424,6 +429,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                 <span style={{ color: 'var(--color-muted)' }}>Stay:</span>
                 <span style={{ fontWeight: 600 }}>
                   {checkInStr} to {checkOutStr} ({nightsCount} {nightsCount === 1 ? 'night' : 'nights'})
+                  {isExtendedStay && <Tag color="warning" style={{ marginLeft: 8 }}>Extended Stay</Tag>}
                 </span>
               </div>
               <div className={styles.summaryRow}>

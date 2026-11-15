@@ -176,7 +176,7 @@ Staff only.
 |---|---|---:|---|
 | `kuboId` | string (UUID) | Yes | Must reference an existing kubo |
 | `checkInDate` | date | Yes | Cannot be in the past |
-| `checkOutDate` | date | Yes | Must be later than check-in; stay duration cannot exceed 30 nights |
+| `checkOutDate` | date | Yes | Must be later than check-in |
 | `scheduledCheckInTime` | string | No | `HH:MM` or `HH:MM:SS` |
 | `scheduledCheckOutTime` | string | No | Must be later than scheduled check-in when both are supplied |
 
@@ -361,7 +361,7 @@ At least one field is required.
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
 | `checkInDate` | date | No | Cannot be in the past |
-| `checkOutDate` | date | No | Must be later than check-in; stay duration cannot exceed 30 nights |
+| `checkOutDate` | date | No | Must be later than check-in |
 | `scheduledCheckInTime` | string | No | `HH:MM` or `HH:MM:SS` |
 | `scheduledCheckOutTime` | string | No | Must be later than scheduled check-in when both are supplied |
 
