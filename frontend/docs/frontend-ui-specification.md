@@ -201,6 +201,7 @@ This document serves as the comprehensive blueprint for every view within the fr
   - **Card Content:** Name, Description, Base Price, Max Occupancy (icon + number), Amenities (small `antd Tag` components).
   - Actions inside card: Edit `antd Button`.
   - **Header:** "New Room Type" `antd Button`.
+  - **Validation:** name must contain at least two letters and only letters, numbers, spaces, and common punctuation; nightly rate must be greater than zero.
 - **Data Required:** `GET /api/room-types`.
 
 #### 3.6b. Room Type Form (`/room-types/new`, `/room-types/:id/edit`)

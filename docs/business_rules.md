@@ -259,10 +259,14 @@ The DDL has no permission table, so this matrix is enforced by the application.
 
 #### BR-016 — Kubo type validation
 - **Rule:** A kubo type must have a unique `type_name`, a `capacity` greater than zero,
-  and a `price_per_night` greater than or equal to zero. `description` is optional.
+  and a `price_per_night` greater than zero. `description` is optional. The name must
+  contain at least two letters and only letters, numbers, spaces, and common
+  punctuation; numeric-only, identifier-like, and symbol-only names are rejected.
 - **Entities:** `kubo_type`
-- **Enforcement:** `UNIQUE (type_name)`, `CHECK (capacity > 0)`, and
-  `CHECK (price_per_night >= 0)` in the DDL.
+- **Enforcement:** `UNIQUE (type_name)` and `CHECK (capacity > 0)` in the DDL. Zod
+  validates the name and positive rate before the controller runs; the stored
+  functions and the `kubo_type_name_check` / `kubo_type_price_positive_check`
+  constraints enforce the same rules for new inserts and updates.
 
 #### BR-017 — Kubo validation
 - **Rule:** A kubo must have a unique `kubo_number` and reference an existing

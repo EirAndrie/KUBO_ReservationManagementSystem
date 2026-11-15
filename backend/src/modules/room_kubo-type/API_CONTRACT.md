@@ -65,9 +65,9 @@ wrapper.
 | Field | Type | Nullable | Notes |
 |---|---|---:|---|
 | `kubo_type_id` | string (UUID) | No | Primary key |
-| `type_name` | string | No | Case-insensitively unique |
+| `type_name` | string | No | Case-insensitively unique; at least two letters and only letters, numbers, spaces, and common punctuation |
 | `capacity` | integer | No | Greater than zero |
-| `price_per_night` | string (decimal) | No | PostgreSQL `numeric` is serialized as a JSON string, e.g. `"1500.00"` |
+| `price_per_night` | string (decimal) | No | Greater than zero; PostgreSQL `numeric` is serialized as a JSON string, e.g. `"1500.00"` |
 | `description` | string | Yes | `NULL` when not supplied or explicitly cleared |
 
 ### 1.6 Error envelope
@@ -100,7 +100,9 @@ fields are stripped by Zod.
 Numeric constraints:
 
 - `kuboTypeCapacity` must be a positive integer.
-- `pricePerNight` must be a finite, non-negative number with at most 2 decimal
+- `kuboTypeName` must contain at least two letters and use only letters, numbers,
+  spaces, and common punctuation.
+- `pricePerNight` must be a finite, positive number with at most 2 decimal
   places.
 
 ### 1.9 Path parameter validation
@@ -146,9 +148,9 @@ Administrator only.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `kuboTypeName` | string | Yes | Trimmed; 1–100 characters |
+| `kuboTypeName` | string | Yes | Trimmed; 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only |
 | `kuboTypeCapacity` | integer | Yes | Greater than zero |
-| `pricePerNight` | number | Yes | Non-negative; at most 2 decimal places |
+| `pricePerNight` | number | Yes | Greater than zero; at most 2 decimal places |
 | `kuboTypeDescription` | string | No | Trimmed; maximum 255 characters |
 
 ```json
@@ -188,8 +190,10 @@ Administrator only.
 |---|---:|---|
 | Body fails validation | `400` | Validation detail |
 | Name blank or over 100 characters | `400` | `Kubo type name must be between 1 and 100 characters.` |
+| Name has fewer than two letters | `400` | `Kubo type name must include at least two letters` |
+| Name contains unsupported symbols | `400` | `Kubo type name may contain only letters, numbers, spaces, and common punctuation` |
 | Capacity zero or negative | `400` | `Capacity must be greater than zero.` |
-| Negative price | `400` | `Price per night cannot be negative.` |
+| Zero or negative price | `400` | `Price per night must be greater than zero.` |
 | More than 2 decimal places | `400` | `Price per night cannot have more than two decimal places.` |
 | Description over 255 characters | `400` | `Kubo type description cannot exceed 255 characters.` |
 | Name already exists (case-insensitive) | `400` | `Kubo type name already exists.` |
@@ -338,9 +342,9 @@ All fields are optional, but **at least one** must be supplied.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `kuboTypeName` | string | No | Trimmed; 1–100 characters |
+| `kuboTypeName` | string | No | Trimmed; 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only |
 | `kuboTypeCapacity` | integer | No | Greater than zero |
-| `pricePerNight` | number | No | Non-negative; at most 2 decimal places |
+| `pricePerNight` | number | No | Greater than zero; at most 2 decimal places |
 | `kuboTypeDescription` | string | No | Trimmed; maximum 255 characters |
 
 ```json
@@ -366,8 +370,10 @@ All fields are optional, but **at least one** must be supplied.
 | Body fails Zod validation | `400` | Validation detail |
 | Empty body | `400` | `Provide at least one field to update.` |
 | Name blank or over 100 characters | `400` | `Kubo type name must be between 1 and 100 characters.` |
+| Name has fewer than two letters | `400` | `Kubo type name must include at least two letters` |
+| Name contains unsupported symbols | `400` | `Kubo type name may contain only letters, numbers, spaces, and common punctuation` |
 | Capacity zero or negative | `400` | `Capacity must be greater than zero.` |
-| Negative price | `400` | `Price per night cannot be negative.` |
+| Zero or negative price | `400` | `Price per night must be greater than zero.` |
 | More than 2 decimal places | `400` | `Price per night cannot have more than two decimal places.` |
 | Description over 255 characters | `400` | `Kubo type description cannot exceed 255 characters.` |
 | Name already exists (case-insensitive) | `400` | `Kubo type name already exists.` |
