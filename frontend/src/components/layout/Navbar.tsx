@@ -56,7 +56,16 @@ const Notifications: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   );
 
   return (
-    <Popover content={content} title="Notifications" trigger="click" placement="bottomRight">
+    <Popover
+      content={content}
+      title="Notifications"
+      trigger="click"
+      placement="bottomRight"
+      // Keep the panel inside the viewport instead of clipping it; on phones the
+      // stylesheet turns it into a full-width panel under the top bar.
+      align={{ overflow: { adjustX: true, adjustY: true, shiftX: true } }}
+      rootClassName={styles.notifPopover}
+    >
       <Button type="text" aria-label={`Notifications${items.length ? ` (${items.length})` : ''}`} icon={
         <Badge dot={items.length > 0} offset={[-2, 2]}>
           <BellOutlined style={{ fontSize: 16 }} />

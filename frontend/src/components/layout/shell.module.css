@@ -385,8 +385,24 @@
     padding: 16px 12px 28px;
   }
 
+  /* Notifications open as a full-width panel under the top bar. */
+  .notifPopover {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none;
+  }
+
+  .notifPopover :global(.ant-popover-arrow) {
+    display: none;
+  }
+
   .notifList {
-    width: min(280px, calc(100vw - 56px));
+    width: auto;
+  }
+
+  .notifItem {
+    padding: 10px 8px;
   }
 }
 
