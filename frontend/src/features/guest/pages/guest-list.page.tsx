@@ -29,7 +29,7 @@ import { VALID_ID_TYPES } from '../types/guest.types';
 import type { CreateGuestDTO, Guest, UpdateGuestDTO, ValidIdType } from '../types/guest.types';
 import styles from './guest-list.module.css';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 interface StayStats {
   stays: number;
@@ -75,7 +75,7 @@ export const GuestListPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const guests = useGuests({ search: search || undefined, validIdType: idType, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE });
+  const guests = useGuests({ search: search || undefined, validIdType: idType, limit: PAGE_SIZE, page });
   // Stays and last stay come from the latest reservations (one request, no new endpoint).
   const reservations = useReservations({ limit: 100 });
   const createGuest = useCreateGuest();
@@ -116,7 +116,8 @@ export const GuestListPage: React.FC = () => {
     return [...set].sort().map((c) => ({ value: c, label: c }));
   }, [guests.data, city]);
 
-  const hasNext = (guests.data?.length ?? 0) > PAGE_SIZE;
+  const hasNext = (guests.data?.length ?? 0) === PAGE_SIZE;
+  const pastLastPage = page > 1 && (guests.data?.length ?? 0) === 0;
   const fullName = (g: Guest) => `${g.first_name} ${g.last_name}`.trim();
 
   const menuFor = (g: Guest): RowMenuItem[] => {
@@ -234,13 +235,31 @@ export const GuestListPage: React.FC = () => {
           <ErrorState error={guests.error} onRetry={() => guests.refetch()} />
         ) : rows.length === 0 ? (
           <EmptyState
-            title={search || idType || city || upcomingOnly ? 'No guests match' : 'No guests yet'}
-            description={search ? `Nothing found for “${search}”.` : 'Registered guests appear here.'}
+            title={
+              pastLastPage
+                ? 'No more guests'
+                : search || idType || city || upcomingOnly
+                  ? 'No guests match'
+                  : 'No guests yet'
+            }
+            description={
+              pastLastPage
+                ? 'You are past the last page.'
+                : search
+                  ? `Nothing found for “${search}”.`
+                  : 'Registered guests appear here.'
+            }
             action={
-              isStaff && (
-                <Button size="small" onClick={() => { setEditing(null); setFormOpen(true); }}>
-                  Register a guest
+              pastLastPage ? (
+                <Button size="small" onClick={() => set({ page: String(page - 1) }, false)}>
+                  Previous page
                 </Button>
+              ) : (
+                isStaff && (
+                  <Button size="small" onClick={() => { setEditing(null); setFormOpen(true); }}>
+                    Register a guest
+                  </Button>
+                )
               )
             }
           />

@@ -225,7 +225,7 @@ export interface PaymentFilterParams {
   createdFrom?: string;
   createdTo?: string;
   limit?: number;
-  offset?: number;
+  page?: number;
 }
 
 /** Printable Guest Invoice / Statement breakdown */

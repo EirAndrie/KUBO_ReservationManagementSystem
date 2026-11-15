@@ -8,7 +8,9 @@ import {
   CloseCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
+  LeftOutlined,
   PlusOutlined,
+  RightOutlined,
   RollbackOutlined,
   SearchOutlined,
   StopOutlined,
@@ -44,6 +46,8 @@ import styles from './payment-list.module.css';
 
 type Tab = 'all' | 'pending' | 'completed' | 'refunds' | 'failed';
 type DateRange = 'today' | 'week' | 'month' | 'all';
+
+const PAGE_SIZE = 10;
 
 const TAB_FILTER: Record<Tab, Partial<PaymentFilterParams>> = {
   all: {},
@@ -123,16 +127,20 @@ export const PaymentListPage: React.FC = () => {
   const range = (params.get('range') as DateRange) || 'month';
   const method = (params.get('method') as PaymentMethod) || undefined;
   const recordedBy = params.get('by') || undefined;
+  const page = Math.max(1, Number(params.get('page')) || 1);
   const [search, setSearch] = useState('');
 
-  const set = (patch: Record<string, string | undefined>) => {
+  const set = (patch: Record<string, string | undefined>, resetPage = true) => {
     const next = new URLSearchParams(params);
     Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    if (resetPage) next.delete('page');
     setParams(next, { replace: true });
   };
 
   const createdFrom = useMemo(() => rangeStart(range), [range]);
-  const list = usePayments({ ...TAB_FILTER[tab], paymentMethod: method, createdFrom, limit: 100 });
+  const list = usePayments({ ...TAB_FILTER[tab], paymentMethod: method, createdFrom, limit: PAGE_SIZE, page });
+  // One bounded, unpaged slice for the "Recorded by" options and the All count.
+  const overview = usePayments({ paymentMethod: method, createdFrom, limit: 100 });
   const monthStart = useMemo(() => rangeStart('month'), []);
   const month = usePayments({ createdFrom: monthStart, limit: 100 });
   const pendingAll = usePayments({ paymentStatus: 'Pending', limit: 100 });
@@ -156,6 +164,11 @@ export const PaymentListPage: React.FC = () => {
     });
   }, [list.data, search, recordedBy, reservationById]);
 
+  const hasNext = (list.data?.length ?? 0) === PAGE_SIZE;
+  const pastLastPage = page > 1 && (list.data?.length ?? 0) === 0;
+  const start = rows.length ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const end = (page - 1) * PAGE_SIZE + rows.length;
+
   // KPIs (this month / today), from completed rows only.
   const monthRows = month.data ?? [];
   const isCollected = (p: Payment) => p.transaction_type === 'Payment' && ['Completed', 'PartiallyRefunded', 'Refunded'].includes(p.payment_status);
@@ -168,10 +181,10 @@ export const PaymentListPage: React.FC = () => {
 
   const recorders = useMemo(() => {
     const names = new Set<string>();
-    (list.data ?? []).forEach((p) => p.employee_name && names.add(p.employee_name));
+    (overview.data ?? []).forEach((p) => p.employee_name && names.add(p.employee_name));
     if (recordedBy) names.add(recordedBy);
     return [...names].sort().map((n) => ({ value: n, label: n }));
-  }, [list.data, recordedBy]);
+  }, [overview.data, recordedBy]);
 
   const menuFor = (p: Payment): RowMenuItem[] => {
     const items: RowMenuItem[] = [
@@ -244,7 +257,7 @@ export const PaymentListPage: React.FC = () => {
   const refundReservation = refundFor ? reservationById.get(refundFor.reservation_id) : undefined;
 
   const tabs: Array<{ key: Tab; text: string; count?: number }> = [
-    { key: 'all', text: 'All', count: tab === 'all' ? list.data?.length : undefined },
+    { key: 'all', text: 'All', count: tab === 'all' ? overview.data?.length : undefined },
     { key: 'pending', text: 'Pending', count: pendingRows.length },
     { key: 'completed', text: 'Completed' },
     { key: 'refunds', text: 'Refunds' },
@@ -291,7 +304,10 @@ export const PaymentListPage: React.FC = () => {
           prefix={<SearchOutlined className="muted" />}
           placeholder="Search reference or guest"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            set({ page: undefined });
+          }}
           style={{ width: 260 }}
           aria-label="Search payments"
         />
@@ -321,17 +337,51 @@ export const PaymentListPage: React.FC = () => {
         ) : list.isError ? (
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="No payments match" description="Try another tab, date range or method." />
-        ) : (
-          <ResponsiveTable<Payment>
-            rowKey="payment_id"
-            columns={columns}
-            dataSource={rows}
-            size="middle"
-            pagination={rows.length > 25 ? { pageSize: 25, showSizeChanger: false } : false}
-            rowClassName={() => 'clickable-row'}
-            onRow={(p) => ({ onClick: () => navigate(`/reservations/${p.reservation_id}`) })}
+          <EmptyState
+            title={pastLastPage ? 'No more payments' : 'No payments match'}
+            description={pastLastPage ? 'You are past the last page.' : 'Try another tab, date range or method.'}
+            action={
+              pastLastPage ? (
+                <Button size="small" onClick={() => set({ page: String(page - 1) }, false)}>
+                  Previous page
+                </Button>
+              ) : undefined
+            }
           />
+        ) : (
+          <>
+            <ResponsiveTable<Payment>
+              rowKey="payment_id"
+              columns={columns}
+              dataSource={rows}
+              pagination={false}
+              size="middle"
+              rowClassName={() => 'clickable-row'}
+              onRow={(p) => ({ onClick: () => navigate(`/reservations/${p.reservation_id}`) })}
+            />
+            <div className={styles.footer}>
+              <span>
+                Showing {start}–{end}
+                {hasNext ? '' : ` of ${end}`}
+              </span>
+              <span className={styles.pager}>
+                <Button
+                  size="small"
+                  icon={<LeftOutlined />}
+                  aria-label="Previous page"
+                  disabled={page <= 1}
+                  onClick={() => set({ page: String(page - 1) }, false)}
+                />
+                <Button
+                  size="small"
+                  icon={<RightOutlined />}
+                  aria-label="Next page"
+                  disabled={!hasNext}
+                  onClick={() => set({ page: String(page + 1) }, false)}
+                />
+              </span>
+            </div>
+          </>
         )}
       </Section>
 

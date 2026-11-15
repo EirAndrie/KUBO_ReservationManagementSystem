@@ -72,7 +72,7 @@ export interface ReservationFilterParams {
   checkInDate?: string;
   checkOutDate?: string;
   limit?: number;
-  offset?: number;
+  page?: number;
 }
 
 export interface CreateAssignmentDTO {

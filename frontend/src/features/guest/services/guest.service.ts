@@ -29,8 +29,8 @@ export const guestService = {
     if (params?.limit) {
       queryParams.limit = params.limit;
     }
-    if (params?.offset) {
-      queryParams.offset = params.offset;
+    if (params?.page) {
+      queryParams.page = params.page;
     }
 
     const response = await apiClient.get<GuestsApiResponse>('/guests', {

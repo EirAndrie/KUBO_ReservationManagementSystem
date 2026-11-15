@@ -125,3 +125,18 @@
   align-items: center;
   gap: 6px;
 }
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.pager {
+  display: flex;
+  gap: 6px;
+}

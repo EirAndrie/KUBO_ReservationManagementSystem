@@ -93,7 +93,7 @@ This document serves as the comprehensive blueprint for every view within the fr
     - Date range picker (`antd DatePicker.RangePicker` for Check-in dates).
   - **Data Table:** Use `@ant-design/pro-components ProTable` or `antd Table` with built-in sorting and filtering.
     - Columns: ID, Guest Name, Room, Check-in Date, Check-out Date, Status (Color-coded `antd Tag`), Total Amount, Actions (Dropdown menu: View, Edit, Cancel).
-  - **Footer:** Built-in `antd Table` pagination controls (Previous/Next, Page numbers, Items per page selector 10/20/50).
+  - **Footer:** Server-side pagination through the backend `page`/`limit` params: 10 rows per page, showing the visible range with Previous/Next page buttons.
   - **Bulk Actions:** "Export to CSV" `antd Button`.
 - **Data Required:** `GET /api/reservations` (paginated, with query params for filters).
 - **Interactions:** Sorting by clicking column headers.
@@ -141,7 +141,7 @@ This document serves as the comprehensive blueprint for every view within the fr
   - **Search:** Global search bar (`antd Input.Search` for Name, Email, Phone).
   - **Data Table:** `antd Table` (ID, Full Name, Email, Phone, Total Reservations, Last Visit, Actions).
   - **Header:** "New Guest" `antd Button`.
-  - Pagination controls integrated into the table.
+  - Pagination controls in the table footer: server-side `page`/`limit`, 25 rows per page, Previous/Next.
 - **Data Required:** `GET /api/guests`.
 
 #### 3.4b. Guest Detail Page (`/guests/:id`)
@@ -171,7 +171,7 @@ This document serves as the comprehensive blueprint for every view within the fr
   - **View Toggle:** `antd Tabs` or `antd Radio.Group` to switch between "Grid View" and "Table View".
   - **Filters:** Room Type `antd Select`, Status `antd Select` (Available, Occupied, Maintenance), Floor selector.
   - **Grid View:** `antd Card` components representing physical rooms. Colored top border or background indicating status using `antd Tag` colors (Green=Available, Red=Occupied, Yellow=Maintenance). Shows Room No., Type, and quick action context menu.
-  - **Table View:** Standard `antd Table` format.
+  - **Table View:** Standard `antd Table` format, 10 rows per page with Previous/Next in the footer. The Grid (card) view keeps showing every matching room.
   - **Header:** "New Room" `antd Button`.
 - **Data Required:** `GET /api/rooms`.
 
@@ -238,7 +238,7 @@ This document serves as the comprehensive blueprint for every view within the fr
 - **UI Elements:**
   - **Summary Cards (Top):** `antd Card` wrapping `antd Statistic` (Total Revenue, Pending Payments, Completed Today).
   - **Filters:** Payment Method `antd Select`, Status `antd Select`, Date `antd DatePicker.RangePicker`.
-  - **Data Table:** `antd Table` (Payment ID, Reservation ID, Amount, Method `antd Tag` with `@ant-design/icons`, Status `antd Tag`, Date, Actions).
+  - **Data Table:** `antd Table` (Payment ID, Reservation ID, Amount, Method `antd Tag` with `@ant-design/icons`, Status `antd Tag`, Date, Actions). 10 rows per page, server-side `page`/`limit`, with a visible-range footer and Previous/Next buttons.
 - **Data Required:** `GET /api/payments`.
 - **Note:** This page is strictly a ledger view. Payments are usually created from within a Reservation Detail page.
 
