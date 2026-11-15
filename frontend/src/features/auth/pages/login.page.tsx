@@ -53,10 +53,11 @@ export const LoginPage: React.FC = () => {
             />
             <span>Kubo Beach Resort</span>
           </div>
-          <ThemeToggle className={styles.themeToggle} />
+          <ThemeToggle />
         </div>
 
         <div className={styles.formWrap}>
+          <p className={styles.eyebrow}>Kubo Beach Resort</p>
           <h1 className={styles.title}>Sign in</h1>
           <p className={styles.helper}>Use the username assigned by your administrator.</p>
 
@@ -115,6 +116,7 @@ export const LoginPage: React.FC = () => {
 
       <div className={styles.brandPanel} aria-hidden="true">
         <div className={styles.panelText}>
+          <h2 className={styles.panelName}>Kubo Beach Resort</h2>
           <p className={styles.tagline}>Every arrival, every kubo, every peso — in one calm front desk.</p>
         </div>
       </div>
