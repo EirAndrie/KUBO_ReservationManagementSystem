@@ -133,10 +133,16 @@ export type WithActor<T> = T & { employeeId: string };
 export const CreatePaymentSchema = z.preprocess(
       normalizePayment,
       z.object({
+            /**
+             * Only positivity is checked here. The ₱100 minimum (with the
+             * exception for a payment that exactly settles a lower remaining
+             * balance) needs the reservation balance, so fn_create_payment
+             * enforces it with a friendly database error.
+             */
             paymentAmount: z
                   .number()
-                  .nonnegative({
-                        message: "Payment amount must be non-negative",
+                  .positive({
+                        message: "Payment amount must be greater than zero",
                   })
                   .refine((value) => Number(value.toFixed(2)) === value, {
                         message:

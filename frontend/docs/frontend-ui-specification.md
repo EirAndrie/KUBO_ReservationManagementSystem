@@ -241,6 +241,7 @@ This document serves as the comprehensive blueprint for every view within the fr
   - **Data Table:** `antd Table` (Payment ID, Reservation ID, Amount, Method `antd Tag` with `@ant-design/icons`, Status `antd Tag`, Date, Actions). 10 rows per page, server-side `page`/`limit`, with a visible-range footer and Previous/Next buttons.
 - **Data Required:** `GET /api/payments`.
 - **Note:** This page is strictly a ledger view. Payments are usually created from within a Reservation Detail page.
+- **Amount rule:** A recorded payment must be positive and at least ₱100.00, except when it exactly settles a remaining balance below ₱100.00; zero and negative amounts are rejected.
 
 ---
 
