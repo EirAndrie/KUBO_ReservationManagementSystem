@@ -38,7 +38,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value.hook';
 import { formatMoney, formatStayRange, label, pluralize } from '@/lib/format';
 import styles from './reservation-list.module.css';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 type ViewTab = 'all' | 'arriving' | 'inhouse' | 'pending' | 'upcoming' | 'past';
 
@@ -84,7 +84,7 @@ function exportCsv(rows: Reservation[]) {
 /**
  * Reservations list. Saved-view tabs and filter chips map onto the existing
  * query params (`status`, `bookingSource`, `search`, `checkInDate`,
- * `checkOutDate`, `limit`, `offset`) and are mirrored in the URL so a refresh
+ * `checkOutDate`, `limit`, `page`) and are mirrored in the URL so a refresh
  * keeps them. Rare and destructive actions live in the `⋯` menu.
  */
 export const ReservationListPage: React.FC = () => {
@@ -121,8 +121,8 @@ export const ReservationListPage: React.FC = () => {
       bookingSource: source,
       checkInDate: from,
       checkOutDate: to,
-      limit: PAGE_SIZE + 1,
-      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      page,
     };
     if (tab === 'all' && statusParam) base.status = statusParam;
     if (tab === 'arriving') base.checkInDate = today;
@@ -154,7 +154,8 @@ export const ReservationListPage: React.FC = () => {
     return data;
   }, [list.data, tab, today, kuboType, sort]);
 
-  const hasNext = (list.data?.length ?? 0) > PAGE_SIZE;
+  const hasNext = (list.data?.length ?? 0) === PAGE_SIZE;
+  const pastLastPage = page > 1 && (list.data?.length ?? 0) === 0;
   const typeOptions = useMemo(() => {
     const names = new Set<string>();
     [...(list.data ?? []), ...(confirmedCount.data ?? [])].forEach((r) =>
@@ -339,12 +340,18 @@ export const ReservationListPage: React.FC = () => {
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="No reservations match"
-            description="Try another tab or clear the filters."
+            title={pastLastPage ? 'No more reservations' : 'No reservations match'}
+            description={pastLastPage ? 'You are past the last page.' : 'Try another tab or clear the filters.'}
             action={
-              <Button size="small" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
-                Clear filters
-              </Button>
+              pastLastPage ? (
+                <Button size="small" onClick={() => update({ page: String(page - 1) }, false)}>
+                  Previous page
+                </Button>
+              ) : (
+                <Button size="small" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
+                  Clear filters
+                </Button>
+              )
             }
           />
         ) : (

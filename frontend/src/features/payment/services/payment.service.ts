@@ -163,7 +163,7 @@ export const paymentService = {
     if (params?.createdFrom) query.createdFrom = params.createdFrom;
     if (params?.createdTo) query.createdTo = params.createdTo;
     query.limit = params?.limit ?? 100;
-    if (params?.offset) query.offset = params.offset;
+    if (params?.page) query.page = params.page;
     const res = await apiClient.get('/payments', { params: query });
     return listOf(res, 'payments').map(mapPaymentRecord);
   },

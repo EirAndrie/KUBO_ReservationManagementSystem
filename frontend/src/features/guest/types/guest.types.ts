@@ -41,7 +41,7 @@ export interface GuestFilterParams {
   search?: string;
   validIdType?: ValidIdType;
   limit?: number;
-  offset?: number;
+  page?: number;
 }
 
 export interface CreateGuestDTO {

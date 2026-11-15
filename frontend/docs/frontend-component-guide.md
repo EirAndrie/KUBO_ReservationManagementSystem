@@ -90,6 +90,7 @@ These components are used across different modules to display and interact with 
   - *Ant Design Base:* `Space` containing `Select`, `DatePicker.RangePicker`, and `Button`s.
 - **`Pagination`**: Page navigation controls.
   - *Ant Design Base:* Built into `Table`, or use the standalone `Pagination` component.
+  - List pages pass `pagination={false}` to `ResponsiveTable` and render a shared footer with the visible range and Previous/Next buttons, so table and card modes use the same controls. Reservations, payments, the kubo List view, and the front-desk queue show 10 rows per page; guests show 25.
 - **`EmptyState`**: Friendly display when no data exists.
   - *Ant Design Base:* `Empty` component with custom `description` and action buttons.
 - **`LoadingSkeleton`**: Animated skeleton loaders mapped to specific component shapes.

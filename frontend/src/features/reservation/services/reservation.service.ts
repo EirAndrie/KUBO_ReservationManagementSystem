@@ -31,7 +31,7 @@ export const reservationService = {
     if (params?.checkInDate) queryParams.checkInDate = params.checkInDate;
     if (params?.checkOutDate) queryParams.checkOutDate = params.checkOutDate;
     if (params?.limit) queryParams.limit = params.limit;
-    if (params?.offset) queryParams.offset = params.offset;
+    if (params?.page) queryParams.page = params.page;
 
     const response = await apiClient.get<ReservationsApiResponse>('/reservations', {
       params: queryParams,

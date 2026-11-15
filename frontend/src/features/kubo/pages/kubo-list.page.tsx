@@ -8,7 +8,9 @@ import {
   CheckOutlined,
   DeleteOutlined,
   EditOutlined,
+  LeftOutlined,
   PlusOutlined,
+  RightOutlined,
   SearchOutlined,
   SwapOutlined,
   UnorderedListOutlined,
@@ -29,6 +31,9 @@ import type { Kubo, KuboStatus } from '../types/kubo.types';
 import styles from './kubo-list.module.css';
 
 type View = 'board' | 'list';
+
+/** List view only; the board keeps showing every matching tile. */
+const PAGE_SIZE = 10;
 
 interface KuboContext {
   text: string;
@@ -85,10 +90,12 @@ export const KuboListPage: React.FC = () => {
   const view = (params.get('view') as View) || 'board';
   const status = (params.get('status') as KuboStatus) || undefined;
   const search = params.get('search') ?? '';
+  const page = Math.max(1, Number(params.get('page')) || 1);
 
-  const set = (patch: Record<string, string | undefined>) => {
+  const set = (patch: Record<string, string | undefined>, resetPage = true) => {
     const next = new URLSearchParams(params);
     Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    if (resetPage) next.delete('page');
     setParams(next, { replace: true });
   };
 
@@ -148,6 +155,11 @@ export const KuboListPage: React.FC = () => {
     });
     return [...map.values()].sort((a, b) => a.rate - b.rate);
   }, [filtered]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const listStart = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(listStart, listStart + PAGE_SIZE);
 
   const markClean = (k: Kubo) => changeStatus.mutate({ kuboId: k.kuboId, status: 'Available' });
 
@@ -294,7 +306,7 @@ export const KuboListPage: React.FC = () => {
           <ResponsiveTable<Kubo>
             rowKey="kuboId"
             columns={columns}
-            dataSource={filtered}
+            dataSource={visible}
             pagination={false}
             size="middle"
             rowClassName={(k) => (contextFor(k, current, next).reservationId ? 'clickable-row' : '')}
@@ -305,6 +317,27 @@ export const KuboListPage: React.FC = () => {
               },
             })}
           />
+          <div className={styles.footer}>
+            <span>
+              Showing {filtered.length ? listStart + 1 : 0}–{listStart + visible.length} of {filtered.length}
+            </span>
+            <span className={styles.pager}>
+              <Button
+                size="small"
+                icon={<LeftOutlined />}
+                aria-label="Previous page"
+                disabled={currentPage <= 1}
+                onClick={() => set({ page: String(currentPage - 1) }, false)}
+              />
+              <Button
+                size="small"
+                icon={<RightOutlined />}
+                aria-label="Next page"
+                disabled={currentPage >= pageCount}
+                onClick={() => set({ page: String(currentPage + 1) }, false)}
+              />
+            </span>
+          </div>
         </Section>
       ) : (
         <div className={styles.board}>
