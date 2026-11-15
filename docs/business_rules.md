@@ -121,6 +121,9 @@ The DDL has no permission table, so this matrix is enforced by the application.
 
 #### BR-002 — Required employee account data
 - **Rule:** An employee account must have `first_name`, `last_name`, a unique
+  `username`, `password_hash`, and `role_id`. `first_name` and `last_name` must
+  start with a letter and contain only letters, spaces, hyphens, apostrophes,
+  and periods (digits and unsupported symbols are rejected).
   `username`, `password_hash`, and `role_id`. `status` defaults to `Active` and
   `created_at` defaults to the current timestamp. The schema has no middle-initial,
   date-hired, emergency-contact, or shift-schedule fields.

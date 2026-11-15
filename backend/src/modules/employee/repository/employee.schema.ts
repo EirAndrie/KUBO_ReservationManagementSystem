@@ -1,3 +1,10 @@
+/**
+ * Employee names must start with a letter and may contain Unicode letters,
+ * combining marks, spaces, hyphens, apostrophes, and periods. Digits, emoji,
+ * and other symbols are rejected.
+ */
+export const EMPLOYEE_NAME_PATTERN = /^[\p{L}\p{M}](?:[\p{L}\p{M} '’.-])*$/u;
+
 import { z } from "zod";
 
 const EMPLOYEE_STATUS_DB = [
@@ -71,8 +78,24 @@ export const EmployeeSchema = z.object({
       roleId: z.string().uuid({
             message: "Invalid role ID format, must be UUID to reference",
       }),
-      firstName: z.string({ message: "Employee first name is required" }),
-      lastName: z.string({ message: "Emplyoee last name is required" }),
+      firstName: z
+            .string({ message: "Employee first name is required" })
+            .trim()
+            .min(1, { message: "Employee first name is required" })
+            .max(100, { message: "Employee first name cannot exceed 100 characters" })
+            .regex(EMPLOYEE_NAME_PATTERN, {
+                  message:
+                        "Employee first name may contain only letters, spaces, hyphens, apostrophes, and periods",
+            }),
+      lastName: z
+            .string({ message: "Employee last name is required" })
+            .trim()
+            .min(1, { message: "Employee last name is required" })
+            .max(100, { message: "Employee last name cannot exceed 100 characters" })
+            .regex(EMPLOYEE_NAME_PATTERN, {
+                  message:
+                        "Employee last name may contain only letters, spaces, hyphens, apostrophes, and periods",
+            }),
       username: z.string({ message: "Employee username is required" }),
       passwordHash: PASSWORD_SCHEMA,
       status: EmployeeStatusSchema,

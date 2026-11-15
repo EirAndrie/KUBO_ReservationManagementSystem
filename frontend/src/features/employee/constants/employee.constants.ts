@@ -33,3 +33,15 @@ export const EMPLOYEE_POLICIES = {
     'Accounts with recorded work (reservations, payments, audit entries) can’t be deleted. Suspend access instead.',
   ROLE_PROTECTION: 'Roles assigned to employees can’t be deleted. Reassign those employees first.',
 } as const;
+
+/**
+ * Employee names must start with a letter and may contain Unicode letters,
+ * combining marks, spaces, hyphens, apostrophes, and periods. Digits, emoji,
+ * and other symbols are rejected.
+ */
+export const EMPLOYEE_NAME_REGEX = /^[\p{L}\p{M}](?:[\p{L}\p{M} '’.-])*$/u;
+
+export const EMPLOYEE_LIMITS = {
+  MAX_FIRST_NAME: 100,
+  MAX_LAST_NAME: 100,
+} as const;
