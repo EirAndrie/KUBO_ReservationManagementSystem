@@ -669,9 +669,14 @@ instead (retained from old rule `l`).
 - **Rule:** A payment must have a `reservation_id`, an `employee_id`, a
   `payment_amount` greater than or equal to zero, a `transaction_type`, a
   `payment_type`, and a `payment_method`. `payment_status` defaults to `Pending` and
-  `payment_date` defaults to the current timestamp.
+  `payment_date` defaults to the current timestamp. A non-cash `Payment` must also
+  store the provider `payment_reference` typed from the GCash, Maya, card, or bank
+  receipt. `payment_reference` is nullable only for `Cash` and for
+  Refund/Adjustment/Reversal rows.
 - **Entities:** `payment`
-- **Enforcement:** `NOT NULL` and `CHECK (payment_amount >= 0)` in the DDL.
+- **Enforcement:** `NOT NULL` and `CHECK (payment_amount >= 0)` in the DDL;
+  `fn_create_payment` requires the trimmed reference for non-cash methods, and the
+  partial unique index `payment_reference_unique` rejects duplicates.
 
 #### BR-050 — Transaction, payment, and method values
 - **Rule:** The allowed values are:

@@ -37,7 +37,8 @@ export const createPayment = async (
                         p_payment_amount => $3,
                         p_payment_type => $4::kubo.payment_type,
                         p_payment_method => $5::kubo.payment_method,
-                        p_overpayment_approval_id => $6
+                        p_overpayment_approval_id => $6,
+                        p_payment_reference => $7
                   )
                   `,
                   [
@@ -47,6 +48,7 @@ export const createPayment = async (
                         data.paymentType,
                         data.paymentMethod,
                         data.overpaymentApprovalId ?? null,
+                        data.paymentReference ?? null,
                   ],
             );
             return await requirePaymentById(result.rows[0].payment_id);

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Modal, Form, InputNumber, Select, Checkbox } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Checkbox } from 'antd';
 import { useRecordPayment } from '../hooks/use-payment-mutations.hook';
 import { PAYMENT_METHOD_OPTIONS, PAYMENT_TYPE_OPTIONS } from '../constants/payment.constants';
 import type { OverpaymentApproval, PaymentMethod, PaymentType } from '../types/payment.types';
@@ -25,6 +25,7 @@ interface PaymentFormValues {
   paymentAmount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
+  paymentReference?: string;
   complete: boolean;
   overpaymentApprovalId?: string;
 }
@@ -34,7 +35,8 @@ interface PaymentFormValues {
  * and rejects amounts above the outstanding balance unless an Administrator
  * overpayment approval covering the excess is chosen (BR-053); its message is
  * shown verbatim. "Mark as completed" completes it right away so it counts toward
- * the balance.
+ * the balance. Non-cash methods require the reference code from the provider
+ * receipt; cash payments leave it blank.
  */
 export function RecordPaymentModal({
   open,
@@ -49,6 +51,8 @@ export function RecordPaymentModal({
   const [form] = Form.useForm<PaymentFormValues>();
   const recordPayment = useRecordPayment();
   const amount = Form.useWatch('paymentAmount', form);
+  const method = Form.useWatch('paymentMethod', form);
+  const isCash = method === 'Cash';
   const isOver = typeof amount === 'number' && amount > outstandingBalance;
   const excess = isOver ? Number((amount - outstandingBalance).toFixed(2)) : 0;
   const available = overpaymentApprovals.filter((a) => a.status === 'Available');
@@ -73,6 +77,7 @@ export function RecordPaymentModal({
         paymentAmount: values.paymentAmount,
         paymentType: values.paymentType,
         paymentMethod: values.paymentMethod,
+        paymentReference: isCash ? undefined : values.paymentReference?.trim(),
         complete: values.complete,
         overpaymentApprovalId: isOver ? values.overpaymentApprovalId : undefined,
       });
@@ -159,6 +164,20 @@ export function RecordPaymentModal({
             <Select options={PAYMENT_METHOD_OPTIONS} />
           </Form.Item>
         </div>
+        {!isCash && (
+          <Form.Item
+            name="paymentReference"
+            label="Reference code"
+            preserve={false}
+            rules={[
+              { required: true, whitespace: true, message: 'Enter the reference code from the receipt.' },
+              { max: 100, message: 'Reference code cannot exceed 100 characters.' },
+            ]}
+            extra="Confirm the transaction on the provider's app first, then type the code shown on the receipt."
+          >
+            <Input placeholder="e.g. 1234567890123" autoComplete="off" />
+          </Form.Item>
+        )}
         <Form.Item name="complete" valuePropName="checked" style={{ marginBottom: 0 }}>
           <Checkbox>Mark as completed now (money received)</Checkbox>
         </Form.Item>
