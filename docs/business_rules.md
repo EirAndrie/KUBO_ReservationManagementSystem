@@ -549,7 +549,12 @@ instead (retained from old rule `l`).
   `request_id` is optional and identifies the approved custom request that produced
   the charge.
 - **Rule:** A catalog item must have a `charge_type`, a unique display name, an optional
-  description, a `unit_price` greater than or equal to zero, and an `is_active` flag.
+  description, a `unit_price` greater than zero, and an `is_active` flag.
+  The display name must contain at least two letters and only letters, digits, spaces,
+  and common punctuation; the description, when present, must also contain at least
+  two letters and only letters, digits, whitespace, and standard punctuation.
+  Numeric-only, identifier-like (for example underscores), and symbol-only values are
+  rejected.
 - **Rule:** A custom additional-charge request must have a `reservation_id`, a
   `requested_by` employee, a description, a `quantity` greater than zero, a
   `proposed_unit_amount` greater than or equal to zero, and a status of `Pending`,
@@ -557,7 +562,12 @@ instead (retained from old rule `l`).
 - **Entities:** `additional_charge`, `additional_charge_catalog`,
   `additional_charge_request`
 - **Enforcement:** `NOT NULL`, `CHECK (quantity > 0)`, and
-  `CHECK (unit_amount >= 0)`, `CHECK (amount >= 0)` in the DDL.
+  `CHECK (unit_amount >= 0)`, `CHECK (amount >= 0)` in the DDL. Zod validates catalog
+  text and requires a positive unit price before the controller runs;
+  `additional_charge_catalog_name_check`,
+  `additional_charge_catalog_description_check`, and
+  `additional_charge_catalog_price_check` enforce the same rules for new inserts and
+  updates.
 
 #### BR-043 — When charges may be recorded or requested
 - **Rule:** Staff may apply an active catalog charge to a reservation that is `Pending`,

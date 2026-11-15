@@ -258,7 +258,7 @@ This document serves as the comprehensive blueprint for every view within the fr
   - “New Charge” primary button.
   - Row actions: Edit, Activate/Deactivate, Delete unused.
 - **Form fields:** charge type, name, description, unit price, active.
-- **Validation:** unique name, non-negative two-decimal price, valid enum type.
+- **Validation:** unique name, positive two-decimal price, valid enum type; name and description must contain at least two letters and only the allowed letters/numbers/space/punctuation set (numeric-only, identifier-like, and symbol-only text is rejected inline).
 - **States:** loading, empty, error, delete confirmation, deactivate confirmation.
 
 #### 3.9b. Additional Charge Request Page (`/additional-charges/requests`)

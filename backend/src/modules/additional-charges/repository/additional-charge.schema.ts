@@ -41,6 +41,61 @@ const optionalText = (max: number) =>
             z.string().trim().max(max).optional(),
       );
 
+/**
+ * Catalog item names and descriptions are human-readable text, not identifiers.
+ * Both must include at least two letters; digits are allowed only alongside
+ * letters. The character sets reject underscores, emoji, and other symbols.
+ */
+const CATALOG_NAME_PATTERN = /^[\p{L}\p{M}0-9 '’.,&/()+%\-]+$/u;
+const CATALOG_DESCRIPTION_PATTERN =
+      /^[\p{L}\p{M}0-9\s'’"“”.,;:!?()/&+%#\-]+$/u;
+
+const hasAtLeastTwoLetters = (value: string) =>
+      (value.match(/\p{L}/gu) ?? []).length >= 2;
+
+const catalogDescriptionText = z
+      .string()
+      .trim()
+      .max(255, {
+            message: "Catalog description cannot exceed 255 characters",
+      })
+      .regex(CATALOG_DESCRIPTION_PATTERN, {
+            message:
+                  "Catalog description may contain only letters, numbers, spaces, and standard punctuation",
+      })
+      .refine(hasAtLeastTwoLetters, {
+            message: "Catalog description must include at least two letters",
+      });
+
+const optionalCatalogDescription = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      catalogDescriptionText.optional(),
+);
+
+const nullableCatalogDescription = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      catalogDescriptionText.nullable().optional(),
+);
+
+const catalogName = z
+      .string()
+      .trim()
+      .min(1, { message: "Catalog name is required" })
+      .max(100, { message: "Catalog name cannot exceed 100 characters" })
+      .regex(CATALOG_NAME_PATTERN, {
+            message:
+                  "Catalog name may contain only letters, numbers, spaces, and common punctuation",
+      })
+      .refine(hasAtLeastTwoLetters, {
+            message: "Catalog name must include at least two letters",
+      });
+
 const optionalUuid = z.preprocess(
       (value) =>
             typeof value === "string" && value.trim() === ""
@@ -126,11 +181,13 @@ export const CreateCatalogItemSchema = z.preprocess(
       normalizeCatalog,
       z.object({
             chargeType: ChargeTypeSchema,
-            name: z.string().trim().min(1).max(100),
-            description: optionalText(255),
+            name: catalogName,
+            description: optionalCatalogDescription,
             unitPrice: z
                   .number()
-                  .nonnegative()
+                  .positive({
+                        message: "Unit price must be greater than zero",
+                  })
                   .refine((value) => Number(value.toFixed(2)) === value, {
                         message: "Unit price cannot have more than 2 decimals",
                   }),
@@ -145,11 +202,14 @@ export const UpdateCatalogItemSchema = z.preprocess(
       z
             .object({
                   chargeType: ChargeTypeSchema.optional(),
-                  name: z.string().trim().min(1).max(100).optional(),
-                  description: optionalText(255).nullable(),
+                  name: catalogName.optional(),
+                  description: nullableCatalogDescription,
                   unitPrice: z
                         .number()
-                        .nonnegative()
+                        .positive({
+                              message:
+                                    "Unit price must be greater than zero",
+                        })
                         .refine(
                               (value) =>
                                     Number(value.toFixed(2)) === value,
