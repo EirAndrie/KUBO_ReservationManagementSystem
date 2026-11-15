@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Checkbox } from 'antd';
 import { useRecordPayment } from '../hooks/use-payment-mutations.hook';
-import { PAYMENT_METHOD_OPTIONS, PAYMENT_TYPE_OPTIONS } from '../constants/payment.constants';
+import { PAYMENT_METHOD_OPTIONS, PAYMENT_TYPE_OPTIONS, MINIMUM_PAYMENT_AMOUNT } from '../constants/payment.constants';
 import type { OverpaymentApproval, PaymentMethod, PaymentType } from '../types/payment.types';
 import { formatMoney } from '@/lib/format';
 import { Callout } from '@/components/common';
@@ -116,8 +116,29 @@ export function RecordPaymentModal({
           label="Amount"
           rules={[
             { required: true, message: 'Enter the amount.' },
-            { type: 'number', min: 0.01, message: 'Amount must be greater than zero.' },
+            {
+              validator: (_, value?: number) => {
+                if (value == null) return Promise.resolve();
+                if (typeof value !== 'number' || !Number.isFinite(value)) {
+                  return Promise.reject(new Error('Enter a valid amount.'));
+                }
+                if (value <= 0) {
+                  return Promise.reject(new Error('Payment must be greater than ₱0.00.'));
+                }
+                if (value >= MINIMUM_PAYMENT_AMOUNT) return Promise.resolve();
+                const settlesBalance =
+                  Number(value.toFixed(2)) === Number(outstandingBalance.toFixed(2));
+                return settlesBalance
+                  ? Promise.resolve()
+                  : Promise.reject(
+                      new Error(
+                        `Payment must be at least ${formatMoney(MINIMUM_PAYMENT_AMOUNT)} or exactly the remaining balance.`,
+                      ),
+                    );
+              },
+            },
           ]}
+          extra={`Minimum ${formatMoney(MINIMUM_PAYMENT_AMOUNT)}, or the exact remaining balance if it is lower.`}
         >
           <InputNumber<number> style={{ width: '100%' }} step={0.01} precision={2} prefix="₱" />
         </Form.Item>

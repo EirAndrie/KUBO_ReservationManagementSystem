@@ -75,7 +75,7 @@ an array; on single operations it is an object. There is no `data` wrapper.
 | `reference_code` | string | No | Reservation reference code |
 | `employee_id` | string (UUID) | No | Employee who processed the transaction |
 | `recorded_by` | string | No | `first_name + ' ' + last_name` |
-| `payment_amount` | string (decimal) | No | PostgreSQL `numeric` serialized as a JSON string |
+| `payment_amount` | string (decimal) | No | PostgreSQL `numeric` serialized as a JSON string; `Payment` rows must be positive and at least `100.00` unless they settle a lower remaining balance |
 | `transaction_type` | string | No | See §1.6 |
 | `payment_type` | string | No | See §1.7 |
 | `payment_method` | string | No | See §1.8 |
@@ -166,7 +166,10 @@ failures return `400` with all issues joined into one `message`. Unknown body
 fields are stripped by Zod.
 
 `paymentAmount` must be a JSON **number**, not a numeric string. Amounts may have
-at most 2 decimal places.
+at most 2 decimal places. A `Payment` must be positive and at least `100.00`,
+except when it exactly settles a remaining balance below `100.00`. The database
+checks that rule because it needs the reservation balance; the error message is
+returned verbatim.
 
 `paymentReference` is trimmed and limited to 100 characters. It is required for
 every `paymentMethod` except `Cash`; cash and correction rows store `null`.
@@ -231,7 +234,7 @@ Staff only.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `paymentAmount` | number | Yes | Non-negative; at most 2 decimal places |
+| `paymentAmount` | number | Yes | Positive; at least `100.00`, or exactly the remaining balance when it is lower; at most 2 decimal places |
 | `paymentType` | string | Yes | One of the values in §1.7 |
 | `paymentMethod` | string | Yes | One of the values in §1.8 |
 | `paymentReference` | string | Conditional | Required when `paymentMethod` is not `Cash`; trimmed, max 100 characters |
@@ -283,7 +286,8 @@ Staff only.
 | Condition | Status | Message |
 |---|---:|---|
 | Body fails validation | `400` | Validation detail |
-| Amount negative or more than 2 decimals | `400` | `Payment amount must be non-negative with at most two decimal places.` |
+| Amount zero, negative, or more than 2 decimals | `400` | `Payment amount must be positive with at most two decimal places.` |
+| Amount below `100.00` and not the exact remaining balance | `400` | `Payment amount must be at least 100.00 unless it settles the remaining balance of <balance>.` |
 | Payment type/method missing | `400` | `Payment type and method are required.` |
 | Non-cash payment has no reference | `400` | `paymentReference: A reference code is required for non-cash payments` |
 | Reference longer than 100 characters | `400` | `paymentReference: Payment reference cannot exceed 100 characters` |
@@ -304,7 +308,8 @@ Behavior notes:
 - Reservations in `Pending`, `Confirmed`, `CheckedIn`, or `CheckedOut` are eligible.
 - An approval passed with an amount that does not exceed the balance is ignored and
   stays available.
-- A zero amount is accepted.
+- Amounts below `100.00` are accepted only when they exactly equal the remaining
+  balance. Zero and negative amounts are always rejected.
 - The payment is created as `transaction_type = Payment`, `payment_status = Pending`,
   with a server timestamp.
 - `Pending` payments do not reduce the outstanding balance. Multiple pending
@@ -625,6 +630,7 @@ Staff only.
 |---|---:|---|
 | Invalid UUID or missing status | `400` | Validation detail |
 | Invalid transition | `400` | `Invalid payment status transition from <from> to <to>.` |
+| Completing an amount below `100.00` that is not the exact remaining balance | `400` | `Payment amount must be at least 100.00 unless it settles the remaining balance of <balance>.` |
 | Completing a payment that exceeds outstanding balance without a linked approval | `400` | `Payment exceeds the outstanding balance of <amount>.` |
 | Completing a payment whose excess is above its linked approval | `400` | `Payment exceeds the outstanding balance of <amount> by more than the approved <max>.` |
 | Payment does not exist | `404` | `Payment not found` |

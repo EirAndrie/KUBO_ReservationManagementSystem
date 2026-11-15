@@ -676,11 +676,15 @@ instead (retained from old rule `l`).
   `payment_date` defaults to the current timestamp. A non-cash `Payment` must also
   store the provider `payment_reference` typed from the GCash, Maya, card, or bank
   receipt. `payment_reference` is nullable only for `Cash` and for
-  Refund/Adjustment/Reversal rows.
+  Refund/Adjustment/Reversal rows. A `Payment` transaction must be positive and at
+  least ₱100.00, except when it exactly settles a remaining balance below ₱100.00.
 - **Entities:** `payment`
 - **Enforcement:** `NOT NULL` and `CHECK (payment_amount >= 0)` in the DDL;
-  `fn_create_payment` requires the trimmed reference for non-cash methods, and the
-  partial unique index `payment_reference_unique` rejects duplicates.
+  `payment_amount_positive_check` rejects non-positive Payment rows;
+  `fn_create_payment` enforces the ₱100.00-or-exact-balance rule, and
+  `fn_update_payment_status` re-checks it on completion. `fn_create_payment` also
+  requires the trimmed reference for non-cash methods, and the partial unique
+  index `payment_reference_unique` rejects duplicates.
 
 #### BR-050 — Transaction, payment, and method values
 - **Rule:** The allowed values are:

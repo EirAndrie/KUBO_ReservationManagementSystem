@@ -189,6 +189,8 @@ Create a payment at `POST /reservations/:reservationId/payments` with:
 
 `paymentReference` is the code from the GCash/Maya/card/bank receipt. It is required for every method except `Cash` (there is no payment-provider integration; Staff confirm the transaction in the provider app first) and is returned as `payment_reference` on the payment object.
 
+The amount must be positive and at least `100.00`, except when it exactly settles a remaining balance below `100.00`. Zero and negative amounts are rejected.
+
 The server sets the transaction type to `Payment`, status to `Pending`, and its timestamp. To refund a completed payment, call `POST /reservations/:reservationId/payments/refund` with:
 
 ```json

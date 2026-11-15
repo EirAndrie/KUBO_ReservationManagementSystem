@@ -83,6 +83,12 @@ export const PAYMENT_STATUS_TAGS: Record<PaymentStatus, { color: string }> = {
   PartiallyRefunded: { color: 'cyan' },
 };
 
+/**
+ * Smallest accepted Payment amount. A lower amount is still allowed when it
+ * exactly settles a remaining balance below this minimum.
+ */
+export const MINIMUM_PAYMENT_AMOUNT = 100;
+
 /** Business Rule Policies for Payment & Billing */
 export const PAYMENT_POLICIES = {
   DERIVED_BALANCE: 'The balance is worked out from bookings, charges and payments; it is never typed in.',
