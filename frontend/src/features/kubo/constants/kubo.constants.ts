@@ -34,3 +34,13 @@ export const KUBO_POLICIES = {
     'Kubos with bookings can’t be deleted. Mark them out of service instead.',
   HOUSEKEEPING_READINESS: 'Kubos are marked for cleaning after check-out and become bookable once marked clean.',
 } as const;
+
+export const KUBO_LIMITS = {
+  MIN_NAME: 1,
+  MAX_NAME: 20,
+} as const;
+
+/**
+ * Validates that a kubo name contains at least one letter and is not numeric-only.
+ */
+export const KUBO_NAME_REGEX = /^(?=.*[a-zA-Z])[\w\s'’.-]{1,20}$/;

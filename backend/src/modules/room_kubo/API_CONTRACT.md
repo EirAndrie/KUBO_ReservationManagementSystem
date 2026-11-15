@@ -153,7 +153,7 @@ Administrator only.
 | Field | Type | Required | Default | Constraints |
 |---|---|---:|---|---|
 | `kuboTypeId` | string (UUID) | Yes | — | Must reference an existing kubo type |
-| `kuboNumber` | string | Yes | — | Trimmed; 1–20 characters; unique |
+| `kuboNumber` | string | Yes | — | Trimmed; 1–20 characters; unique; cannot be numeric-only and must contain at least one letter |
 | `status` | string | No | `Available` | Only `Available`, `Maintenance`, or `OutOfService` are accepted at creation |
 
 ```json
@@ -519,7 +519,7 @@ be supplied. A `status` field is stripped and ignored.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `kuboNumber` | string | No | Trimmed; 1–20 characters; unique |
+| `kuboNumber` | string | No | Trimmed; 1–20 characters; unique; cannot be numeric-only and must contain at least one letter |
 | `kuboTypeId` | string (UUID) | No | Must reference an existing kubo type |
 
 ```json

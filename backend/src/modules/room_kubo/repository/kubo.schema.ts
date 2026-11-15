@@ -55,7 +55,13 @@ const KuboWriteFieldsSchema = z.object({
             .string()
             .trim()
             .min(1, { message: "Kubo number is required" })
-            .max(20, { message: "Kubo number cannot exceed 20 characters" }),
+            .max(20, { message: "Kubo number cannot exceed 20 characters" })
+            .refine((val) => !/^\d+$/.test(val), {
+                  message: "Kubo name cannot be numeric-only",
+            })
+            .refine((val) => /[a-zA-Z]/.test(val), {
+                  message: "Kubo name must contain at least one letter (e.g., 'Kubo 01' or 'Villa A')",
+            }),
 });
 
 export const KuboFilterSchema = z.object({

@@ -263,6 +263,7 @@ The DDL has no permission table, so this matrix is enforced by the application.
 #### BR-017 — Kubo validation
 - **Rule:** A kubo must have a unique `kubo_number` and reference an existing
   `kubo_type_id`. `status` defaults to `Available`. A kubo cannot exist without a type.
+  Kubo numbers/names cannot be numeric-only and must contain at least one letter.
 - **Entities:** `kubo`, `kubo_type`
 - **Enforcement:** `UNIQUE (kubo_number)`, `NOT NULL`, and
   `ON DELETE RESTRICT` for the type foreign key.
