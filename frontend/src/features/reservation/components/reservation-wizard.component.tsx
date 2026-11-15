@@ -202,6 +202,9 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
       <Steps
         current={currentStep}
         items={stepItems}
+        responsive={false}
+        labelPlacement="vertical"
+        className={styles.steps}
         style={{ marginTop: 16, marginBottom: 8 }}
       />
 
@@ -217,8 +220,8 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
               Search for an existing guest by full name, email, or Philippine phone number. An existing guest profile must be reused to maintain reservation history.
             </p>
 
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <GuestSearchSelect
                   value={selectedGuest?.guest_id}
                   onChange={(_, guest) => setSelectedGuest(guest)}

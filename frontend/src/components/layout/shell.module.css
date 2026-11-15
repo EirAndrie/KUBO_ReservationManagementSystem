@@ -3,6 +3,7 @@
 .shellContainer {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background: var(--color-bg);
@@ -13,6 +14,7 @@
   width: 232px;
   min-width: 232px;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -187,6 +189,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -292,4 +295,119 @@
   padding: 8px;
   color: var(--color-muted);
   font-size: 13px;
+}
+
+/* ---- Mobile / tablet ---- */
+.menuButton,
+.backdrop {
+  display: none;
+}
+
+.newReservation {
+  margin-left: 8px;
+}
+
+@media (max-width: 900px) {
+  .shellContainer {
+    width: 100%;
+  }
+
+  /* Sidebar becomes an off-canvas drawer. */
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 85vw);
+    min-width: 0;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+    z-index: 50;
+    box-shadow: var(--shadow-menu);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--color-overlay);
+    z-index: 40;
+  }
+
+  .menuButton {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-left: -8px;
+  }
+
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .search {
+    width: 180px;
+  }
+
+  .kbd {
+    display: none;
+  }
+
+  .mainContent {
+    padding: 20px 20px 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Search drops out of the top bar; the page's own filters remain. */
+  .search {
+    display: none;
+  }
+
+  .crumbs {
+    font-size: 12px;
+  }
+
+  .newReservation {
+    margin-left: 0;
+  }
+
+  .newReservationLabel {
+    display: none;
+  }
+
+  .mainContent {
+    padding: 16px 12px 28px;
+  }
+
+  /* Notifications open as a full-width panel under the top bar. */
+  .notifPopover {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none;
+  }
+
+  .notifPopover :global(.ant-popover-arrow) {
+    display: none;
+  }
+
+  .notifList {
+    width: auto;
+  }
+
+  .notifItem {
+    padding: 10px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
 }

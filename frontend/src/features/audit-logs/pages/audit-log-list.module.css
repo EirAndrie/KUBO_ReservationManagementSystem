@@ -184,3 +184,9 @@
   flex-direction: column;
   gap: 2px;
 }
+
+@media (max-width: 1100px) {
+  .withPanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

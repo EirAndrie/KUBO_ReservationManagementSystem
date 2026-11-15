@@ -80,8 +80,8 @@ These components are used across different modules to display and interact with 
 - **`DataTable`**: Reusable complex table.
   - *Features:* Built-in sorting, pagination, filters, row selection, and loading states.
   - *Ant Design Base:* `Table`. Alternatively, use `ProTable` from `@ant-design/pro-components` for an enhanced, data-driven alternative.
-- **`DataCard`**: Card-based alternative to tables for mobile views or specific visual requirements.
-  - *Ant Design Base:* `Card`.
+- **`ResponsiveTable`** (`@/components/common`): Drop-in replacement for antd `Table` that never scrolls sideways. It renders the table when it fits, and the same columns as a stack of cards on phones (640px and narrower) or whenever the table needs more width than its container. In card mode the first column is the card heading, a column keyed `action`/`actions`/`menu` sits at the top right (wrapping below the heading when wide), and the rest become label/value cells. Use it for every list table; avoid `scroll={{ x: ... }}` and fixed widths that add up to more than the content area.
+  - *Ant Design Base:* `Table`.
 - **`StatusBadge`**: Colored badges representing various resource states (Available, Occupied, etc.).
   - *Ant Design Base:* `Tag` (with predefined color presets) or `Badge`.
 - **`SearchInput`**: A debounced text input with a leading search icon.

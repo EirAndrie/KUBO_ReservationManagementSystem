@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Button, DatePicker, Input, Select, Table, Tabs } from 'antd';
+import { App, Button, DatePicker, Input, Select, Tabs } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
@@ -204,7 +205,7 @@ export const ReservationListPage: React.FC = () => {
       width: 190,
       render: (v: string) => <span className={`mono ${styles.ref}`}>{v}</span>,
     },
-    { title: 'Guest', dataIndex: 'guest_name', ellipsis: true },
+    { title: 'Guest', dataIndex: 'guest_name' },
     {
       title: 'Kubo',
       width: 170,
@@ -348,7 +349,7 @@ export const ReservationListPage: React.FC = () => {
           />
         ) : (
           <>
-            <Table<Reservation>
+            <ResponsiveTable<Reservation>
               rowKey="reservation_id"
               columns={columns}
               dataSource={rows}

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Segmented, Table, Tooltip } from 'antd';
+import { Button, Segmented, Tooltip } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, MailOutlined, PhoneOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -166,7 +167,7 @@ export const GuestDetailPage: React.FC = () => {
           ) : history.isError ? (
             <ErrorState error={history.error} onRetry={() => history.refetch()} />
           ) : (
-            <Table<GuestReservationHistoryItem>
+            <ResponsiveTable<GuestReservationHistoryItem>
               rowKey="reservation_id"
               columns={columns}
               dataSource={rows}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { App, Button, Table } from 'antd';
+import { App, Button } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons';
 import { EmptyState, ErrorState, ListSkeleton, PageHeader, RowMenu, Section, StatusBadge } from '@/components/common';
@@ -173,7 +174,7 @@ export const AdditionalChargeCatalogPage: React.FC = () => {
             description="Add a standard charge so Staff can select it when recording reservation charges."
           />
         ) : (
-          <Table<AdditionalChargeCatalogItem>
+          <ResponsiveTable<AdditionalChargeCatalogItem>
             className={styles.table}
             rowKey="catalog_id"
             columns={columns}

@@ -24,7 +24,7 @@ previous one.
 
 | Area | Status | Notes |
 |---|---|---|
-| Frontend app | Deployed | React 19 + Vite + TanStack Query app. Implemented: authentication, role-based dashboards, guests, reservations, kubos, kubo types, employees/roles, payments, audit logs, the additional-charge catalog, the Administrator charge-request review page (`/charge-requests`), and overpayment approvals on the reservation page. Deployed on Vercel with `VITE_API_BASE_URL` pointing at the Render API. |
+| Frontend app | Deployed | React 19 + Vite + TanStack Query app. Implemented: authentication, role-based dashboards, guests, reservations, kubos, kubo types, employees/roles, payments, audit logs, the additional-charge catalog, the Administrator charge-request review page (`/charge-requests`), and overpayment approvals on the reservation page. Responsive from phone to desktop without sideways scrolling: off-canvas sidebar below 900px, and list tables become cards on phones or when they cannot fit. Deployed on Vercel with `VITE_API_BASE_URL` pointing at the Render API. |
 
 ## Status legend
 

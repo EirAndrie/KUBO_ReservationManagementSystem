@@ -176,3 +176,64 @@ body {
 .ant-table-wrapper .ant-table-tbody > tr.clickable-row {
   cursor: pointer;
 }
+
+/* ---- Small screens and tablets ---- */
+
+/*
+ * Tables wrap cell text to fit. ResponsiveTable switches to cards when a table
+ * still cannot fit; this overflow is only a last resort so nothing is clipped.
+ */
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
+}
+
+/* Reference codes and amounts never break mid-value. */
+.ant-table-wrapper .mono,
+.ant-table-wrapper .tabular {
+  white-space: nowrap;
+}
+
+/* Modals and drawers never exceed the viewport. */
+.ant-modal {
+  max-width: calc(100vw - 24px);
+}
+
+.ant-drawer .ant-drawer-content-wrapper {
+  max-width: 100vw;
+}
+
+@media (max-width: 640px) {
+  .ant-modal .ant-modal-content {
+    padding: 16px;
+  }
+
+  .ant-modal-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-drawer .ant-drawer-content-wrapper {
+    width: 100vw !important;
+  }
+
+  /* Pagination wraps instead of overflowing. */
+  .ant-pagination {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* 16px inputs stop iOS Safari zooming the page on focus. */
+  .ant-input,
+  .ant-input-number-input,
+  .ant-select-selection-search-input,
+  .ant-picker-input > input,
+  textarea.ant-input {
+    font-size: 16px;
+  }
+}
+
+/* Fixed-width search/filter inputs shrink on narrow screens. */
+.ant-input-affix-wrapper,
+.ant-select,
+.ant-picker {
+  max-width: 100%;
+}

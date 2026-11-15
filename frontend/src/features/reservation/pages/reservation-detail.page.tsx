@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { App, Button, Drawer, Form, Input, InputNumber, Progress, Steps, Table, Tooltip } from 'antd';
+import { App, Button, Drawer, Form, Input, InputNumber, Progress, Steps, Tooltip } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckOutlined,
@@ -586,7 +587,7 @@ export const ReservationDetailPage: React.FC = () => {
       <div className={styles.grid}>
         <div className={styles.mainCol}>
           <Section title="Stay" flush>
-            <Table<ReservationAssignment>
+            <ResponsiveTable<ReservationAssignment>
               rowKey={(a) => a.reserved_kubo_id ?? a.kubo_id}
               columns={stayColumns}
               dataSource={reservation.assignments}
@@ -626,7 +627,7 @@ export const ReservationDetailPage: React.FC = () => {
             ) : payments.isLoading || charges.isLoading ? (
               <ListSkeleton rows={3} />
             ) : (
-              <Table<LedgerRow>
+              <ResponsiveTable<LedgerRow>
                 rowKey="key"
                 columns={ledgerColumns}
                 dataSource={ledger}

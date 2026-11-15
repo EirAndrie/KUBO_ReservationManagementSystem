@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Table } from 'antd';
+import { Button } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { EmptyState, ErrorState, FilterChip, ListSkeleton, PageHeader, Section, StatusBadge, TwoLine } from '@/components/common';
 import { formatDateTime, formatMoney, pluralize } from '@/lib/format';
@@ -55,7 +56,6 @@ export const ChargeRequestListPage: React.FC = () => {
     },
     {
       title: 'Charge',
-      width: 260,
       render: (_, r) => (
         <TwoLine
           primary={r.description}
@@ -75,7 +75,6 @@ export const ChargeRequestListPage: React.FC = () => {
     },
     {
       title: 'Status',
-      width: 220,
       render: (_, r) =>
         r.status === 'Pending' ? (
           <StatusBadge status="Pending" />
@@ -135,13 +134,12 @@ export const ChargeRequestListPage: React.FC = () => {
             description="Staff submit custom charges from a reservation's Add charge dialog."
           />
         ) : (
-          <Table<ChargeRequest>
+          <ResponsiveTable<ChargeRequest>
             rowKey="request_id"
             columns={columns}
             dataSource={rows}
             pagination={rows.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
             size="middle"
-            scroll={{ x: 'max-content' }}
           />
         )}
       </Section>

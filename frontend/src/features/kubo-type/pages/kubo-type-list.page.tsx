@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { App, Button, Progress, Table } from 'antd';
+import { App, Button, Progress } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useKubos } from '@/features/kubo';
@@ -135,7 +136,7 @@ export const KuboTypeListPage: React.FC = () => {
         ) : (types.data ?? []).length === 0 ? (
           <EmptyState title="No kubo types yet" action={<Button size="small" onClick={() => setDrawer({ type: null })}>Create the first type</Button>} />
         ) : (
-          <Table<KuboType>
+          <ResponsiveTable<KuboType>
             rowKey="kubo_type_id"
             columns={columns}
             dataSource={types.data}

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Button, Input, Table, Tabs } from 'antd';
+import { App, Button, Input, Tabs } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckOutlined,
@@ -313,7 +314,7 @@ export const PaymentListPage: React.FC = () => {
         ) : rows.length === 0 ? (
           <EmptyState title="No payments match" description="Try another tab, date range or method." />
         ) : (
-          <Table<Payment>
+          <ResponsiveTable<Payment>
             rowKey="payment_id"
             columns={columns}
             dataSource={rows}

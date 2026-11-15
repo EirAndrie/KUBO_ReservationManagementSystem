@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Button, Input, Segmented, Table, Tooltip } from 'antd';
+import { App, Button, Input, Segmented, Tooltip } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import {
   AppstoreOutlined,
@@ -290,7 +291,7 @@ export const KuboListPage: React.FC = () => {
         </Section>
       ) : view === 'list' ? (
         <Section flush>
-          <Table<Kubo>
+          <ResponsiveTable<Kubo>
             rowKey="kuboId"
             columns={columns}
             dataSource={filtered}

@@ -56,11 +56,11 @@ function useFrontDeskCount(enabled: boolean): number | undefined {
 }
 
 /**
- * Light 232px sidebar. Navigation is role-specific (BR-005): Administrators
+ * Light 232px sidebar (off-canvas drawer below 900px). Navigation is role-specific (BR-005): Administrators
  * see oversight pages plus an "Admin" group; Staff see front-desk pages.
  * The signed-in user and sign-out live at the bottom.
  */
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ open?: boolean }> = ({ open = false }) => {
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
   const { mode } = useThemeMode();
@@ -108,7 +108,7 @@ export const Sidebar: React.FC = () => {
   const displayName = user?.fullName || user?.username || (isAdmin ? 'Administrator' : 'Staff');
 
   return (
-    <aside className={styles.sidebar} aria-label="Main navigation">
+    <aside id="main-sidebar" className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`} aria-label="Main navigation">
       <div className={styles.brand}>
         <img
           src={mode === 'dark' ? '/images/kubo-logo-white.png' : '/images/kubo-logo-black.png'}

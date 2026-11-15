@@ -7,4 +7,6 @@ export { ListSkeleton, EmptyState, ErrorState, QueryBoundary } from './States';
 export { RowMenu } from './RowMenu';
 export type { RowMenuItem } from './RowMenu';
 export { FilterChip } from './FilterChip';
+export { ResponsiveTable } from './ResponsiveTable';
+export { useIsPhone } from './useIsPhone';
 export { PageHeader } from '../layout/PageHeader';
