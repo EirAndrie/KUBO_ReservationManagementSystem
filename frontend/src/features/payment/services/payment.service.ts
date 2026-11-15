@@ -65,6 +65,7 @@ function mapPaymentRecord(row: Row): Payment {
     description: row.description ? String(row.description) : null,
     related_payment_id: row.related_payment_id ? String(row.related_payment_id) : null,
     related_charge_id: row.related_charge_id ? String(row.related_charge_id) : null,
+    payment_reference: row.payment_reference ? String(row.payment_reference) : null,
     notes: row.description ? String(row.description) : row.notes ? String(row.notes) : null,
   };
 }
@@ -178,6 +179,7 @@ export const paymentService = {
       paymentAmount: Number(payload.paymentAmount.toFixed(2)),
       paymentType: payload.paymentType,
       paymentMethod: payload.paymentMethod,
+      ...(payload.paymentReference ? { paymentReference: payload.paymentReference } : {}),
       ...(payload.overpaymentApprovalId ? { overpaymentApprovalId: payload.overpaymentApprovalId } : {}),
     });
     return mapPaymentRecord(oneOf(res, 'payments'));

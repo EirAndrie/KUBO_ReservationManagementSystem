@@ -83,6 +83,8 @@ export interface Payment {
   description: string | null;
   related_payment_id: string | null;
   related_charge_id: string | null;
+  /** Provider transaction reference (GCash, Maya, card, bank); null for cash. */
+  payment_reference: string | null;
   notes?: string | null;
 }
 
@@ -141,6 +143,8 @@ export interface CreatePaymentPayload {
   paymentAmount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
+  /** Provider reference from the receipt; required for non-cash methods. */
+  paymentReference?: string;
   /** BR-053: required when the amount exceeds the outstanding balance. */
   overpaymentApprovalId?: string;
 }

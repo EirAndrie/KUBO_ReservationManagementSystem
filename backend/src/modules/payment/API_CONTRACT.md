@@ -84,6 +84,7 @@ an array; on single operations it is an object. There is no `data` wrapper.
 | `description` | string or `null` | Yes | Required for `Adjustment` and `Reversal` |
 | `related_payment_id` | string (UUID) or `null` | Yes | A Reversal references the Adjustment it offsets |
 | `related_charge_id` | string (UUID) or `null` | Yes | Applied charge corrected by an Adjustment or Reversal |
+| `payment_reference` | string or `null` | Yes | Provider reference from the GCash/Maya/card/bank receipt; `null` for cash, Refunds, Adjustments, and Reversals |
 
 ### 1.6 Transaction types
 
@@ -150,6 +151,7 @@ Request bodies accept these aliases:
 | `paymentAmount` | `payment_amount` |
 | `paymentType` | `payment_type` |
 | `paymentMethod` | `payment_method` |
+| `paymentReference` | `payment_reference` |
 | `status` | `paymentStatus`, `payment_status` |
 | `originalPaymentId` | `original_payment_id` |
 | `chargeId` | `charge_id`, `related_charge_id` |
@@ -165,6 +167,9 @@ fields are stripped by Zod.
 
 `paymentAmount` must be a JSON **number**, not a numeric string. Amounts may have
 at most 2 decimal places.
+
+`paymentReference` is trimmed and limited to 100 characters. It is required for
+every `paymentMethod` except `Cash`; cash and correction rows store `null`.
 
 Adjustment and reversal amounts must be positive. Their description/reason is
 required and limited to 255 characters.
@@ -229,6 +234,7 @@ Staff only.
 | `paymentAmount` | number | Yes | Non-negative; at most 2 decimal places |
 | `paymentType` | string | Yes | One of the values in §1.7 |
 | `paymentMethod` | string | Yes | One of the values in §1.8 |
+| `paymentReference` | string | Conditional | Required when `paymentMethod` is not `Cash`; trimmed, max 100 characters |
 | `overpaymentApprovalId` | string (UUID) | No | Required only when the amount exceeds the outstanding balance (§12) |
 
 `transaction_type` and `payment_status` are not accepted; the server forces
@@ -238,7 +244,8 @@ Staff only.
 {
   "paymentAmount": 5000.0,
   "paymentType": "Deposit",
-  "paymentMethod": "GCash"
+  "paymentMethod": "GCash",
+  "paymentReference": "1234567890123"
 }
 ```
 
@@ -265,7 +272,8 @@ Staff only.
     "payment_type": "Deposit",
     "payment_method": "GCash",
     "payment_status": "Pending",
-    "payment_date": "2026-11-04T09:15:00.000Z"
+    "payment_date": "2026-11-04T09:15:00.000Z",
+    "payment_reference": "1234567890123"
   }
 }
 ```
@@ -277,6 +285,9 @@ Staff only.
 | Body fails validation | `400` | Validation detail |
 | Amount negative or more than 2 decimals | `400` | `Payment amount must be non-negative with at most two decimal places.` |
 | Payment type/method missing | `400` | `Payment type and method are required.` |
+| Non-cash payment has no reference | `400` | `paymentReference: A reference code is required for non-cash payments` |
+| Reference longer than 100 characters | `400` | `paymentReference: Payment reference cannot exceed 100 characters` |
+| Reference already recorded | `400` | `Payment reference <code> has already been recorded.` |
 | Reservation does not exist | `404` | `Reservation does not exist.` |
 | Reservation is `Cancelled` or `NoShow` | `400` | `Payments cannot be recorded for a <status> reservation.` |
 | Amount exceeds outstanding balance, no approval given | `400` | `Payment exceeds the outstanding balance of <amount>. An Administrator overpayment approval is required.` |
@@ -349,7 +360,8 @@ Any authenticated employee.
       "payment_type": "Deposit",
       "payment_method": "GCash",
       "payment_status": "Completed",
-      "payment_date": "2026-11-04T09:15:00.000Z"
+      "payment_date": "2026-11-04T09:15:00.000Z",
+      "payment_reference": "1234567890123"
     }
   ]
 }
@@ -430,7 +442,8 @@ Staff only.
     "payment_type": "PartialPayment",
     "payment_method": "Cash",
     "payment_status": "Completed",
-    "payment_date": "2026-11-04T09:30:00.000Z"
+    "payment_date": "2026-11-04T09:30:00.000Z",
+    "payment_reference": null
   }
 }
 ```

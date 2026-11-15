@@ -68,6 +68,24 @@ const optionalDate = z.preprocess(
       z.coerce.date().optional(),
 );
 
+/**
+ * Provider reference typed from the GCash/Maya/card/bank receipt. Cash has
+ * none, so the column and DTO stay optional; blank strings become `undefined`.
+ */
+const optionalPaymentReference = z.preprocess(
+      (value) =>
+            typeof value === "string" && value.trim() === ""
+                  ? undefined
+                  : value,
+      z
+            .string()
+            .trim()
+            .max(100, {
+                  message: "Payment reference cannot exceed 100 characters",
+            })
+            .optional(),
+);
+
 const normalizePayment = (value: unknown) => {
       if (value === null || typeof value !== "object" || Array.isArray(value)) {
             return value;
@@ -85,6 +103,8 @@ const normalizePayment = (value: unknown) => {
             overpaymentApprovalId:
                   input.overpaymentApprovalId ??
                   input.overpayment_approval_id,
+            paymentReference:
+                  input.paymentReference ?? input.payment_reference,
       };
 };
 
@@ -124,6 +144,8 @@ export const CreatePaymentSchema = z.preprocess(
                   }),
             paymentType: PaymentTypeSchema,
             paymentMethod: PaymentMethodSchema,
+            /** Required for every method except Cash; absent for cash payments. */
+            paymentReference: optionalPaymentReference,
             /**
              * BR-053: required only when the amount exceeds the outstanding
              * balance; names an Administrator approval covering the excess.
@@ -132,7 +154,20 @@ export const CreatePaymentSchema = z.preprocess(
                   .string()
                   .uuid({ message: "Invalid overpayment approval ID" })
                   .optional(),
-      }),
+      })
+            .superRefine((data, ctx) => {
+                  if (
+                        data.paymentMethod !== "Cash" &&
+                        !data.paymentReference
+                  ) {
+                        ctx.addIssue({
+                              code: "custom",
+                              path: ["paymentReference"],
+                              message:
+                                    "A reference code is required for non-cash payments",
+                        });
+                  }
+            }),
 );
 
 export type CreatePaymentDTO = z.infer<typeof CreatePaymentSchema>;
@@ -285,4 +320,5 @@ export type PaymentResponseDTO = {
       description: string | null;
       related_payment_id: string | null;
       related_charge_id: string | null;
+      payment_reference: string | null;
 };

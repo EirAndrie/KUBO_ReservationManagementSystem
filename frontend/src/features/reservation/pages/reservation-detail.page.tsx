@@ -241,7 +241,9 @@ export const ReservationDetailPage: React.FC = () => {
           ? 'Charge reduction'
           : p.transaction_type === 'Reversal'
             ? 'Reduction reversal'
-            : `${label(p.transaction_type)} · ${label(p.payment_method)}`;
+            : p.payment_reference
+              ? `${label(p.transaction_type)} · ${label(p.payment_method)} · Ref ${p.payment_reference}`
+              : `${label(p.transaction_type)} · ${label(p.payment_method)}`;
         return {
           key: `p-${p.payment_id}`,
           date: p.payment_date,

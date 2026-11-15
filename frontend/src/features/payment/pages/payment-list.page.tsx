@@ -81,7 +81,7 @@ const signed = (p: Payment) =>
     : p.payment_amount;
 
 function exportCsv(rows: Payment[], guestOf: (id: string) => string) {
-  const header = ['Date', 'Reservation', 'Guest', 'Transaction', 'Type', 'Description', 'Method', 'Status', 'Amount', 'Recorded by'];
+  const header = ['Date', 'Reservation', 'Guest', 'Transaction', 'Type', 'Description', 'Method', 'Reference', 'Status', 'Amount', 'Recorded by'];
   const lines = rows.map((p) =>
     [
       resortTime(p.payment_date).format('YYYY-MM-DD HH:mm'),
@@ -91,6 +91,7 @@ function exportCsv(rows: Payment[], guestOf: (id: string) => string) {
       p.transaction_type === 'Payment' ? label(p.payment_type) : label(p.transaction_type),
       p.description ?? '',
       label(p.payment_method),
+      p.payment_reference ?? '',
       label(p.payment_status),
       signed(p).toFixed(2),
       p.employee_name ?? '',
@@ -226,7 +227,15 @@ export const PaymentListPage: React.FC = () => {
         />
       ),
     },
-    { title: 'Method', render: (_, p) => label(p.payment_method) },
+    {
+      title: 'Method',
+      render: (_, p) => (
+        <TwoLine
+          primary={label(p.payment_method)}
+          secondary={p.payment_reference ? <span className="mono">{p.payment_reference}</span> : undefined}
+        />
+      ),
+    },
     { title: 'Date', width: 160, render: (_, p) => <span className="tabular">{formatDateTime(p.payment_date)}</span> },
     { key: 'menu', width: 48, align: 'center', render: (_, p) => <RowMenu items={menuFor(p)} label="Payment actions" /> },
   ];
