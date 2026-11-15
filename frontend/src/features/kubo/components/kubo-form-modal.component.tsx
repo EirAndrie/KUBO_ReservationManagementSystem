@@ -105,6 +105,22 @@ export const KuboFormModal: React.FC<KuboFormModalProps> = ({ open, onClose, kub
             rules={[
               { required: true, message: 'Cottage identifier is required.' },
               { max: 20, message: 'Cannot exceed 20 characters.' },
+              {
+                validator: (_, value) => {
+                  if (!value || typeof value !== 'string') return Promise.resolve();
+                  const trimmed = value.trim();
+                  if (!trimmed) {
+                    return Promise.reject(new Error('Kubo name cannot consist of whitespace only.'));
+                  }
+                  if (/^\d+$/.test(trimmed)) {
+                    return Promise.reject(new Error('Kubo name cannot be numeric-only.'));
+                  }
+                  if (!/[a-zA-Z]/.test(trimmed)) {
+                    return Promise.reject(new Error('Kubo name must contain at least one letter (e.g., Kubo 01).'));
+                  }
+                  return Promise.resolve();
+                },
+              },
             ]}
           >
             <Input placeholder="e.g. Kubo 01 or Villa A" size="large" />
