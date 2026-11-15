@@ -13,7 +13,7 @@ type AnyColumn = {
   children?: unknown;
 };
 
-const ACTION_KEYS = new Set(['action', 'actions']);
+const ACTION_KEYS = new Set(['action', 'actions', 'menu']);
 
 function valueAt(record: unknown, dataIndex: AnyColumn['dataIndex']): unknown {
   if (dataIndex === undefined) return undefined;
@@ -32,7 +32,7 @@ function valueAt(record: unknown, dataIndex: AnyColumn['dataIndex']): unknown {
  *
  * Card layout, derived from the column definitions (no per-page markup):
  * - the first column is the card heading;
- * - a column keyed `action`/`actions` sits at the top right;
+ * - a column keyed `action`/`actions`/`menu` sits at the top right;
  * - every other column becomes a "label / value" cell in a two-column grid.
  *
  * Supports the table props the app uses: `columns`, `dataSource`, `rowKey`,
