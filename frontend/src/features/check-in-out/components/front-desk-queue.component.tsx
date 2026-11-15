@@ -24,6 +24,8 @@ interface QueueRow {
   assignment: ReservationAssignment;
   balance: number;
   arrival?: ArrivalRecord;
+  /** Date passed without check-in/out; carried onto today's queue. */
+  isOverdue?: boolean;
 }
 
 export interface FrontDeskQueueProps {
@@ -32,6 +34,11 @@ export interface FrontDeskQueueProps {
   onTabChange: (tab: QueueTab) => void;
   /** Extra content on the right of the tab bar (e.g. "Open desk ›"). */
   tabBarExtra?: React.ReactNode;
+}
+
+/** Amber marker for overdue work carried onto today's queue. */
+function overdueBadge(date: string) {
+  return <StatusBadge status="Overdue" tone="amber" text={`Overdue since ${formatDate(date, 'MMM D')}`} />;
 }
 
 function scheduledTime(value?: string | null): string {
@@ -70,12 +77,14 @@ export const FrontDeskQueue: React.FC<FrontDeskQueueProps> = ({ date, tab, onTab
       assignment: a.assignment,
       balance: toAmount(a.reservation.outstanding_balance),
       arrival: a,
+      isOverdue: a.isOverdue,
     })),
     departures: queue.departures.map((d) => ({
       key: `${d.reservation.reservation_id}:${d.assignment.kubo_id}`,
       reservation: d.reservation,
       assignment: d.assignment,
       balance: d.outstandingBalance,
+      isOverdue: d.isOverdue,
     })),
     inhouse: queue.inHouse.map((h) => ({
       key: `${h.reservation.reservation_id}:${h.assignment.kubo_id}`,
@@ -129,7 +138,13 @@ export const FrontDeskQueue: React.FC<FrontDeskQueueProps> = ({ date, tab, onTab
       render: (_, r) => (
         <TwoLine
           primary={scheduledTime(r.assignment.scheduled_check_in_time)}
-          secondary={r.arrival?.isEarly ? `Early · booked ${formatDate(r.assignment.check_in_date, 'MMM D')}` : formatDate(r.assignment.check_in_date, 'MMM D')}
+          secondary={
+            r.isOverdue
+              ? overdueBadge(r.assignment.check_in_date)
+              : r.arrival?.isEarly
+                ? `Early · booked ${formatDate(r.assignment.check_in_date, 'MMM D')}`
+                : formatDate(r.assignment.check_in_date, 'MMM D')
+          }
         />
       ),
     },
@@ -163,7 +178,15 @@ export const FrontDeskQueue: React.FC<FrontDeskQueueProps> = ({ date, tab, onTab
   const departureColumns: ColumnsType<QueueRow> = [
     guestColumn,
     kuboColumn,
-    { title: 'Due out', render: (_, r) => <span className="tabular">{formatDate(r.assignment.check_out_date, 'MMM D')}</span> },
+    {
+      title: 'Due out',
+      render: (_, r) =>
+        r.isOverdue ? (
+          overdueBadge(r.assignment.check_out_date)
+        ) : (
+          <span className="tabular">{formatDate(r.assignment.check_out_date, 'MMM D')}</span>
+        ),
+    },
     balanceColumn,
     {
       key: 'action',

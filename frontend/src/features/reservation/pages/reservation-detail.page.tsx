@@ -295,6 +295,7 @@ export const ReservationDetailPage: React.FC = () => {
       reservation,
       assignment: a,
       isEarly: dayjs(a.check_in_date).isAfter(dayjs(), 'day'),
+      isOverdue: dayjs(a.check_in_date).isBefore(dayjs(), 'day'),
       canCheckIn: true,
     });
 

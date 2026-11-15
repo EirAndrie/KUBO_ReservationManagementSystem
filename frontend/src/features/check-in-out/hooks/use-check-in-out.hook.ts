@@ -12,13 +12,19 @@ export const checkInOutKeys = {
 /**
  * Front-desk queues for one operational date, derived from Confirmed and
  * CheckedIn reservations:
- * - Arrivals: assignments still `Reserved` whose check-in date is on or before
- *   the target date. Checking in before the assignment's check-in date (i.e.
- *   when it is later than today) is an early check-in and needs approval.
- * - Departures: `CheckedIn` assignments due out on or before the target date.
+ * - Arrivals: assignments still `Reserved` whose check-in date is the target
+ *   date. Checking in before the assignment's check-in date (i.e. when it is
+ *   later than today) is an early check-in and needs approval (BR-059).
+ * - Departures: `CheckedIn` assignments whose check-out date is the target date.
  * - In-house: every `CheckedIn` assignment.
  *
- * The date is part of the query key, so changing it refetches.
+ * Overdue work (a `Reserved` assignment whose check-in date has passed, or a
+ * `CheckedIn` assignment past its check-out date) still needs action today, so
+ * it is carried onto today's queue only, flagged `isOverdue`. Past and future
+ * dates show just the items scheduled for that date.
+ *
+ * The API call does not take a date; filtering happens here, so every date
+ * shares the same active-reservation list.
  */
 export function useCheckInOutQueue(
   targetDate: string = dayjs().format('YYYY-MM-DD'),
@@ -35,6 +41,9 @@ export function useCheckInOutQueue(
   const reservations = query.data ?? [];
   const target = dayjs(targetDate).startOf('day');
   const today = dayjs().startOf('day');
+  const isTodayView = target.isSame(today, 'day');
+  /** Scheduled for the target date, or overdue and carried onto today's view. */
+  const isDue = (day: dayjs.Dayjs) => day.isSame(target, 'day') || (isTodayView && day.isBefore(today, 'day'));
 
   const arrivals: ArrivalRecord[] = [];
   const departures: DepartureRecord[] = [];
@@ -49,23 +58,25 @@ export function useCheckInOutQueue(
       if (
         ['Confirmed', 'CheckedIn'].includes(res.status) &&
         assignment.status === 'Reserved' &&
-        !checkIn.isAfter(target)
+        isDue(checkIn)
       ) {
         const isEarly = checkIn.isAfter(today);
         arrivals.push({
           reservation: res,
           assignment,
           isEarly,
+          isOverdue: checkIn.isBefore(today, 'day'),
           canCheckIn: res.status !== 'Pending' && (!isEarly || Boolean(assignment.early_check_in_approved)),
         });
       }
 
       if (res.status === 'CheckedIn' && assignment.status === 'CheckedIn') {
         inHouse.push({ reservation: res, assignment, outstandingBalance: balance });
-        if (!checkOut.isAfter(target)) {
+        if (isDue(checkOut)) {
           departures.push({
             reservation: res,
             assignment,
+            isOverdue: checkOut.isBefore(today, 'day'),
             outstandingBalance: balance,
             isSettled: balance <= 0,
             canCheckOut: balance <= 0,
