@@ -8,7 +8,7 @@ previous one.
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
 | 1 | `role` | Complete | CRUD, validation, reference-safe deletion, and audit writes are in place. Role names are the canonical lowercase values `administrator` and `staff`, enforced by a database `CHECK` constraint. |
-| 2 | `employee` | In progress | CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced and mutations write audit rows without exposing `password_hash`. |
+| 2 | `employee` | In progress | Name validation rejects numeric entries (BR-002).  CRUD, safe reads, filtering/search, password reset, and last-Administrator checks are in place. Administrator-only RBAC is enforced and mutations write audit rows without exposing `password_hash`. |
 | 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes are in place (`id_number` masked). First and last names reject digits and unsupported symbols on create and update (Zod, the guest form, and the `guest_name_check` constraint). |
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). |
 | 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Character validation enforces non-numeric kubo names (BR-017). Writes are Administrator-only. Audit writes are in place. |

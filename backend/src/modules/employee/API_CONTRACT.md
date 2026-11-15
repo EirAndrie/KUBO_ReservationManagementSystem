@@ -168,8 +168,8 @@ Administrator only.
 | Field | Type | Required | Default | Constraints |
 |---|---|---:|---|---|
 | `roleId` | string (UUID) | Yes | — | Must reference an existing role |
-| `firstName` | string | Yes | — | Trimmed; 1–100 characters at the database layer |
-| `lastName` | string | Yes | — | Trimmed; 1–100 characters at the database layer |
+| `firstName` | string | Yes | — | Trimmed; 1–100 characters; letters, spaces, hyphens, apostrophes, and periods only (digits/symbols rejected) |
+| `lastName` | string | Yes | — | Trimmed; 1–100 characters; same character rule as firstName |
 | `username` | string | Yes | — | Trimmed; 1–100 characters; unique |
 | `passwordHash` | string | Yes | — | **Plaintext password**; 8–12 characters with uppercase, lowercase, digit, and one of `@ $ ! % * ? &` |
 | `status` | string | No | `Active` | Employee status value or alias |
@@ -456,8 +456,8 @@ not accepted here; use the password-reset endpoint.
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
 | `roleId` | string (UUID) | No | Must reference an existing role |
-| `firstName` | string | No | Trimmed; 1–100 characters at the database layer |
-| `lastName` | string | No | Trimmed; 1–100 characters at the database layer |
+| `firstName` | string | No | Trimmed; 1–100 characters; letters, spaces, hyphens, apostrophes, and periods only (digits/symbols rejected) |
+| `lastName` | string | No | Trimmed; 1–100 characters; same character rule as firstName |
 | `username` | string | No | Trimmed; 1–100 characters; unique |
 | `status` | string | No | Employee status value or alias |
 

@@ -4,7 +4,7 @@ import { UserOutlined, LockOutlined, CrownOutlined } from '@ant-design/icons';
 import { formatRoleLabel, isAdministratorRole } from '@/features/auth';
 import { useCreateEmployee, useUpdateEmployee } from '../hooks/use-employee-mutations.hook';
 import { useRoles } from '../hooks/use-employees.hook';
-import { EMPLOYEE_STATUS_OPTIONS, EMPLOYEE_POLICIES } from '../constants/employee.constants';
+import { EMPLOYEE_STATUS_OPTIONS, EMPLOYEE_POLICIES, EMPLOYEE_NAME_REGEX, EMPLOYEE_LIMITS } from '../constants/employee.constants';
 import type { Employee, EmployeeStatus } from '../types/employee.types';
 import styles from './employee-form-modal.module.css';
 
@@ -22,6 +22,25 @@ interface FormValues {
   password?: string;
   roleId: string;
   status: EmployeeStatus;
+}
+
+/**
+ * Shared First/Last Name validator for employee registration and edits.
+ * Rejects whitespace-only entries, digits, and unsupported symbols.
+ */
+function validateEmployeeName(label: string) {
+  return (_: unknown, value?: string) => {
+    if (value == null || value === '') return Promise.resolve();
+    const text = value.trim();
+    if (!text) {
+      return Promise.reject(new Error(`${label} cannot consist of whitespace only.`));
+    }
+    return EMPLOYEE_NAME_REGEX.test(text)
+      ? Promise.resolve()
+      : Promise.reject(
+          new Error(`${label} may contain only letters, spaces, hyphens, apostrophes, and periods.`),
+        );
+  };
 }
 
 export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
@@ -149,7 +168,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               <Form.Item
                 name="firstName"
                 label="First Name"
-                rules={[{ required: true, message: 'First name is required.' }]}
+                rules={[
+                  { required: true, message: 'First name is required.' },
+                  { max: EMPLOYEE_LIMITS.MAX_FIRST_NAME, message: `Cannot exceed ${EMPLOYEE_LIMITS.MAX_FIRST_NAME} characters.` },
+                  { validator: validateEmployeeName('First name') },
+                ]}
               >
                 <Input placeholder="e.g. Maria" size="large" />
               </Form.Item>
@@ -158,7 +181,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               <Form.Item
                 name="lastName"
                 label="Last Name"
-                rules={[{ required: true, message: 'Last name is required.' }]}
+                rules={[
+                  { required: true, message: 'Last name is required.' },
+                  { max: EMPLOYEE_LIMITS.MAX_LAST_NAME, message: `Cannot exceed ${EMPLOYEE_LIMITS.MAX_LAST_NAME} characters.` },
+                  { validator: validateEmployeeName('Last name') },
+                ]}
               >
                 <Input placeholder="e.g. Santos" size="large" />
               </Form.Item>
