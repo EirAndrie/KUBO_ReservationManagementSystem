@@ -5,6 +5,7 @@
   grid-template-columns: minmax(420px, 1fr) minmax(0, 1fr);
   gap: 16px;
   height: 100vh;
+  height: 100dvh;
   padding: 16px;
   background: var(--color-surface);
   overflow: auto;
@@ -147,6 +148,50 @@
   }
   .brandPanel {
     display: none;
+  }
+}
+
+/* Phones: one-line brand on the left, theme toggle in the corner, form centered. */
+@media (max-width: 640px) {
+  .page {
+    padding: 0;
+    gap: 0;
+  }
+
+  .formSide {
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .topRow {
+    gap: 8px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 10px;
+    font-size: clamp(17px, 5.4vw, 22px);
+    white-space: nowrap;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .themeToggle {
+    flex-shrink: 0;
+    margin-right: -8px;
+  }
+
+  /* Offset the top row so the form sits at the visual center of the screen. */
+  .formWrap {
+    padding: 24px 0 56px;
+  }
+
+  .footer {
+    text-align: center;
+    line-height: 1.5;
   }
 }
 
