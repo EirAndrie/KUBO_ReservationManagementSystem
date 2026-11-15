@@ -17,18 +17,32 @@ const ID_TYPE_ENUMS = [
 
 const PHONE_PATTERN = /^(09\d{9}|\+639\d{9})$/;
 
+/**
+ * Names start with a letter and allow Unicode letters, combining marks, spaces,
+ * hyphens, apostrophes, and periods. Digits, emoji, and other symbols fail.
+ */
+const GUEST_NAME_PATTERN = /^[\p{L}\p{M}](?:[\p{L}\p{M} '’.-])*$/u;
+
 export const GuestSchema = z.object({
       guestId: z.string().uuid(),
       firstName: z
             .string()
             .trim()
             .min(1, { message: "Guest first name is required" })
-            .max(100, { message: "Guest first name cannot exceed 100 characters" }),
+            .max(100, { message: "Guest first name cannot exceed 100 characters" })
+            .regex(GUEST_NAME_PATTERN, {
+                  message:
+                        "Guest first name may contain only letters, spaces, hyphens, apostrophes, and periods",
+            }),
       lastName: z
             .string()
             .trim()
             .min(1, { message: "Guest last name is required" })
-            .max(100, { message: "Guest last name cannot exceed 100 characters" }),
+            .max(100, { message: "Guest last name cannot exceed 100 characters" })
+            .regex(GUEST_NAME_PATTERN, {
+                  message:
+                        "Guest last name may contain only letters, spaces, hyphens, apostrophes, and periods",
+            }),
       email: z
             .string()
             .trim()

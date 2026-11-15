@@ -9,6 +9,13 @@ export const PHILIPPINE_PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
 export const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
+/**
+ * Guest names must start with a letter and may contain Unicode letters,
+ * combining marks, spaces, hyphens, apostrophes, and periods. Digits, emoji,
+ * and other symbols are rejected.
+ */
+export const GUEST_NAME_REGEX = /^[\p{L}\p{M}](?:[\p{L}\p{M} '’.-])*$/u;
+
 export const GUEST_LIMITS = {
   MAX_FIRST_NAME: 100,
   MAX_LAST_NAME: 100,

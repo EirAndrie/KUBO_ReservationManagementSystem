@@ -65,8 +65,8 @@ include `reused`. There is no `data` wrapper.
 | Field | Type | Nullable | Notes |
 |---|---|---:|---|
 | `guest_id` | string (UUID) | No | Primary key |
-| `first_name` | string | No | |
-| `last_name` | string | No | |
+| `first_name` | string | No | Letters, spaces, hyphens, apostrophes, and periods only |
+| `last_name` | string | No | Same character rule as `first_name` |
 | `email` | string | No | Stored lowercase |
 | `phone` | string | No | `09XXXXXXXXX` or `+639XXXXXXXXX` |
 | `address_line_1` | string | Yes | |
@@ -106,6 +106,14 @@ Phone validation:
 
 Email validation uses Zod’s email check plus a 100-character maximum.
 The database additionally lowercases the stored email.
+
+Name validation:
+
+- First and last names are trimmed and limited to 100 characters.
+- They must start with a letter and may otherwise contain Unicode letters,
+  spaces, hyphens, apostrophes, and periods.
+- Digits, emoji, and other symbols are rejected. The database enforces the same
+  rule with the `guest_name_check` constraint.
 
 ### 1.9 Path parameter validation
 
@@ -151,8 +159,8 @@ Staff only.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `firstName` | string | Yes | Trimmed; 1–100 characters |
-| `lastName` | string | Yes | Trimmed; 1–100 characters |
+| `firstName` | string | Yes | Trimmed; 1–100 characters; letters, spaces, hyphens, apostrophes, and periods only |
+| `lastName` | string | Yes | Trimmed; 1–100 characters; same character rule |
 | `email` | string | Yes | Valid email; maximum 100 characters |
 | `phone` | string | Yes | `09XXXXXXXXX` or `+639XXXXXXXXX` |
 | `addressLine1` | string | No | Trimmed; maximum 200 characters |
@@ -245,6 +253,7 @@ Staff only.
 | Condition | Status | Message |
 |---|---:|---|
 | Body fails validation | `400` | Validation detail |
+| Name contains digits or unsupported symbols | `400` | `Guest first name may contain only letters, spaces, hyphens, apostrophes, and periods` (or last name) |
 | Invalid email format | `400` | `Invalid email format: <email>` |
 | Invalid phone format | `400` | `Phone must use 09XXXXXXXXX or +639XXXXXXXXX format.` |
 | Duplicate row created during a race with no matching existing guest | `400` | `Guest already exists.` |
@@ -404,8 +413,8 @@ All fields are optional, but **at least one** must be supplied.
 
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
-| `firstName` | string | No | Trimmed; 1–100 characters |
-| `lastName` | string | No | Trimmed; 1–100 characters |
+| `firstName` | string | No | Trimmed; 1–100 characters; letters, spaces, hyphens, apostrophes, and periods only |
+| `lastName` | string | No | Trimmed; 1–100 characters; same character rule |
 | `email` | string | No | Valid email; maximum 100 characters |
 | `phone` | string | No | `09XXXXXXXXX` or `+639XXXXXXXXX` |
 | `addressLine1` | string | No | Trimmed; maximum 200 characters |
@@ -437,6 +446,7 @@ All fields are optional, but **at least one** must be supplied.
 |---|---:|---|
 | Invalid UUID | `400` | `Invalid guestId format` |
 | Body fails Zod validation | `400` | Validation detail |
+| Name contains digits or unsupported symbols | `400` | `Guest first name may contain only letters, spaces, hyphens, apostrophes, and periods` (or last name) |
 | Empty body | `400` | `Provide at least one field to update.` |
 | Blank required field | `400` | `First name...` / `Last name...` / `Email...` / `Phone...` / `ID number...` |
 | Invalid email | `400` | `Invalid email format: <email>` |
