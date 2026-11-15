@@ -30,7 +30,7 @@ import { GuestSearchSelect, GuestForm } from '@/features/guest';
 import type { Guest, CreateGuestDTO } from '@/features/guest';
 import { useAvailableKubos } from '../hooks/use-reservations.hook';
 import { useCreateReservation } from '../hooks/use-reservation-mutations.hook';
-import { BOOKING_SOURCE_OPTIONS, RESERVATION_POLICIES } from '../constants/reservation.constants';
+import { BOOKING_SOURCE_OPTIONS, RESERVATION_LIMITS, RESERVATION_POLICIES } from '../constants/reservation.constants';
 import type {
   BookingSource,
   AvailableKubo,
@@ -139,7 +139,10 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
 
   // Validation before proceeding
   const canProceedStep0 = Boolean(selectedGuest);
-  const canProceedStep1 = Boolean(dateRange && dateRange[0] && dateRange[1] && user?.employeeId);
+  const isOverMaxStay = nightsCount > RESERVATION_LIMITS.MAX_STAY_NIGHTS;
+  const canProceedStep1 = Boolean(
+    dateRange && dateRange[0] && dateRange[1] && !isOverMaxStay && user?.employeeId
+  );
   const canProceedStep2 = selectedKubos.length > 0;
 
   const handleNext = () => {
@@ -282,10 +285,16 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                   }}
                   disabledDate={(current) => current && current < dayjs().startOf('day')}
                   allowClear={false}
+                  status={isOverMaxStay ? 'error' : undefined}
                 />
-                <div style={{ marginTop: 6, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                <div style={{ marginTop: 6, fontSize: '0.8rem', color: isOverMaxStay ? 'var(--status-red)' : 'var(--color-primary)', fontWeight: 600 }}>
                   Duration: {nightsCount} {nightsCount === 1 ? 'night' : 'nights'}
                 </div>
+                {isOverMaxStay && (
+                  <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--status-red)' }}>
+                    Stay duration cannot exceed {RESERVATION_LIMITS.MAX_STAY_NIGHTS} nights.
+                  </div>
+                )}
               </div>
 
               <div>

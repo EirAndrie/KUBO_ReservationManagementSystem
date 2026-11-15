@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const MAX_STAY_NIGHTS = 30;
+
 const RESERVED_KUBO_STATUS = [
       "Reserved",
       "CheckedIn",
@@ -68,6 +70,21 @@ export const CreateReservedKuboSchema = z.preprocess(
                   path: ["checkOutDate"],
             })
             .refine(
+                  (value) => {
+                        const diffMs =
+                              value.checkOutDate.getTime() -
+                              value.checkInDate.getTime();
+                        const diffDays = Math.ceil(
+                              diffMs / (1000 * 60 * 60 * 24),
+                        );
+                        return diffDays <= MAX_STAY_NIGHTS;
+                  },
+                  {
+                        message: `Stay duration cannot exceed ${MAX_STAY_NIGHTS} nights`,
+                        path: ["checkOutDate"],
+                  },
+            )
+            .refine(
                   (value) =>
                         value.scheduledCheckInTime === undefined ||
                         value.scheduledCheckOutTime === undefined ||
@@ -111,6 +128,27 @@ export const UpdateReservedKuboSchema = z.preprocess(
                         value.checkOutDate > value.checkInDate,
                   {
                         message: "Check-out must be later than check-in",
+                        path: ["checkOutDate"],
+                  },
+            )
+            .refine(
+                  (value) => {
+                        if (
+                              value.checkInDate === undefined ||
+                              value.checkOutDate === undefined
+                        ) {
+                              return true;
+                        }
+                        const diffMs =
+                              value.checkOutDate.getTime() -
+                              value.checkInDate.getTime();
+                        const diffDays = Math.ceil(
+                              diffMs / (1000 * 60 * 60 * 24),
+                        );
+                        return diffDays <= MAX_STAY_NIGHTS;
+                  },
+                  {
+                        message: `Stay duration cannot exceed ${MAX_STAY_NIGHTS} nights`,
                         path: ["checkOutDate"],
                   },
             ),

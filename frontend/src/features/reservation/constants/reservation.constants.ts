@@ -74,6 +74,7 @@ export const STATUS_OPTIONS: Array<{ label: string; value: ReservationStatus }> 
 ];
 
 export const RESERVATION_LIMITS = {
+  MAX_STAY_NIGHTS: 30,
   MAX_CANCELLATION_REASON: 255,
 } as const;
 
