@@ -101,9 +101,9 @@ Each key holds an object for single operations and an array for lists.
 |---|---|---:|---|
 | `catalog_id` | string (UUID) | No | Primary key |
 | `charge_type` | string | No | See §1.5 |
-| `name` | string | No | Case-insensitively unique |
-| `description` | string | Yes | |
-| `unit_price` | string (decimal) | No | PostgreSQL `numeric` serialized as a string |
+| `name` | string | No | Case-insensitively unique; at least two letters and only letters, numbers, spaces, and common punctuation |
+| `description` | string | Yes | When present, at least two letters and only letters, numbers, whitespace, and standard punctuation |
+| `unit_price` | string (decimal) | No | PostgreSQL `numeric` serialized as a string; greater than zero |
 | `is_active` | boolean | No | Defaults to `true` |
 | `created_at` | string (ISO 8601) | No | |
 | `updated_at` | string (ISO 8601) | No | |
@@ -360,9 +360,9 @@ Administrator only.
 | Field | Type | Required | Default | Constraints |
 |---|---|---:|---|---|
 | `chargeType` | string | Yes | — | See §1.5 |
-| `name` | string | Yes | — | 1–100 characters; case-insensitively unique |
-| `description` | string | No | — | Maximum 255 characters |
-| `unitPrice` | number | Yes | — | Non-negative; at most 2 decimals |
+| `name` | string | Yes | — | 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only; case-insensitively unique |
+| `description` | string | No | — | Maximum 255 characters; at least two letters; letters, numbers, whitespace, and standard punctuation only |
+| `unitPrice` | number | Yes | — | Greater than zero; at most 2 decimals |
 | `isActive` | boolean | No | `true` | |
 
 ```json
@@ -390,8 +390,13 @@ Administrator only.
 | Body fails validation | `400` | Validation detail |
 | Charge type missing | `400` | `Charge type is required.` |
 | Name blank or over 100 characters | `400` | `Catalog name must be between 1 and 100 characters.` |
+| Name has fewer than two letters | `400` | `Catalog name must include at least two letters` |
+| Name contains unsupported symbols | `400` | `Catalog name may contain only letters, numbers, spaces, and common punctuation` |
 | Description over 255 characters | `400` | `Catalog description cannot exceed 255 characters.` |
-| Negative price or more than 2 decimals | `400` | `Unit price must be non-negative with at most two decimal places.` |
+| Description has fewer than two letters | `400` | `Catalog description must include at least two letters` |
+| Description contains unsupported symbols | `400` | `Catalog description may contain only letters, numbers, spaces, and standard punctuation` |
+| Zero or negative price | `400` | `unitPrice: Unit price must be greater than zero` |
+| More than 2 price decimals | `400` | `unitPrice: Unit price cannot have more than 2 decimals` |
 | Name already exists | `400` | `A catalog item with that name already exists.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not an Administrator | `403` | `Insufficient privileges` |
@@ -427,9 +432,9 @@ At least one field is required.
 | Field | Type | Required | Constraints |
 |---|---|---:|---|
 | `chargeType` | string | No | See §1.5 |
-| `name` | string | No | 1–100 characters; case-insensitively unique |
-| `description` | string \| null | No | Maximum 255 characters; `null` clears it |
-| `unitPrice` | number | No | Non-negative; at most 2 decimals |
+| `name` | string | No | 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only; case-insensitively unique |
+| `description` | string \| null | No | Maximum 255 characters; `null` clears it; when present, at least two letters and only letters, numbers, whitespace, and standard punctuation |
+| `unitPrice` | number | No | Greater than zero; at most 2 decimals |
 | `isActive` | boolean | No | |
 
 ```json
@@ -454,8 +459,13 @@ At least one field is required.
 | Invalid UUID/body | `400` | Validation detail |
 | Empty body | `400` | `Provide at least one catalog field to update.` |
 | Name blank or over 100 characters | `400` | `Catalog name must be between 1 and 100 characters.` |
+| Name has fewer than two letters | `400` | `Catalog name must include at least two letters` |
+| Name contains unsupported symbols | `400` | `Catalog name may contain only letters, numbers, spaces, and common punctuation` |
 | Description over 255 characters | `400` | `Catalog description cannot exceed 255 characters.` |
-| Negative price or more than 2 decimals | `400` | `Unit price must be non-negative with at most two decimal places.` |
+| Description has fewer than two letters | `400` | `Catalog description must include at least two letters` |
+| Description contains unsupported symbols | `400` | `Catalog description may contain only letters, numbers, spaces, and standard punctuation` |
+| Zero or negative price | `400` | `unitPrice: Unit price must be greater than zero` |
+| More than 2 price decimals | `400` | `unitPrice: Unit price cannot have more than 2 decimals` |
 | Name already exists | `400` | `A catalog item with that name already exists.` |
 | Catalog item does not exist | `404` | `Catalog item not found` |
 | Not authenticated | `401` | `Authentication required` |
