@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, Button, Table, Tabs, Tooltip } from 'antd';
+import { App, Button, Tabs, Tooltip } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { ExclamationCircleOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useKubos } from '@/features/kubo';
@@ -221,7 +222,7 @@ export const FrontDeskQueue: React.FC<FrontDeskQueueProps> = ({ date, tab, onTab
     if (queue.isError) return <ErrorState error={queue.error} onRetry={() => queue.refetch()} />;
     if (rows[key].length === 0) return <EmptyState title={empty[key]} description="New bookings appear here automatically." />;
     return (
-      <Table<QueueRow>
+      <ResponsiveTable<QueueRow>
         rowKey="key"
         columns={columns}
         dataSource={rows[key]}

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { App, Button, Form, Input, Modal, Select, Table, Tabs } from 'antd';
+import { App, Button, Form, Input, Modal, Select, Tabs } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import {
   ClockCircleOutlined,
@@ -366,7 +367,7 @@ export const EmployeeListPage: React.FC = () => {
             ) : rows.length === 0 ? (
               <EmptyState title="No employees match" description="Clear the filters to see everyone." />
             ) : (
-              <Table<Employee> rowKey="employeeId" columns={memberColumns} dataSource={rows} pagination={false} size="middle" />
+              <ResponsiveTable<Employee> rowKey="employeeId" columns={memberColumns} dataSource={rows} pagination={false} size="middle" />
             )}
           </Section>
         </>
@@ -377,7 +378,7 @@ export const EmployeeListPage: React.FC = () => {
           ) : roles.isError ? (
             <ErrorState error={roles.error} onRetry={() => roles.refetch()} />
           ) : (
-            <Table<Role> rowKey="roleId" columns={roleColumns} dataSource={roles.data} pagination={false} size="middle" />
+            <ResponsiveTable<Role> rowKey="roleId" columns={roleColumns} dataSource={roles.data} pagination={false} size="middle" />
           )}
         </Section>
       )}

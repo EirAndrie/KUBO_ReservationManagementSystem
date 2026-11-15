@@ -20,3 +20,14 @@
   padding: 12px 16px;
   border-top: 1px solid var(--color-border);
 }
+
+@media (max-width: 640px) {
+  .tabs :global(.ant-tabs-nav) {
+    padding: 0 12px;
+  }
+
+  /* The "Open desk" shortcut collides with the tab labels; the sidebar has the same link. */
+  .tabs :global(.ant-tabs-extra-content) {
+    display: none;
+  }
+}

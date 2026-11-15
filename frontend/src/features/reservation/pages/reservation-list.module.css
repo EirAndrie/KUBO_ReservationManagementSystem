@@ -32,3 +32,9 @@
   display: flex;
   gap: 6px;
 }
+
+@media (max-width: 640px) {
+  .range {
+    width: 100%;
+  }
+}

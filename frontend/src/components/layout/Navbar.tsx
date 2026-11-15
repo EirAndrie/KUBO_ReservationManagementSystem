@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AutoComplete, Badge, Button, Input, Popover } from 'antd';
 import type { InputRef } from 'antd';
-import { BellOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
+import { BellOutlined, MenuOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import { useChargeRequests } from '@/features/payment';
 import { useCheckInOutQueue } from '@/features/check-in-out';
@@ -71,7 +71,11 @@ const Notifications: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
  * theme switcher, and "New reservation" for Staff only (reservation creation
  * is a Staff action in the backend).
  */
-export const Navbar: React.FC<{ detailCrumb: string | null }> = ({ detailCrumb }) => {
+export const Navbar: React.FC<{
+  detailCrumb: string | null;
+  navOpen: boolean;
+  onToggleNav: () => void;
+}> = ({ detailCrumb, navOpen, onToggleNav }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
@@ -113,6 +117,15 @@ export const Navbar: React.FC<{ detailCrumb: string | null }> = ({ detailCrumb }
 
   return (
     <header className={styles.topbar}>
+      <Button
+        type="text"
+        className={styles.menuButton}
+        icon={<MenuOutlined />}
+        aria-label="Open navigation menu"
+        aria-controls="main-sidebar"
+        aria-expanded={navOpen}
+        onClick={onToggleNav}
+      />
       <nav className={styles.crumbs} aria-label="Breadcrumb">
         {hasDetail ? (
           <>
@@ -151,8 +164,8 @@ export const Navbar: React.FC<{ detailCrumb: string | null }> = ({ detailCrumb }
         <Notifications isAdmin={isAdmin} />
         <ThemeToggle />
         {role === 'Staff' && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setWizardOpen(true)} style={{ marginLeft: 8 }}>
-            New reservation
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setWizardOpen(true)} className={styles.newReservation} aria-label="New reservation">
+            <span className={styles.newReservationLabel}>New reservation</span>
           </Button>
         )}
       </div>

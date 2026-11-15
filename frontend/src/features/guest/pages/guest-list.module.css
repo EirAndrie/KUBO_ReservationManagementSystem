@@ -40,3 +40,9 @@
   display: flex;
   gap: 6px;
 }
+
+@media (max-width: 640px) {
+  .search {
+    width: 100%;
+  }
+}

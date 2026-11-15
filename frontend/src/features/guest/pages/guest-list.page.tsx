@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Button, Input, Table } from 'antd';
+import { App, Button, Input } from 'antd';
+import { ResponsiveTable } from '@/components/common';
 import type { InputRef } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, EyeOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
@@ -245,7 +246,7 @@ export const GuestListPage: React.FC = () => {
           />
         ) : (
           <>
-            <Table<Guest>
+            <ResponsiveTable<Guest>
               rowKey="guest_id"
               columns={columns}
               dataSource={rows}

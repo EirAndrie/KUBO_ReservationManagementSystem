@@ -423,3 +423,109 @@
   font-size: 13px;
   color: rgba(255, 255, 255, 0.88);
 }
+
+/* ---- Phone card list (ResponsiveTable) ---- */
+.responsiveTable {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+}
+
+.cardList[data-loading='true'] {
+  opacity: 0.6;
+}
+
+.dataCard {
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.dataCard:first-child {
+  border-top: none;
+}
+
+.dataCardTappable {
+  cursor: pointer;
+}
+
+.dataCardTappable:active {
+  background: var(--color-hover);
+}
+
+/* Wide actions (several buttons) wrap below the title instead of squeezing it. */
+.dataCardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dataCardTitle {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.dataCardAction {
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.dataCardAction > * {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Reference codes and amounts never break mid-value. */
+.dataCard :global(.mono),
+.dataCard :global(.tabular) {
+  white-space: nowrap;
+}
+
+.dataCardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 10px 0 0;
+}
+
+.dataCardField {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dataCardField dt {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
+.dataCardField dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.cardListEmpty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.cardListMore {
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
