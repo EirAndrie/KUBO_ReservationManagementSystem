@@ -30,7 +30,7 @@ import { GuestSearchSelect, GuestForm } from '@/features/guest';
 import type { Guest, CreateGuestDTO } from '@/features/guest';
 import { useAvailableKubos } from '../hooks/use-reservations.hook';
 import { useCreateReservation } from '../hooks/use-reservation-mutations.hook';
-import { BOOKING_SOURCE_OPTIONS, RESERVATION_POLICIES } from '../constants/reservation.constants';
+import { BOOKING_SOURCE_OPTIONS, RESERVATION_LIMITS, RESERVATION_POLICIES } from '../constants/reservation.constants';
 import type {
   BookingSource,
   AvailableKubo,
@@ -139,7 +139,10 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
 
   // Validation before proceeding
   const canProceedStep0 = Boolean(selectedGuest);
-  const canProceedStep1 = Boolean(dateRange && dateRange[0] && dateRange[1] && user?.employeeId);
+  const isExtendedStay = nightsCount >= RESERVATION_LIMITS.EXTENDED_STAY_THRESHOLD_NIGHTS;
+  const canProceedStep1 = Boolean(
+    dateRange && dateRange[0] && dateRange[1] && user?.employeeId
+  );
   const canProceedStep2 = selectedKubos.length > 0;
 
   const handleNext = () => {
@@ -282,10 +285,21 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                   }}
                   disabledDate={(current) => current && current < dayjs().startOf('day')}
                   allowClear={false}
+                  status={isExtendedStay ? 'warning' : undefined}
                 />
-                <div style={{ marginTop: 6, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                <div style={{ marginTop: 6, fontSize: '0.8rem', color: isExtendedStay ? '#d48806' : 'var(--color-primary)', fontWeight: 600 }}>
                   Duration: {nightsCount} {nightsCount === 1 ? 'night' : 'nights'}
+                  {isExtendedStay && <Tag color="warning" style={{ marginLeft: 8 }}>Extended Stay (30+ nights)</Tag>}
                 </div>
+                {isExtendedStay && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    style={{ marginTop: 8 }}
+                    message="Extended Stay Confirmation"
+                    description={`The guest has selected a stay of ${nightsCount} nights (30+ nights / over a month). Please verify and confirm with the guest that they intend to book an extended stay.`}
+                  />
+                )}
               </div>
 
               <div>
@@ -415,6 +429,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                 <span style={{ color: 'var(--color-muted)' }}>Stay:</span>
                 <span style={{ fontWeight: 600 }}>
                   {checkInStr} to {checkOutStr} ({nightsCount} {nightsCount === 1 ? 'night' : 'nights'})
+                  {isExtendedStay && <Tag color="warning" style={{ marginLeft: 8 }}>Extended Stay</Tag>}
                 </span>
               </div>
               <div className={styles.summaryRow}>

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+
 const RESERVED_KUBO_STATUS = [
       "Reserved",
       "CheckedIn",
@@ -67,6 +68,7 @@ export const CreateReservedKuboSchema = z.preprocess(
                   message: "Check-out must be later than check-in",
                   path: ["checkOutDate"],
             })
+
             .refine(
                   (value) =>
                         value.scheduledCheckInTime === undefined ||
@@ -113,7 +115,8 @@ export const UpdateReservedKuboSchema = z.preprocess(
                         message: "Check-out must be later than check-in",
                         path: ["checkOutDate"],
                   },
-            ),
+            )
+,
 );
 
 export type UpdateReservedKuboDTO = z.infer<

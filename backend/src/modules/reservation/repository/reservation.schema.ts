@@ -91,6 +91,7 @@ const normalizeReservationInput = (value: unknown) => {
  */
 export type WithActor<T> = T & { employeeId: string };
 
+
 export const ReservationAssignmentSchema = z.preprocess(
       normalizeAssignment,
       z
@@ -111,6 +112,7 @@ export const ReservationAssignmentSchema = z.preprocess(
                   message: "Check-out must be later than check-in",
                   path: ["checkOutDate"],
             })
+
             .refine(
                   (value) =>
                         value.scheduledCheckInTime === undefined ||
