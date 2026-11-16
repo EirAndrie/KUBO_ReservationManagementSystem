@@ -6,6 +6,7 @@ import type {
   CreateReservationDTO,
   UpdateReservationDTO,
   CancelReservationDTO,
+  BookingSource,
 } from '../types/reservation.types';
 
 /**
@@ -38,6 +39,61 @@ export function useUpdateReservation() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(updated.reservation_id) });
+    },
+  });
+}
+
+export interface EditReservationInput {
+  reservationId: string;
+  /** Set only when the booking source changed. */
+  bookingSource?: BookingSource;
+  /** One entry per assignment whose dates or kubo changed. */
+  assignmentChanges: Array<{
+    oldKuboId: string;
+    checkInDate: string;
+    checkOutDate: string;
+    /** Set when the assignment moves to a different kubo. */
+    newKuboId?: string;
+  }>;
+}
+
+/**
+ * Hook to edit a reservation before check-in (BR-037): booking source, assignment
+ * dates, or the assigned kubo. Steps run one after another and stop at the first
+ * failure, so the server message is shown and nothing later is attempted. A kubo
+ * change is "add the new assignment, then remove the old one" so the reservation
+ * never ends up with no kubo.
+ */
+export function useEditReservation() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation({
+    mutationFn: async ({ reservationId, bookingSource, assignmentChanges }: EditReservationInput) => {
+      for (const c of assignmentChanges) {
+        if (c.newKuboId) {
+          await reservationService.assignKubo(reservationId, {
+            kuboId: c.newKuboId,
+            checkInDate: c.checkInDate,
+            checkOutDate: c.checkOutDate,
+          });
+          await reservationService.removeAssignment(reservationId, c.oldKuboId);
+        } else {
+          await reservationService.updateAssignment(reservationId, c.oldKuboId, {
+            checkInDate: c.checkInDate,
+            checkOutDate: c.checkOutDate,
+          });
+        }
+      }
+      if (bookingSource) await reservationService.update(reservationId, { bookingSource });
+      return reservationId;
+    },
+    successMessage: 'Reservation updated.',
+    onSettled: (_data, _error, vars) => {
+      // Refresh even on failure: earlier steps may already have been applied.
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.detail(vars.reservationId) });
+      queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
+      queryClient.invalidateQueries({ queryKey: ['kubos'] });
     },
   });
 }

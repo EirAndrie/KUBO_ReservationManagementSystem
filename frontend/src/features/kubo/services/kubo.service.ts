@@ -45,6 +45,7 @@ export const kuboService = {
     if (filters?.search?.trim()) {
       params.search = filters.search.trim();
     }
+    // The API pages at 10 by default; the board and counts need every kubo (API max is 100).
     params.limit = filters?.limit ?? 100;
     if (filters?.page) {
       params.page = filters.page;

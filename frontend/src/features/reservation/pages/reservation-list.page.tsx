@@ -8,6 +8,7 @@ import {
   CheckOutlined,
   CloseCircleOutlined,
   DownloadOutlined,
+  EditOutlined,
   EyeOutlined,
   LeftOutlined,
   RightOutlined,
@@ -18,6 +19,7 @@ import { useAuth } from '@/features/auth';
 import { useReservations } from '../hooks/use-reservations.hook';
 import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
 import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
+import { EditReservationModal } from '../components/edit-reservation-modal.component';
 import { BOOKING_SOURCE_OPTIONS, STATUS_OPTIONS } from '../constants/reservation.constants';
 import type { BookingSource, Reservation, ReservationFilterParams, ReservationStatus } from '../types/reservation.types';
 import { balanceOf, stayOf } from '../utils/reservation.utils';
@@ -143,6 +145,7 @@ export const ReservationListPage: React.FC = () => {
   const confirm = useConfirmReservation();
   const noShow = useMarkNoShow();
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
+  const [editing, setEditing] = useState<Reservation | null>(null);
 
   const rows = useMemo(() => {
     let data = (list.data ?? []).slice(0, PAGE_SIZE);
@@ -191,6 +194,9 @@ export const ReservationListPage: React.FC = () => {
     }
     if (r.status === 'Confirmed') {
       items.push({ key: 'noshow', label: 'Mark no-show', icon: <StopOutlined />, onClick: () => askNoShow(r) });
+    }
+    if ((r.status === 'Pending' || r.status === 'Confirmed') && !(r.assignments ?? []).some((a) => a.status === 'CheckedIn')) {
+      items.push({ key: 'edit', label: 'Edit reservation', icon: <EditOutlined />, onClick: () => setEditing(r) });
     }
     if (r.status === 'Pending' || r.status === 'Confirmed') {
       items.push({ key: 'd', divider: true });
@@ -400,6 +406,7 @@ export const ReservationListPage: React.FC = () => {
       </Section>
 
       <CancelReservationModal reservation={cancelling} onClose={() => setCancelling(null)} />
+      <EditReservationModal reservation={editing} onClose={() => setEditing(null)} />
     </div>
   );
 };

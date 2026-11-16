@@ -51,7 +51,8 @@ export const OverpaymentApprovalsSection: React.FC<OverpaymentApprovalsSectionPr
   if (!canManage && list.length === 0) return null;
 
   const submit = async () => {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => null);
+    if (!values) return; // Field errors are already shown inline.
     try {
       await create.mutateAsync({
         reservationId,
