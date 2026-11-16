@@ -161,6 +161,56 @@ export const handleControllerError = (
       });
 };
 
+/**
+ * Last-resort Express error handler, registered after every route.
+ *
+ * Errors passed to `next(err)` (for example by `validateBody`) and body-parser
+ * failures (malformed JSON, oversized bodies) would otherwise reach Express's
+ * default handler, which answers with an HTML page. This keeps every API error
+ * in the standard `{ success: false, message }` JSON envelope.
+ */
+export const jsonErrorHandler = (
+      error: unknown,
+      _req: Request,
+      res: Response,
+      next: NextFunction,
+) => {
+      if (res.headersSent) {
+            return next(error);
+      }
+
+      const bodyError = error as {
+            type?: string;
+            status?: number;
+            expose?: boolean;
+      };
+
+      if (bodyError?.type === "entity.parse.failed") {
+            return handleControllerError(
+                  res,
+                  new AppError(400, "Request body is not valid JSON"),
+            );
+      }
+
+      // body-parser marks client errors (e.g. 413 too large) as safe to expose.
+      if (
+            bodyError?.expose &&
+            typeof bodyError.status === "number" &&
+            bodyError.status >= 400 &&
+            bodyError.status < 500
+      ) {
+            return handleControllerError(
+                  res,
+                  new AppError(
+                        bodyError.status,
+                        (error as Error).message || "Invalid request",
+                  ),
+            );
+      }
+
+      return handleControllerError(res, error);
+};
+
 const formatZodError = (error: ZodError) =>
       error.issues
             .map((issue) => {
