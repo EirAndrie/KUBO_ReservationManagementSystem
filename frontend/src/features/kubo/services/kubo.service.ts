@@ -105,6 +105,18 @@ export const kuboService = {
   },
 
   /**
+   * Housekeeping (Staff): returns a cleaned kubo to service, `Cleaning` →
+   * `Available` only (BR-021, BR-063). Other current statuses fail with the
+   * server's message.
+   */
+  markReady: async (kuboId: string): Promise<Kubo> => {
+    const res = await apiClient.patch<Record<string, unknown>>(`/kubos/${kuboId}/ready`);
+    const raw = res as unknown as { kubos?: Record<string, unknown> } | Record<string, unknown>;
+    const row = (raw as { kubos?: Record<string, unknown> })?.kubos || raw;
+    return mapKuboRecord(row as Record<string, unknown>);
+  },
+
+  /**
    * Modifies physical cottage status (BR-021).
    */
   changeStatus: async (kuboId: string, status: KuboStatus): Promise<Kubo> => {

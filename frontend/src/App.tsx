@@ -6,7 +6,8 @@ import { AuthProvider, LoginPage, ProtectedRoute, useAuth } from '@/features/aut
 import { ThemeProvider } from '@/theme';
 
 // Route pages load on demand (see AppShell's Suspense boundary).
-const KuboListPage = lazy(() => import('@/features/kubo').then((m) => ({ default: m.KuboListPage })));
+const KuboListPage = lazy(() => import('@/features/kubo/lazy').then((m) => ({ default: m.KuboListPage })));
+const HousekeepingPage = lazy(() => import('@/features/kubo/lazy').then((m) => ({ default: m.HousekeepingPage })));
 const PaymentListPage = lazy(() => import('@/features/payment/lazy').then((m) => ({ default: m.PaymentListPage })));
 const EmployeeListPage = lazy(() => import('@/features/employee').then((m) => ({ default: m.EmployeeListPage })));
 const KuboTypeListPage = lazy(() => import('@/features/kubo-type').then((m) => ({ default: m.KuboTypeListPage })));
@@ -97,6 +98,14 @@ export function App() {
               element={
                 <ProtectedRoute allowedRoles={['Staff']}>
                   <CheckInOutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/housekeeping"
+              element={
+                <ProtectedRoute allowedRoles={['Staff']}>
+                  <HousekeepingPage />
                 </ProtectedRoute>
               }
             />

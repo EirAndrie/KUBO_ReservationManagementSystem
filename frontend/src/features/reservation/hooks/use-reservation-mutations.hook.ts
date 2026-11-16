@@ -24,6 +24,7 @@ export function useCreateReservation() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -44,6 +45,7 @@ export function useUpdateReservation() {
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(updated.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -120,6 +122,7 @@ export function useConfirmReservation() {
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(confirmed.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -140,6 +143,7 @@ export function useCancelReservation() {
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(cancelled.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -159,6 +163,7 @@ export function useMarkNoShow() {
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(res.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -176,6 +181,7 @@ export function useDeleteReservation() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       // Guest list stays, Returning badge, and delete eligibility.
       queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
