@@ -27,7 +27,8 @@ Kubo (accommodation unit) endpoints for the Kubo Reservation Management System.
 | Operation | Required business role |
 |---|---|
 | All `GET` endpoints | Any authenticated employee |
-| `POST`, `PATCH`, `DELETE` | `Administrator` (stored `role_name` equals `administrator`, exact) |
+| `PATCH /kubos/:kuboId/ready` | `Staff` (stored `role_name` equals `staff`, exact) |
+| Other `POST`, `PATCH`, `DELETE` | `Administrator` (stored `role_name` equals `administrator`, exact) |
 
 The authenticated employee must have status `Active`; otherwise the authentication
 middleware returns `403 Account is not active`.
@@ -132,6 +133,7 @@ fields are stripped by Zod.
 | `GET` | `/kubos/type/:kuboTypeId` | Authenticated | List kubos of one type |
 | `GET` | `/kubos/:kuboId` | Authenticated | Get one kubo |
 | `PATCH` | `/kubos/:kuboId/status` | Administrator | Change kubo status |
+| `PATCH` | `/kubos/:kuboId/ready` | Staff | Mark a cleaned kubo ready (`Cleaning` → `Available`) |
 | `PATCH` | `/kubos/:kuboId` | Administrator | Update number/type |
 | `DELETE` | `/kubos/:kuboId` | Administrator | Delete an unused kubo |
 
@@ -495,6 +497,60 @@ Behavior notes:
 - Inserts one `kubo.audit_log` row with `action = Update`, `entityType = kubo`,
   `entityId = kubo_id`, including old/new snapshots. No audit row is written for a
   same-status no-op.
+
+---
+
+## 8A. `PATCH /kubos/:kuboId/ready`
+
+Housekeeping: return a cleaned kubo to service (BR-021, BR-063). Check-out moves
+a kubo to `Cleaning`; this is the only status change Staff can make directly.
+
+### 8A.1 Access
+
+Staff only. Administrators use `PATCH /kubos/:kuboId/status`.
+
+### 8A.2 Path parameters
+
+| Parameter | Type | Required | Constraints |
+|---|---|---:|---|
+| `kuboId` | string (UUID) | Yes | Must match the shared UUID pattern |
+
+### 8A.3 Request body
+
+None. Any body is ignored.
+
+### 8A.4 Success response — `200 OK`
+
+| Field | Type | Nullable | Notes |
+|---|---|---:|---|
+| `success` | boolean | No | Always `true` |
+| `message` | string | No | `Kubo marked ready` |
+| `kubos` | object | No | Updated kubo (§1.5), `status` = `Available` |
+
+### 8A.5 Business rules and failures
+
+| Condition | Status | Message |
+|---|---:|---|
+| Invalid UUID | `400` | `Invalid kuboId format` |
+| Kubo is not `Cleaning` (including already `Available`) | `400` | `Only a kubo in Cleaning can be marked ready. Kubo <number> is <status>.` |
+| Kubo does not exist | `404` | `Kubo does not exist.` |
+| Not authenticated | `401` | `Authentication required` |
+| Not Staff | `403` | `Insufficient privileges` |
+| Unexpected database failure | `500` | `Failed to mark kubo ready` |
+
+Behavior notes:
+
+- Runs `kubo_management.fn_mark_kubo_ready` (migration
+  `20261116_add_kubo_mark_ready.sql`), which locks the kubo row, so two employees
+  marking the same kubo cannot both succeed; the second gets the `400` above.
+- The status change and the audit row are written in one transaction.
+
+### 8A.6 Side effects
+
+- Updates `kubo.kubo.status` from `Cleaning` to `Available`.
+- Inserts one `kubo.audit_log` row with `action = Update`, `entityType = kubo`,
+  `entityId = kubo_id`, description `Marked kubo <number> ready (Cleaning to
+  Available)`, and old/new snapshots.
 
 ---
 

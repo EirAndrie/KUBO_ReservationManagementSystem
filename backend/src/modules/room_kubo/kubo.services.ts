@@ -4,6 +4,7 @@ import {
       getKuboById,
       updateKubo,
       changeKuboStatus,
+      markKuboReady,
       deleteKubo,
       searchKubos,
       getAvailableKubos,
@@ -66,6 +67,21 @@ export const changeKuboStatusService = async (
             throw new AppError(404, "Kubo not found");
       }
       return changeKuboStatus(kuboId, status, actorEmployeeId);
+};
+
+/**
+ * Staff housekeeping: marks a `Cleaning` kubo `Available` (BR-021, BR-063).
+ * The stored function enforces the transition and writes the audit row.
+ */
+export const markKuboReadyService = async (
+      kuboId: string,
+      actorEmployeeId: string,
+) => {
+      const kubo = await markKuboReady(kuboId, actorEmployeeId);
+      if (!kubo) {
+            throw new AppError(404, "Kubo not found");
+      }
+      return kubo;
 };
 
 // To be checked: Prevent deletion of kubo if it is currently 

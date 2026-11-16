@@ -319,7 +319,10 @@ The DDL has no permission table, so this matrix is enforced by the application.
 
   Status changes occur in two ways:
   - as a consequence of Staff check-in/check-out operations (`→ Occupied`,
-    `→ Cleaning`, and `→ Available` when ready) under BR-060 and BR-063; and
+    `→ Cleaning`, and `→ Available` when ready) under BR-060 and BR-063. Staff
+    mark a cleaned kubo ready from the Housekeeping screen
+    (`PATCH /kubos/:kuboId/ready`, `fn_mark_kubo_ready`), which allows only
+    `Cleaning → Available`; and
   - as administrative changes performed by an Administrator through kubo management
     (for example `→ Maintenance`, `→ UnderInspection`, `→ OutOfService`, or
     returning those states to `Available`).
