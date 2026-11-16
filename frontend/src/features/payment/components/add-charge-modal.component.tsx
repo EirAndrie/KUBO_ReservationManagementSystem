@@ -53,7 +53,8 @@ export function AddChargeModal({ open, onClose, reservationId }: AddChargeModalP
   }, [open, form]);
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => null);
+    if (!values) return; // Field errors are already shown inline.
     try {
       if (mode === 'catalog') {
         await apply.mutateAsync({ reservationId, catalogId: values.catalogId!, quantity: values.quantity });

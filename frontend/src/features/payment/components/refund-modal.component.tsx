@@ -49,7 +49,8 @@ export function RefundModal({ open, onClose, payments, netPaid, originalPaymentI
   }, [open, form, refundable, originalPaymentId]);
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => null);
+    if (!values) return; // Field errors are already shown inline.
     const original = refundable.find((p) => p.payment_id === values.originalPaymentId);
     if (!original) return;
     try {

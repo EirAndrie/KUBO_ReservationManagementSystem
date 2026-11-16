@@ -67,7 +67,8 @@ const RoleFormModal: React.FC<{ role: Role | null | undefined; onClose: () => vo
   const open = role !== undefined;
 
   const submit = async () => {
-    const v = await form.validateFields();
+    const v = await form.validateFields().catch(() => null);
+    if (!v) return; // Field errors are already shown inline.
     try {
       if (role) {
         // The role name is fixed once created; only the description is editable.

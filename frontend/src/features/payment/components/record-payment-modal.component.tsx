@@ -70,7 +70,8 @@ export function RecordPaymentModal({
   }, [open, form, defaultAmount, outstandingBalance]);
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => null);
+    if (!values) return; // Field errors are already shown inline.
     try {
       await recordPayment.mutateAsync({
         reservationId,
