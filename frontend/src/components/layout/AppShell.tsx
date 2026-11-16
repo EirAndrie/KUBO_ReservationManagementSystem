@@ -4,6 +4,7 @@ import { ListSkeleton } from '@/components/common';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { BreadcrumbContext } from './breadcrumb-context';
+import { RouteErrorBoundary } from './RouteErrorBoundary';
 import styles from './shell.module.css';
 
 /**
@@ -35,9 +36,11 @@ export const AppShell: React.FC = () => {
           <div className={styles.mainScrollArea}>
             <main className={styles.mainContent}>
               {/* Route pages are lazy-loaded; keep the shell visible while one loads. */}
-              <Suspense fallback={<ListSkeleton />}>
-                <Outlet />
-              </Suspense>
+              <RouteErrorBoundary key={pathname}>
+                <Suspense fallback={<ListSkeleton />}>
+                  <Outlet />
+                </Suspense>
+              </RouteErrorBoundary>
             </main>
           </div>
         </div>
