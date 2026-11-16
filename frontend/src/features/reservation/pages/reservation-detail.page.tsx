@@ -69,6 +69,7 @@ import {
 import { useReservation } from '../hooks/use-reservations.hook';
 import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
 import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
+import { EditReservationModal } from '../components/edit-reservation-modal.component';
 import type { Reservation, ReservationAssignment } from '../types/reservation.types';
 import { stayOf } from '../utils/reservation.utils';
 import styles from './reservation-detail.module.css';
@@ -168,6 +169,7 @@ export const ReservationDetailPage: React.FC = () => {
   const withdraw = useWithdrawChargeRequest();
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState<{ amount?: number } | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -363,6 +365,9 @@ export const ReservationDetailPage: React.FC = () => {
 
   const menu: RowMenuItem[] = [];
   if (isStaff) {
+    if ((reservation.status === 'Pending' || reservation.status === 'Confirmed') && checkedInAssignments.length === 0) {
+      menu.push({ key: 'edit', label: 'Edit reservation', icon: <EditOutlined />, onClick: () => setEditOpen(true) });
+    }
     if (!isClosed && reservation.status !== 'CheckedOut') {
       menu.push({ key: 'charge', label: 'Add charge', icon: <PlusOutlined />, onClick: () => setChargeOpen(true) });
     }
@@ -732,6 +737,7 @@ export const ReservationDetailPage: React.FC = () => {
       </div>
 
       <CancelReservationModal reservation={cancelOpen ? reservation : null} onClose={() => setCancelOpen(false)} />
+      <EditReservationModal reservation={editOpen ? reservation : null} onClose={() => setEditOpen(false)} />
       <AddChargeModal open={chargeOpen} onClose={() => setChargeOpen(false)} reservationId={reservationId} />
       <RecordPaymentModal
         open={Boolean(paymentOpen)}
