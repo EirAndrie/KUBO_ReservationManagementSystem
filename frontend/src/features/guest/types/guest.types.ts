@@ -131,7 +131,7 @@ export interface GuestStayStats {
   last_stay: string | null;
   /** A Pending/Confirmed reservation starts after today (resort time). */
   upcoming: boolean;
-  /** Two or more stays. */
+  /** Two or more stays, at least one of them checked out. */
   is_returning: boolean;
 }
 

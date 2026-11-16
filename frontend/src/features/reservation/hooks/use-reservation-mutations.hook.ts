@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppMutation } from '@/hooks/use-app-mutation.hook';
 import { reservationService } from '../services/reservation.service';
 import { reservationKeys } from './use-reservations.hook';
+import { guestKeys } from '@/features/guest';
 import type {
   CreateReservationDTO,
   UpdateReservationDTO,
@@ -21,6 +22,8 @@ export function useCreateReservation() {
       `Reservation ${created.reference_code} created successfully for ${created.guest_name}.`,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
     },
   });
 }
@@ -38,6 +41,8 @@ export function useUpdateReservation() {
       `Reservation ${updated.reference_code} updated successfully.`,
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(updated.reservation_id) });
     },
   });
@@ -91,6 +96,8 @@ export function useEditReservation() {
     onSettled: (_data, _error, vars) => {
       // Refresh even on failure: earlier steps may already have been applied.
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(vars.reservationId) });
       queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
@@ -110,6 +117,8 @@ export function useConfirmReservation() {
       `Reservation ${confirmed.reference_code} confirmed successfully.`,
     onSuccess: (confirmed) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(confirmed.reservation_id) });
     },
   });
@@ -128,6 +137,8 @@ export function useCancelReservation() {
       `Reservation ${cancelled.reference_code} cancelled.`,
     onSuccess: (cancelled) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(cancelled.reservation_id) });
     },
   });
@@ -145,6 +156,8 @@ export function useMarkNoShow() {
       `Reservation ${res.reference_code} marked as No Show.`,
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(res.reservation_id) });
     },
   });
@@ -161,6 +174,8 @@ export function useDeleteReservation() {
     successMessage: 'Reservation deleted permanently.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
     },
   });
 }

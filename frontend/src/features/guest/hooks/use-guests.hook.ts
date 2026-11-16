@@ -12,13 +12,15 @@ export const guestKeys = {
   details: () => [...guestKeys.all, 'detail'] as const,
   detail: (id: string) => [...guestKeys.details(), id] as const,
   reservations: (id: string) => [...guestKeys.detail(id), 'reservations'] as const,
-  stayStats: (ids: string[]) => [...guestKeys.all, 'stay-stats', ids] as const,
+  stayStatsAll: () => [...guestKeys.all, 'stay-stats'] as const,
+  stayStats: (ids: string[]) => [...guestKeys.stayStatsAll(), ids] as const,
 };
 
 /**
  * Server-computed stays, last stay, upcoming flag, Returning flag, and
- * reservation count for the guests on one list page. Short stale time so a
- * new or cancelled booking shows up when the list is revisited.
+ * reservation count for the guests on one list page. Always refetched when the
+ * list mounts; reservation mutations also invalidate it (stays and delete
+ * eligibility change with every booking).
  */
 export function useGuestStayStats(guestIds: string[]) {
   return useQuery({
@@ -26,7 +28,7 @@ export function useGuestStayStats(guestIds: string[]) {
     queryFn: () => guestService.getStayStats(guestIds),
     enabled: guestIds.length > 0,
     placeholderData: (previousData) => previousData,
-    staleTime: 1000 * 30,
+    staleTime: 0,
   });
 }
 

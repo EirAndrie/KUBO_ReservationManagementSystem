@@ -71,7 +71,8 @@ export const GuestListPage: React.FC = () => {
   const guests = useGuests({ search: search || undefined, validIdType: idType, limit: PAGE_SIZE, page });
   // Stays, last stay, upcoming and Returning come from the server across every
   // reservation of the guests on this page (not a capped sample).
-  const pageIds = useMemo(() => (guests.data ?? []).slice(0, PAGE_SIZE).map((g) => g.guest_id), [guests.data]);
+  const pageGuests = useMemo(() => (guests.data ?? []).slice(0, PAGE_SIZE), [guests.data]);
+  const pageIds = useMemo(() => pageGuests.map((g) => g.guest_id), [pageGuests]);
   const stayStats = useGuestStayStats(pageIds);
   const createGuest = useCreateGuest();
   const updateGuest = useUpdateGuest();
@@ -85,11 +86,11 @@ export const GuestListPage: React.FC = () => {
   const canDelete = (g: Guest) => stats.get(g.guest_id)?.reservations_count === 0;
 
   const rows = useMemo(() => {
-    let data = (guests.data ?? []).slice(0, PAGE_SIZE);
+    let data = pageGuests;
     if (city) data = data.filter((g) => (g.city ?? '').toLowerCase() === city.toLowerCase());
     if (upcomingOnly) data = data.filter((g) => stats.get(g.guest_id)?.upcoming);
     return data;
-  }, [guests.data, city, upcomingOnly, stats]);
+  }, [pageGuests, city, upcomingOnly, stats]);
 
   const cityOptions = useMemo(() => {
     const set = new Set<string>();
@@ -153,7 +154,8 @@ export const GuestListPage: React.FC = () => {
       title: 'Stays',
       width: 80,
       align: 'right',
-      render: (_, g) => <span className="tabular">{stats.get(g.guest_id)?.stays ?? 0}</span>,
+      // "—" until the server stats for this guest arrive (never a false 0).
+      render: (_, g) => <span className="tabular">{stats.get(g.guest_id)?.stays ?? '—'}</span>,
     },
     {
       title: 'Last stay',
@@ -218,6 +220,14 @@ export const GuestListPage: React.FC = () => {
         />
       </div>
 
+      {stayStats.isError && (
+        <p className="muted" role="status">
+          Couldn't load stay history, so Stays, Last stay, and the Returning badge are unavailable.{' '}
+          <Button type="link" size="small" onClick={() => stayStats.refetch()}>
+            Retry
+          </Button>
+        </p>
+      )}
       <Section flush>
         {guests.isLoading ? (
           <ListSkeleton rows={8} />
