@@ -51,6 +51,22 @@ export function useChangeKuboStatus() {
   });
 }
 
+/** Staff housekeeping: marks a `Cleaning` kubo ready (`Available`). */
+export function useMarkKuboReady() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation<Kubo, string>({
+    mutationFn: (kuboId) => kuboService.markReady(kuboId),
+    successMessage: (kubo) => `Kubo ${kubo.kuboNumber} is ready for guests.`,
+    errorMessage: (error) => error.message || 'Failed to mark kubo ready.',
+    onSuccess: (_data, kuboId) => {
+      queryClient.invalidateQueries({ queryKey: kuboKeys.all });
+      queryClient.invalidateQueries({ queryKey: kuboKeys.detail(kuboId) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
+    },
+  });
+}
+
 export function useDeleteKubo() {
   const queryClient = useQueryClient();
 
