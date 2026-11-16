@@ -116,7 +116,8 @@ backend/src/modules/<feature>/
   `handleControllerError(...)`.
 - Error handling is per-controller: `throw new AppError(status, message)`, catch in
   the controller, then call `handleControllerError`. `mapDatabaseError` maps
-  `23505`/`23514`/`22023` -> `400`, `23503` -> `409`, `P0002` -> `404`, `42501` -> `403`.
+  `23505`/`23514`/`22023` -> `400`, `23P01` -> `400` (fixed message), `23503` -> `409`,
+  `P0002` -> `404`, `42501` -> `403`.
 - Response envelopes differ by module (`data`, `guests`, `payments`,
   `overpaymentApprovals`, raw arrays). Match the module you are editing.
 
@@ -222,6 +223,12 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
 - `20261108_fix_reservation_delete_and_payment_adjustments.sql`
 - `20261114_add_overpayment_approval.sql`, `20261114_add_token_revocation.sql`,
   `20261114_link_refunds_to_original_payment.sql`
+- Data-integrity backstops: `20261116_add_reserved_kubo_overlap_cleanup.sql`,
+  `20261116_add_reserved_kubo_overlap_exclusion.sql` (G-01),
+  `20261116_require_reservation_kubo_assignment.sql` (G-05),
+  `20261116_add_updated_at_triggers.sql` (G-15), and
+  `20261117_harden_data_integrity_backstops.sql` (fixes for all three; fails startup
+  if `btree_gist` is unavailable).
 
 ### Known gaps and risks
 

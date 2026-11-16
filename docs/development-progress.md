@@ -83,7 +83,11 @@ previous one.
 
 - Data-integrity gaps G-01, G-03, G-05, and G-15 are closed in the database
   (`docs/business_rules.md`, section 14). `updated_at` on guest, employee, and the
-  charge catalog is maintained by triggers.
+  charge catalog is maintained by triggers. Review follow-ups: stale assignments
+  under inactive reservations are repaired before the overlap constraint is added,
+  startup fails until `btree_gist` is available, `23P01` returns `400`, no-op
+  updates keep `updated_at`, and the at-least-one-kubo check runs as definer with a
+  parent lock.
 - Migrations now cover role, employee, guest, kubo type, kubo, reservation,
   reserved kubo, additional charges/catalog/requests, payment, audit
   infrastructure, and authentication routines (`kubo_auth_management`).
