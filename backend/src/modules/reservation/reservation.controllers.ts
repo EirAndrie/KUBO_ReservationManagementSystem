@@ -97,7 +97,7 @@ export const getAllReservationsController = async (
                   filters.data.kuboType !== undefined ||
                   filters.data.sort !== undefined;
 
-            const reservations = hasFilters
+            const { reservations, total } = hasFilters
                   ? await searchReservationsService({
                           status: filters.data.status,
                           bookingSource: filters.data.bookingSource,
@@ -128,6 +128,7 @@ export const getAllReservationsController = async (
             res.status(200).json({
                   success: true,
                   count: reservations.length,
+                  total,
                   message: "Successfully listed all Reservations",
                   reservations,
             });

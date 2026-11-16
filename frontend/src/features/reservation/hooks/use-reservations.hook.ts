@@ -30,6 +30,18 @@ export function useReservations(params?: ReservationFilterParams) {
 }
 
 /**
+ * Total reservations matching the filters across all pages (the list
+ * response's `total`). Keyed under `lists()` so list invalidations refresh it.
+ */
+export function useReservationCount(params?: Omit<ReservationFilterParams, 'page' | 'limit' | 'sort'>) {
+  return useQuery({
+    queryKey: [...reservationKeys.lists(), 'count', params] as const,
+    queryFn: () => reservationService.count(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+/**
  * Hook to retrieve a single reservation's complete detail including assignments.
  */
 export function useReservation(reservationId?: string) {

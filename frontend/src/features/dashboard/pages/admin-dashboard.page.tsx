@@ -29,7 +29,7 @@ function periodStart(p: Period): string {
 }
 
 function greeting(): string {
-  const h = dayjs().hour();
+  const h = resortTime(new Date()).hour();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
@@ -108,7 +108,7 @@ export const AdminDashboardPage: React.FC = () => {
     <div>
       <ResortBanner
         title={`${greeting()}, ${user?.firstName ?? 'there'}`}
-        description={`${dayjs().format('dddd, MMMM D')} · Here's what needs your attention.`}
+        description={`${resortTime(new Date()).format('dddd, MMMM D')} · Here's what needs your attention.`}
         action={
           <Segmented<Period>
             value={period}

@@ -12,3 +12,12 @@ export const RESORT_TZ = 'Asia/Manila';
 export function resortTime(value: string | Date) {
   return dayjs(value).tz(RESORT_TZ);
 }
+
+/**
+ * Today's calendar date at the resort as `YYYY-MM-DD`, whatever the browser's
+ * time zone. Compare it as a string with API dates (`check_in_date`, etc.);
+ * `offsetDays` shifts it (1 = tomorrow).
+ */
+export function resortToday(offsetDays = 0): string {
+  return resortTime(new Date()).add(offsetDays, 'day').format('YYYY-MM-DD');
+}

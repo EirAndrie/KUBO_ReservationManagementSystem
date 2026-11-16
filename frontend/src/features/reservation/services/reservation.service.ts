@@ -14,6 +14,26 @@ import type {
   AdditionalChargeItem,
 } from '../types/reservation.types';
 
+/** Maps list filters to the `GET /reservations` query string, dropping empty values. */
+function toListQuery(params?: ReservationFilterParams) {
+  const queryParams: Record<string, string | number | undefined> = {};
+  if (params?.status) queryParams.status = params.status;
+  if (params?.bookingSource) queryParams.bookingSource = params.bookingSource;
+  if (params?.search?.trim()) queryParams.search = params.search.trim();
+  if (params?.guestId) queryParams.guestId = params.guestId;
+  if (params?.employeeId) queryParams.employeeId = params.employeeId;
+  if (params?.checkInDate) queryParams.checkInDate = params.checkInDate;
+  if (params?.checkOutDate) queryParams.checkOutDate = params.checkOutDate;
+  if (params?.arrivalDate) queryParams.arrivalDate = params.arrivalDate;
+  if (params?.stayFrom) queryParams.stayFrom = params.stayFrom;
+  if (params?.stayTo) queryParams.stayTo = params.stayTo;
+  if (params?.kuboType) queryParams.kuboType = params.kuboType;
+  if (params?.sort) queryParams.sort = params.sort;
+  if (params?.limit) queryParams.limit = params.limit;
+  if (params?.page) queryParams.page = params.page;
+  return queryParams;
+}
+
 /**
  * Service for all reservation lifecycle and availability HTTP operations.
  * Pure async functions with no React dependencies.
@@ -23,24 +43,8 @@ export const reservationService = {
    * Lists all reservations with optional status, booking source, search, and date filters.
    */
   getAll: async (params?: ReservationFilterParams): Promise<Reservation[]> => {
-    const queryParams: Record<string, string | number | undefined> = {};
-    if (params?.status) queryParams.status = params.status;
-    if (params?.bookingSource) queryParams.bookingSource = params.bookingSource;
-    if (params?.search?.trim()) queryParams.search = params.search.trim();
-    if (params?.guestId) queryParams.guestId = params.guestId;
-    if (params?.employeeId) queryParams.employeeId = params.employeeId;
-    if (params?.checkInDate) queryParams.checkInDate = params.checkInDate;
-    if (params?.checkOutDate) queryParams.checkOutDate = params.checkOutDate;
-    if (params?.arrivalDate) queryParams.arrivalDate = params.arrivalDate;
-    if (params?.stayFrom) queryParams.stayFrom = params.stayFrom;
-    if (params?.stayTo) queryParams.stayTo = params.stayTo;
-    if (params?.kuboType) queryParams.kuboType = params.kuboType;
-    if (params?.sort) queryParams.sort = params.sort;
-    if (params?.limit) queryParams.limit = params.limit;
-    if (params?.page) queryParams.page = params.page;
-
     const response = await apiClient.get<ReservationsApiResponse>('/reservations', {
-      params: queryParams,
+      params: toListQuery(params),
     });
     const raw = response as unknown as ReservationsApiResponse | Reservation[];
     if (Array.isArray(raw)) return raw;
@@ -48,6 +52,19 @@ export const reservationService = {
       return (raw as ReservationsApiResponse).reservations;
     }
     throw new Error('The server returned an invalid reservation list.');
+  },
+
+  /**
+   * Counts reservations matching the filters across all pages, using the list
+   * response's `total` (one-row page; `page`, `limit`, and `sort` are ignored).
+   */
+  count: async (params?: Omit<ReservationFilterParams, 'page' | 'limit' | 'sort'>): Promise<number> => {
+    const response = await apiClient.get<ReservationsApiResponse>('/reservations', {
+      params: { ...toListQuery(params), page: 1, limit: 1 },
+    });
+    const total = (response as unknown as ReservationsApiResponse)?.total;
+    if (typeof total !== 'number') throw new Error('The server returned an invalid reservation count.');
+    return total;
   },
 
   /**

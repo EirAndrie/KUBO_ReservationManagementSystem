@@ -133,7 +133,10 @@ frontend/src/
 ```
 
 - Import another feature only through its `index.ts` barrel, never its internal
-  paths.
+  paths. One exception: a feature whose barrel the app shell imports at startup
+  also has a `lazy.ts` entry for its lazily loaded pages, used only inside
+  `import()` (see `frontend/docs/frontend-architecture.md`, "Route code
+  splitting").
 - Server state uses TanStack Query hooks; mutations use `useAppMutation` (toasts).
 - Show server error messages verbatim; never recompute balances in the UI
   (`outstanding_balance` comes from the API).

@@ -4,6 +4,7 @@ import { App, Button, DatePicker, Input, Select, Tabs } from 'antd';
 import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
+import { resortTime, resortToday } from '@/lib/time';
 import {
   CheckOutlined,
   CloseCircleOutlined,
@@ -17,7 +18,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import { useKuboTypes } from '@/features/kubo-type';
-import { useReservations } from '../hooks/use-reservations.hook';
+import { useReservationCount, useReservations } from '../hooks/use-reservations.hook';
 import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
 import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
 import { EditReservationModal } from '../components/edit-reservation-modal.component';
@@ -79,7 +80,7 @@ function exportCsv(rows: Reservation[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `reservations-${dayjs().format('YYYYMMDD')}.csv`;
+  a.download = `reservations-${resortTime(new Date()).format('YYYYMMDD')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -115,8 +116,8 @@ export const ReservationListPage: React.FC = () => {
     setParams(next, { replace: true });
   };
 
-  const today = dayjs().format('YYYY-MM-DD');
-  const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
+  const today = resortToday();
+  const tomorrow = resortToday(1);
 
   // Every filter and the sort run on the server before pagination, so each
   // page is a true slice of the full result.
@@ -141,9 +142,9 @@ export const ReservationListPage: React.FC = () => {
   const list = useReservations(query);
 
   // Tab counts: one request per status bucket the counts need.
-  const pendingCount = useReservations({ status: 'Pending', limit: 100 });
-  const arrivingCount = useReservations({ status: 'Confirmed', arrivalDate: today, limit: 100 });
-  const inHouseCount = useReservations({ status: 'CheckedIn', limit: 100 });
+  const pendingCount = useReservationCount({ status: 'Pending' });
+  const arrivingCount = useReservationCount({ status: 'Confirmed', arrivalDate: today });
+  const inHouseCount = useReservationCount({ status: 'CheckedIn' });
   const kuboTypes = useKuboTypes();
 
   const confirm = useConfirmReservation();
@@ -253,9 +254,9 @@ export const ReservationListPage: React.FC = () => {
 
   const tabs: Array<{ key: ViewTab; text: string; count?: number }> = [
     { key: 'all', text: 'All' },
-    { key: 'arriving', text: 'Arriving today', count: arrivingCount.isSuccess ? arrivingCount.data.length : undefined },
-    { key: 'inhouse', text: 'In-house', count: inHouseCount.data?.length },
-    { key: 'pending', text: 'Pending', count: pendingCount.data?.length },
+    { key: 'arriving', text: 'Arriving today', count: arrivingCount.data },
+    { key: 'inhouse', text: 'In-house', count: inHouseCount.data },
+    { key: 'pending', text: 'Pending', count: pendingCount.data },
     { key: 'upcoming', text: 'Upcoming' },
     { key: 'past', text: 'Past' },
   ];

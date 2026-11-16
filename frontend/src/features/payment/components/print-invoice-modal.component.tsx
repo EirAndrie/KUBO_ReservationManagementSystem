@@ -10,6 +10,7 @@ import {
 import type { InvoiceBillingBreakdown, AdditionalChargeType, PaymentMethod, PaymentType } from '../types/payment.types';
 import styles from './print-invoice-modal.module.css';
 import dayjs from 'dayjs';
+import { resortTime } from '@/lib/time';
 
 /** Philippine Peso currency formatter (BR-048) */
 const formatCurrency = (value: number): string =>
@@ -270,7 +271,7 @@ export function PrintInvoiceModal({ open, onClose, invoice }: PrintInvoiceModalP
         {/* Footer */}
         <div className={styles.invoiceFooter}>
           <p>
-            Generated on {dayjs().format('MMMM D, YYYY h:mm A')} |
+            Generated on {resortTime(new Date()).format('MMMM D, YYYY h:mm A')} |
             KUBO Resort Reservation Management System
           </p>
           <p style={{ marginTop: 4 }}>

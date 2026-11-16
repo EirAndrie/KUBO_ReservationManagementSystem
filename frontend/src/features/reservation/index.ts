@@ -22,6 +22,7 @@ export type { ReservationStatusTagProps } from './components/reservation-status-
 // Hooks
 export {
   useReservations,
+  useReservationCount,
   useReservation,
   useAvailableKubos,
   useReservationPayments,

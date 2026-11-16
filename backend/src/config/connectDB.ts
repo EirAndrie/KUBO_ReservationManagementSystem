@@ -14,7 +14,7 @@ export const db = new Pool({
 export const connectDB = async () => {
   try {
     const res = await db.query("SELECT NOW()");
-    console.log("Database connected successfully:", res.rows[0]);
+    logger.info("Database connected successfully", { now: res.rows[0]?.now });
   } catch (error: any) {
     logger.error("Failed to establish database connection", {
       message: error.message,
