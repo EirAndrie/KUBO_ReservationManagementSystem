@@ -116,8 +116,10 @@ const MAX_STAY_STATS_GUESTS = 100;
  * page (1 to 100 distinct ids, comma-separated).
  */
 export const GuestStayStatsQuerySchema = z.object({
+      // A missing or repeated parameter (undefined or an array) gets the same
+      // contract message as an empty one.
       guestIds: z
-            .string()
+            .string({ message: "guestIds is required" })
             .trim()
             .min(1, { message: "guestIds is required" })
             .transform((value) => [
