@@ -17,7 +17,7 @@ export const kuboTypeService = {
    * Fetches all kubo types with optional search and capacity filters.
    */
   getAll: async (params?: KuboTypeFilterParams): Promise<KuboType[]> => {
-    const response = await apiClient.get<KuboTypesApiResponse>('/kubo-types', { params });
+    const response = await apiClient.get<KuboTypesApiResponse>('/kubo-types', { params: { limit: 100, ...params } });
     const raw = response as unknown as KuboTypesApiResponse | KuboType[];
     if (Array.isArray(raw)) return raw;
     if (Array.isArray((raw as KuboTypesApiResponse)?.kuboTypes)) {
