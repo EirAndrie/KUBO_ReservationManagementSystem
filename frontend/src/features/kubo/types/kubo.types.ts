@@ -44,4 +44,6 @@ export interface KuboFilterParams {
   search?: string;
   kuboTypeId?: string;
   status?: KuboStatus | 'All';
+  limit?: number;
+  page?: number;
 }
