@@ -391,7 +391,7 @@ Each row:
 | `guest_id` | string (UUID) | No | |
 | `reservations_count` | integer | No | Every reservation, any status. A guest with any reservation cannot be deleted (BR-015). |
 | `stays` | integer | No | Reservations that are not `Cancelled` or `NoShow` |
-| `last_stay` | string | Yes | Latest stay start (`YYYY-MM-DD`) among those stays; a stay starts at its earliest assignment check-in that is not `Cancelled` or `NoShow` |
+| `last_stay` | string | Yes | Latest stay start (`YYYY-MM-DD`) among reservations that are `CheckedIn` or `CheckedOut` (stays that actually started; future bookings are reported by `upcoming`); a stay starts at its earliest assignment check-in that is not `Cancelled` or `NoShow` |
 | `upcoming` | boolean | No | A `Pending` or `Confirmed` reservation starts after today (Asia/Manila) |
 | `is_returning` | boolean | No | `stays >= 2` and at least one `CheckedOut` reservation (stayed before and booked again) |
 
@@ -399,7 +399,7 @@ Each row:
 
 | Condition | Status | Message |
 |---|---:|---|
-| `guestIds` missing or empty | `400` | `guestIds is required` |
+| `guestIds` missing, empty, or repeated (`?guestIds=a&guestIds=b`) | `400` | `guestIds is required` |
 | An id is not a UUID | `400` | `Invalid guest ID` |
 | More than 100 distinct ids | `400` | `At most 100 guest IDs per request` |
 | Not authenticated | `401` | `Authentication required` |
@@ -408,7 +408,8 @@ Each row:
 ### 4A.5 Side effects
 
 None. Runs `kubo_guest_management.fn_get_guest_stay_stats` (migration
-`20261116_add_guest_stay_stats.sql`, refined by `20261116_refine_guest_stay_stats.sql`).
+`20261116_add_guest_stay_stats.sql`, refined by `20261116_refine_guest_stay_stats.sql`
+and `20261117_fix_guest_last_stay.sql`).
 
 ---
 
