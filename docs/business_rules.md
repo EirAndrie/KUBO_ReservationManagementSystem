@@ -557,7 +557,10 @@ instead (retained from old rule `l`).
   `request_id` is optional and identifies the approved custom request that produced
   the charge.
 - **Rule:** A catalog item must have a `charge_type`, a unique display name, an optional
-  description, a `unit_price` greater than zero, and an `is_active` flag.
+  description, a `unit_price` greater than zero and at most **₱800,000.00**, and an
+  `is_active` flag. The Administrator drawer asks for explicit confirmation before
+  saving a price above ₱10,000.00; the confirmation is a UI safeguard, not an
+  alternative to the cap.
   The display name must contain at least two letters and only letters, digits, spaces,
   and common punctuation; the description, when present, must also contain at least
   two letters and only letters, digits, whitespace, and standard punctuation.
@@ -571,11 +574,13 @@ instead (retained from old rule `l`).
   `additional_charge_request`
 - **Enforcement:** `NOT NULL`, `CHECK (quantity > 0)`, and
   `CHECK (unit_amount >= 0)`, `CHECK (amount >= 0)` in the DDL. Zod validates catalog
-  text and requires a positive unit price before the controller runs;
-  `additional_charge_catalog_name_check`,
-  `additional_charge_catalog_description_check`, and
-  `additional_charge_catalog_price_check` enforce the same rules for new inserts and
-  updates.
+  text and requires a positive unit price no greater than ₱800,000.00 before the
+  controller runs; `additional_charge_catalog_name_check`,
+  `additional_charge_catalog_description_check`,
+  `additional_charge_catalog_price_check`, and
+  `additional_charge_catalog_price_max_check` enforce the same rules for new inserts
+  and updates. The cap and the text checks are `NOT VALID`, so pre-existing offending
+  rows stay readable but must be corrected on their next save.
 
 #### BR-043 — When charges may be recorded or requested
 - **Rule:** Staff may apply an active catalog charge to a reservation that is `Pending`,

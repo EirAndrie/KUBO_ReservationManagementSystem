@@ -42,7 +42,9 @@ export type CreateGuestDTO = z.infer<typeof createGuestSchema>;
 - `chargeType` must be one of the `kubo.charge_type` enum values.
 - `name` is required, trimmed, and unique case-insensitively.
 - `description` is optional, max 255 characters.
-- `unitPrice` is required, non-negative, and has at most two decimals.
+- `unitPrice` is required, greater than zero, at most `800000`, and has at most two
+  decimals. The drawer also asks for confirmation above `10000`; that warning is a
+  UI affordance and does not replace the hard cap.
 - `isActive` defaults to `true`.
 
 ```ts
@@ -50,7 +52,11 @@ const catalogItemSchema = z.object({
       chargeType: z.enum(CHARGE_TYPES),
       name: z.string().trim().min(1).max(100),
       description: z.string().trim().max(255).optional(),
-      unitPrice: z.number().nonnegative().refine((value) => Number(value.toFixed(2)) === value),
+      unitPrice: z
+            .number()
+            .positive()
+            .max(800_000)
+            .refine((value) => Number(value.toFixed(2)) === value),
       isActive: z.boolean().default(true),
 });
 ```

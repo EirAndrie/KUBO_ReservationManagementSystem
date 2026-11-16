@@ -103,7 +103,7 @@ Each key holds an object for single operations and an array for lists.
 | `charge_type` | string | No | See §1.5 |
 | `name` | string | No | Case-insensitively unique; at least two letters and only letters, numbers, spaces, and common punctuation |
 | `description` | string | Yes | When present, at least two letters and only letters, numbers, whitespace, and standard punctuation |
-| `unit_price` | string (decimal) | No | PostgreSQL `numeric` serialized as a string; greater than zero |
+| `unit_price` | string (decimal) | No | PostgreSQL `numeric` serialized as a string; greater than zero and at most `800000.00` |
 | `is_active` | boolean | No | Defaults to `true` |
 | `created_at` | string (ISO 8601) | No | |
 | `updated_at` | string (ISO 8601) | No | |
@@ -362,7 +362,7 @@ Administrator only.
 | `chargeType` | string | Yes | — | See §1.5 |
 | `name` | string | Yes | — | 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only; case-insensitively unique |
 | `description` | string | No | — | Maximum 255 characters; at least two letters; letters, numbers, whitespace, and standard punctuation only |
-| `unitPrice` | number | Yes | — | Greater than zero; at most 2 decimals |
+| `unitPrice` | number | Yes | — | Greater than zero and at most `800000`; at most 2 decimals |
 | `isActive` | boolean | No | `true` | |
 
 ```json
@@ -396,6 +396,7 @@ Administrator only.
 | Description has fewer than two letters | `400` | `Catalog description must include at least two letters` |
 | Description contains unsupported symbols | `400` | `Catalog description may contain only letters, numbers, spaces, and standard punctuation` |
 | Zero or negative price | `400` | `unitPrice: Unit price must be greater than zero` |
+| Price above `800000` | `400` | `unitPrice: Unit price cannot exceed ₱800,000.00` |
 | More than 2 price decimals | `400` | `unitPrice: Unit price cannot have more than 2 decimals` |
 | Name already exists | `400` | `A catalog item with that name already exists.` |
 | Not authenticated | `401` | `Authentication required` |
@@ -434,7 +435,7 @@ At least one field is required.
 | `chargeType` | string | No | See §1.5 |
 | `name` | string | No | 1–100 characters; at least two letters; letters, numbers, spaces, and common punctuation only; case-insensitively unique |
 | `description` | string \| null | No | Maximum 255 characters; `null` clears it; when present, at least two letters and only letters, numbers, whitespace, and standard punctuation |
-| `unitPrice` | number | No | Greater than zero; at most 2 decimals |
+| `unitPrice` | number | No | Greater than zero and at most `800000`; at most 2 decimals |
 | `isActive` | boolean | No | |
 
 ```json
@@ -465,6 +466,7 @@ At least one field is required.
 | Description has fewer than two letters | `400` | `Catalog description must include at least two letters` |
 | Description contains unsupported symbols | `400` | `Catalog description may contain only letters, numbers, spaces, and standard punctuation` |
 | Zero or negative price | `400` | `unitPrice: Unit price must be greater than zero` |
+| Price above `800000` | `400` | `unitPrice: Unit price cannot exceed ₱800,000.00` |
 | More than 2 price decimals | `400` | `unitPrice: Unit price cannot have more than 2 decimals` |
 | Name already exists | `400` | `A catalog item with that name already exists.` |
 | Catalog item does not exist | `404` | `Catalog item not found` |

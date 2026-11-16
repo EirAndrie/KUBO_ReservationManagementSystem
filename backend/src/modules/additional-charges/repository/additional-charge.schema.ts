@@ -24,6 +24,16 @@ const CHARGE_REQUEST_STATUS = [
       "Withdrawn",
 ] as const;
 
+/**
+ * Hard upper bound for a catalog item's default unit price. The catalog feeds
+ * every applied additional charge, so an accidental extra zero (or worse) can
+ * produce an astronomical guest bill. The database column is numeric(10,2),
+ * whose storage maximum is 99,999,999.99; this lower cap keeps values realistic
+ * and well inside that range. The frontend uses the same value and asks for
+ * confirmation above its separate warning threshold.
+ */
+const MAX_CATALOG_UNIT_PRICE = 800_000;
+
 export const ChargeTypeSchema = z.enum(CHARGE_TYPES, {
       message: "Invalid additional-charge type",
 });
@@ -94,6 +104,23 @@ const catalogName = z
       })
       .refine(hasAtLeastTwoLetters, {
             message: "Catalog name must include at least two letters",
+      });
+
+/**
+ * Catalog prices are positive, capped, and limited to two decimal places. The
+ * cap rejects values above {@link MAX_CATALOG_UNIT_PRICE} before the controller
+ * runs; the database check constraint is the final backstop.
+ */
+const catalogUnitPrice = z
+      .number()
+      .positive({
+            message: "Unit price must be greater than zero",
+      })
+      .max(MAX_CATALOG_UNIT_PRICE, {
+            message: "Unit price cannot exceed ₱800,000.00",
+      })
+      .refine((value) => Number(value.toFixed(2)) === value, {
+            message: "Unit price cannot have more than 2 decimals",
       });
 
 const optionalUuid = z.preprocess(
@@ -183,14 +210,7 @@ export const CreateCatalogItemSchema = z.preprocess(
             chargeType: ChargeTypeSchema,
             name: catalogName,
             description: optionalCatalogDescription,
-            unitPrice: z
-                  .number()
-                  .positive({
-                        message: "Unit price must be greater than zero",
-                  })
-                  .refine((value) => Number(value.toFixed(2)) === value, {
-                        message: "Unit price cannot have more than 2 decimals",
-                  }),
+            unitPrice: catalogUnitPrice,
             isActive: z.boolean().optional().default(true),
       }),
 );
@@ -204,21 +224,7 @@ export const UpdateCatalogItemSchema = z.preprocess(
                   chargeType: ChargeTypeSchema.optional(),
                   name: catalogName.optional(),
                   description: nullableCatalogDescription,
-                  unitPrice: z
-                        .number()
-                        .positive({
-                              message:
-                                    "Unit price must be greater than zero",
-                        })
-                        .refine(
-                              (value) =>
-                                    Number(value.toFixed(2)) === value,
-                              {
-                                    message:
-                                          "Unit price cannot have more than 2 decimals",
-                              },
-                        )
-                        .optional(),
+                  unitPrice: catalogUnitPrice.optional(),
                   isActive: z.boolean().optional(),
             })
             .refine(
