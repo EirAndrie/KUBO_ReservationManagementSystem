@@ -12,7 +12,23 @@ export const guestKeys = {
   details: () => [...guestKeys.all, 'detail'] as const,
   detail: (id: string) => [...guestKeys.details(), id] as const,
   reservations: (id: string) => [...guestKeys.detail(id), 'reservations'] as const,
+  stayStats: (ids: string[]) => [...guestKeys.all, 'stay-stats', ids] as const,
 };
+
+/**
+ * Server-computed stays, last stay, upcoming flag, Returning flag, and
+ * reservation count for the guests on one list page. Short stale time so a
+ * new or cancelled booking shows up when the list is revisited.
+ */
+export function useGuestStayStats(guestIds: string[]) {
+  return useQuery({
+    queryKey: guestKeys.stayStats(guestIds),
+    queryFn: () => guestService.getStayStats(guestIds),
+    enabled: guestIds.length > 0,
+    placeholderData: (previousData) => previousData,
+    staleTime: 1000 * 30,
+  });
+}
 
 /**
  * Hook to retrieve a list of guests matching search and ID-type filters.

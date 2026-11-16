@@ -8,6 +8,8 @@ import type {
   SingleGuestApiResponse,
   GuestReservationHistoryItem,
   GuestReservationsApiResponse,
+  GuestStayStats,
+  GuestStayStatsApiResponse,
 } from '../types/guest.types';
 
 /**
@@ -116,5 +118,19 @@ export const guestService = {
       return (raw as GuestReservationsApiResponse).reservations;
     }
     throw new Error('The server returned an invalid reservation history.');
+  },
+
+  /**
+   * Stay statistics for up to 100 guests (one list page), computed by the
+   * server across all of their reservations.
+   */
+  getStayStats: async (guestIds: string[]): Promise<GuestStayStats[]> => {
+    if (guestIds.length === 0) return [];
+    const response = await apiClient.get<GuestStayStatsApiResponse>('/guests/stay-stats', {
+      params: { guestIds: guestIds.join(',') },
+    });
+    const stats = (response as unknown as GuestStayStatsApiResponse)?.stats;
+    if (!Array.isArray(stats)) throw new Error('The server returned invalid guest stay statistics.');
+    return stats;
   },
 };

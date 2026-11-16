@@ -85,6 +85,7 @@ All paths below are relative to the base URL above. `:id` segments are UUIDs unl
 |---|---|---|---|
 | `POST /guests` | Staff | `{ "firstName":"Juan", "lastName":"Dela Cruz", "email":"juan@example.com", "phone":"09171234567", "validIdType":"Passport", "idNumber":"P1234567A", "addressLine1":"12 Mabini Street", "city":"Cebu City", "stateProvince":"Cebu", "zipPostalCode":"6000", "country":"Philippines" }` (address fields optional) | `guests` and `reused`; matching email or ID can reuse an existing guest with `200` |
 | `GET /guests` | Authenticated | Query: `page`, `limit`, `search`, `validIdType` | `guests` |
+| `GET /guests/stay-stats` | Authenticated | Query: `guestIds` (comma-separated, 1–100 UUIDs) | `stats` (`reservations_count`, `stays`, `last_stay`, `upcoming`, `is_returning`) |
 | `GET /guests/:guestId` | Authenticated | None | `guests` |
 | `PATCH /guests/:guestId` | Staff | Any subset of `firstName`, `lastName`, `email`, `phone`, `addressLine1`, `city`, `stateProvince`, `zipPostalCode`, `country`, `validIdType`, `idNumber` | `guests` |
 | `DELETE /guests/:guestId` | Administrator | None | `204 No Content` when unused |

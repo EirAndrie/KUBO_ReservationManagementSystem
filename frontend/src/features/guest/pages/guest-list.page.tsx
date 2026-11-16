@@ -5,9 +5,7 @@ import { ResponsiveTable } from '@/components/common';
 import type { InputRef } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, EyeOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
-import { resortToday } from '@/lib/time';
 import { useAuth } from '@/features/auth';
-import { stayOf, useReservations } from '@/features/reservation';
 import {
   Avatar,
   EmptyState,
@@ -17,12 +15,13 @@ import {
   PageHeader,
   RowMenu,
   Section,
+  StatusBadge,
   TwoLine,
 } from '@/components/common';
 import type { RowMenuItem } from '@/components/common';
 import { useDebouncedValue } from '@/hooks/use-debounced-value.hook';
 import { formatDate, label } from '@/lib/format';
-import { useGuests } from '../hooks/use-guests.hook';
+import { useGuestStayStats, useGuests } from '../hooks/use-guests.hook';
 import { useCreateGuest, useDeleteGuest, useUpdateGuest } from '../hooks/use-guest-mutations.hook';
 import { GuestForm } from '../components/guest-form.component';
 import { VALID_ID_TYPES } from '../types/guest.types';
@@ -30,12 +29,6 @@ import type { CreateGuestDTO, Guest, UpdateGuestDTO, ValidIdType } from '../type
 import styles from './guest-list.module.css';
 
 const PAGE_SIZE = 10;
-
-interface StayStats {
-  stays: number;
-  lastStay: string | null;
-  upcoming: boolean;
-}
 
 /**
  * Guests: a large server-side search (debounced ~300ms, `/` focuses it),
@@ -76,31 +69,20 @@ export const GuestListPage: React.FC = () => {
   }, []);
 
   const guests = useGuests({ search: search || undefined, validIdType: idType, limit: PAGE_SIZE, page });
-  // Stays and last stay come from the latest reservations (one request, no new endpoint).
-  const reservations = useReservations({ limit: 100 });
+  // Stays, last stay, upcoming and Returning come from the server across every
+  // reservation of the guests on this page (not a capped sample).
+  const pageIds = useMemo(() => (guests.data ?? []).slice(0, PAGE_SIZE).map((g) => g.guest_id), [guests.data]);
+  const stayStats = useGuestStayStats(pageIds);
   const createGuest = useCreateGuest();
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Guest | null>(null);
 
-  const stats = useMemo(() => {
-    const map = new Map<string, StayStats>();
-    const today = resortToday();
-    (reservations.data ?? []).forEach((r) => {
-      const s = map.get(r.guest_id) ?? { stays: 0, lastStay: null, upcoming: false };
-      if (!['Cancelled', 'NoShow'].includes(r.status)) {
-        s.stays += 1;
-        const start = stayOf(r.assignments).checkIn;
-        if (start && (!s.lastStay || start > s.lastStay)) s.lastStay = start;
-        if (start && start > today && ['Pending', 'Confirmed'].includes(r.status)) s.upcoming = true;
-      }
-      map.set(r.guest_id, s);
-    });
-    return map;
-  }, [reservations.data]);
+  const stats = useMemo(() => new Map((stayStats.data ?? []).map((s) => [s.guest_id, s])), [stayStats.data]);
 
-  const hasReservations = (g: Guest) => (reservations.data ?? []).some((r) => r.guest_id === g.guest_id);
+  // Delete is offered only once the server confirms the guest has no reservations.
+  const canDelete = (g: Guest) => stats.get(g.guest_id)?.reservations_count === 0;
 
   const rows = useMemo(() => {
     let data = (guests.data ?? []).slice(0, PAGE_SIZE);
@@ -127,7 +109,7 @@ export const GuestListPage: React.FC = () => {
     if (isStaff) {
       items.push({ key: 'edit', label: 'Edit details', icon: <EditOutlined />, onClick: () => { setEditing(g); setFormOpen(true); } });
     }
-    if (isAdmin && !hasReservations(g)) {
+    if (isAdmin && canDelete(g)) {
       items.push({ key: 'd', divider: true });
       items.push({
         key: 'delete',
@@ -153,7 +135,15 @@ export const GuestListPage: React.FC = () => {
       render: (_, g) => (
         <span className={styles.person}>
           <Avatar name={fullName(g)} />
-          <TwoLine primary={fullName(g)} secondary={g.email} />
+          <TwoLine
+            primary={
+              <span className={styles.nameRow}>
+                {fullName(g)}
+                {stats.get(g.guest_id)?.is_returning && <StatusBadge status="Returning" tone="violet" text="Returning" />}
+              </span>
+            }
+            secondary={g.email}
+          />
         </span>
       ),
     },
@@ -168,7 +158,7 @@ export const GuestListPage: React.FC = () => {
     {
       title: 'Last stay',
       width: 130,
-      render: (_, g) => <span className="tabular">{formatDate(stats.get(g.guest_id)?.lastStay)}</span>,
+      render: (_, g) => <span className="tabular">{formatDate(stats.get(g.guest_id)?.last_stay)}</span>,
     },
     { key: 'menu', width: 48, align: 'center', render: (_, g) => <RowMenu items={menuFor(g)} label={`Actions for ${fullName(g)}`} /> },
   ];

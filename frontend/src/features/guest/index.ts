@@ -18,7 +18,7 @@ export { GuestSearchSelect } from './components/guest-search-select.component';
 export type { GuestSearchSelectProps } from './components/guest-search-select.component';
 
 // Hooks
-export { useGuests, useGuest, useGuestReservations, guestKeys } from './hooks/use-guests.hook';
+export { useGuests, useGuest, useGuestReservations, useGuestStayStats, guestKeys } from './hooks/use-guests.hook';
 export {
   useCreateGuest,
   useUpdateGuest,
@@ -39,6 +39,7 @@ export type {
   SingleGuestApiResponse,
   GuestReservationHistoryItem,
   GuestReservationsApiResponse,
+  GuestStayStats,
 } from './types/guest.types';
 
 export { VALID_ID_TYPES } from './types/guest.types';
