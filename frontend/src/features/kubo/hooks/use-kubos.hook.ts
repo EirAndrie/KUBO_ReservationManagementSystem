@@ -22,6 +22,9 @@ export function useKubos(filters?: KuboFilterParams) {
 
 const CLEANING_FILTER: KuboFilterParams = { status: 'Cleaning' };
 
+/** Query key of the housekeeping (`Cleaning`) list, for cache updates. */
+export const cleaningKubosKey = () => kuboKeys.list(CLEANING_FILTER);
+
 /**
  * Kubos waiting for housekeeping (`Cleaning`). The housekeeping page and the
  * Staff sidebar badge share this query, so they read one cached list.

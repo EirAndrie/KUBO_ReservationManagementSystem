@@ -533,6 +533,7 @@ None. Any body is ignored.
 |---|---:|---|
 | Invalid UUID | `400` | `Invalid kuboId format` |
 | Kubo is not `Cleaning` (including already `Available`) | `400` | `Only a kubo in Cleaning can be marked ready. Kubo <number> is <status>.` |
+| Kubo still has a `CheckedIn` assignment (e.g. an Administrator set an occupied kubo to `Cleaning`) | `400` | `Kubo <number> still has a checked-in guest. Check the guest out before marking it ready.` |
 | Kubo does not exist | `404` | `Kubo does not exist.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
@@ -540,9 +541,11 @@ None. Any body is ignored.
 
 Behavior notes:
 
-- Runs `kubo_management.fn_mark_kubo_ready` (migration
-  `20261116_add_kubo_mark_ready.sql`), which locks the kubo row, so two employees
-  marking the same kubo cannot both succeed; the second gets the `400` above.
+- Runs `kubo_management.fn_mark_kubo_ready` (migrations
+  `20261116_add_kubo_mark_ready.sql` and
+  `20261116_guard_kubo_mark_ready_occupied.sql`), which locks the kubo row, so
+  two employees marking the same kubo cannot both succeed; the second gets the
+  `400` above.
 - The status change and the audit row are written in one transaction.
 
 ### 8A.6 Side effects

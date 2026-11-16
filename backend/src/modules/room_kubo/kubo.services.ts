@@ -78,8 +78,10 @@ export const markKuboReadyService = async (
       actorEmployeeId: string,
 ) => {
       const kubo = await markKuboReady(kuboId, actorEmployeeId);
+      // The function raises P0002 ("Kubo does not exist.") for an unknown id;
+      // this guard only covers an unexpected empty result, with the same text.
       if (!kubo) {
-            throw new AppError(404, "Kubo not found");
+            throw new AppError(404, "Kubo does not exist.");
       }
       return kubo;
 };
