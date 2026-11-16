@@ -138,10 +138,23 @@ export const getStringParam = (value: string | string[], field: string) => {
       return value;
 };
 
+const INTERNAL_ERROR_MESSAGE = "Internal server error";
+
+/**
+ * Sends the standard `{ success: false, message }` error response.
+ *
+ * `AppError` messages are written for clients (the frontend shows them
+ * verbatim) and pass through with their status code. Any other error is an
+ * unexpected failure: it is logged with `logMessage` as context, and the client
+ * receives a fixed 500 message so internal details (SQL text, stack-derived
+ * messages, driver errors) are never exposed.
+ *
+ * @param logMessage Context for the server log only; never sent to the client.
+ */
 export const handleControllerError = (
       res: Response,
       error: unknown,
-      message = "Internal server error",
+      logMessage = INTERNAL_ERROR_MESSAGE,
 ) => {
       if (error instanceof AppError) {
             return res.status(error.statusCode).json({
@@ -150,14 +163,14 @@ export const handleControllerError = (
             });
       }
 
-      logger.error(message, {
+      logger.error(logMessage, {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
       });
 
       return res.status(500).json({
             success: false,
-            message,
+            message: INTERNAL_ERROR_MESSAGE,
       });
 };
 
