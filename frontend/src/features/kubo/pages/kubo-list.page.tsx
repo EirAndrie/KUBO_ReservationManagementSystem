@@ -15,7 +15,7 @@ import {
   SwapOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { useAuth } from '@/features/auth';
 import { useReservations } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
@@ -43,7 +43,7 @@ interface KuboContext {
 
 /** What is happening with a kubo, from existing reservation data only (no new fields). */
 function contextFor(kubo: Kubo, current: Map<string, Reservation>, next: Map<string, { r: Reservation; date: string }>): KuboContext {
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = resortToday();
   const occupying = current.get(kubo.kuboId);
   const upcoming = next.get(kubo.kuboId);
   const shortName = (name: string) => {
@@ -116,7 +116,7 @@ export const KuboListPage: React.FC = () => {
   const { current, next } = useMemo(() => {
     const cur = new Map<string, Reservation>();
     const nxt = new Map<string, { r: Reservation; date: string }>();
-    const today = dayjs().format('YYYY-MM-DD');
+    const today = resortToday();
     (checkedIn.data ?? []).forEach((r) =>
       r.assignments.forEach((a) => {
         if (a.status === 'CheckedIn') cur.set(a.kubo_id, r);

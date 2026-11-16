@@ -4,7 +4,7 @@ import { Button, Segmented, Tooltip } from 'antd';
 import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, MailOutlined, PhoneOutlined, PlusOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { useAuth } from '@/features/auth';
 import { ReservationWizard, billedNights, stayOf } from '@/features/reservation';
 import {
@@ -55,12 +55,12 @@ export const GuestDetailPage: React.FC = () => {
   const nights = counted.reduce((sum, r) => sum + billedNights(r.assignments), 0);
   const spend = counted.reduce((sum, r) => sum + toAmount(r.charges_total), 0);
 
-  const today = dayjs().startOf('day');
+  const today = resortToday();
   const rows = reservations
     .filter((r) => {
       const stay = stayOf(r.assignments);
-      if (filter === 'upcoming') return stay.checkIn && !dayjs(stay.checkIn).isBefore(today) && ['Pending', 'Confirmed'].includes(r.status);
-      if (filter === 'past') return ['CheckedOut', 'Cancelled', 'NoShow'].includes(r.status) || (stay.checkOut && dayjs(stay.checkOut).isBefore(today));
+      if (filter === 'upcoming') return stay.checkIn && stay.checkIn >= today && ['Pending', 'Confirmed'].includes(r.status);
+      if (filter === 'past') return ['CheckedOut', 'Cancelled', 'NoShow'].includes(r.status) || (stay.checkOut && stay.checkOut < today);
       return true;
     })
     .sort((a, b) => (stayOf(b.assignments).checkIn ?? '').localeCompare(stayOf(a.assignments).checkIn ?? ''));

@@ -21,6 +21,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { useAuth } from '@/features/auth';
 import { useGuest } from '@/features/guest';
 import { useKubos } from '@/features/kubo';
@@ -298,8 +299,8 @@ export const ReservationDetailPage: React.FC = () => {
     setArrival({
       reservation,
       assignment: a,
-      isEarly: dayjs(a.check_in_date).isAfter(dayjs(), 'day'),
-      isOverdue: dayjs(a.check_in_date).isBefore(dayjs(), 'day'),
+      isEarly: a.check_in_date > resortToday(),
+      isOverdue: a.check_in_date < resortToday(),
       canCheckIn: true,
     });
 

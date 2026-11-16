@@ -388,6 +388,7 @@ validation.
 |---|---|---:|---|
 | `success` | boolean | No | Always `true` |
 | `count` | integer | No | Number of rows on this page |
+| `total` | integer | No | Number of reservations matching the filters across all pages |
 | `message` | string | No | `Successfully listed all Reservations` |
 | `reservations` | array | No | Ordered by `reserved_at` descending, then `reservation_id`; with `sort=checkin`, by earliest assignment check-in first |
 
@@ -407,7 +408,9 @@ Each array item has the full reservation shape from §1.5, including assignments
 Behavior notes:
 
 - No rows returns `200` with an empty array and `count: 0`.
-- `count` is page size, not total matches.
+- `count` is page size, not total matches. `total` is the number of matches
+  before pagination, so a count-only caller can request `limit=1` and read
+  `total`. A page past the end returns `count: 0` with the real `total`.
 - Date filters use **containment**: a reservation matches when at least one
   assignment has `check_in_date >= checkInDate` and
   `check_out_date <= checkOutDate`. This is not an overlap query.
@@ -415,7 +418,8 @@ Behavior notes:
 - `stayFrom`/`stayTo` are an inclusive **overlap** query, so a single-day window
   (`stayFrom = stayTo`) returns everyone arriving, staying, or departing that day.
 - Every filter and the sort run in the database before pagination
-  (`fn_search_reservation_ids`, migration `20261116_add_reservation_search_ids.sql`).
+  (`fn_search_reservation_ids`, migration `20261116_add_reservation_search_ids.sql`;
+  `20261116_add_reservation_search_total.sql` adds its `total_count` column).
 
 ### 4.5 Side effects
 

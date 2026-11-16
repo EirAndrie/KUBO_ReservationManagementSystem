@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { ListSkeleton } from '@/components/common';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { BreadcrumbContext } from './breadcrumb-context';
@@ -33,7 +34,10 @@ export const AppShell: React.FC = () => {
           <Navbar detailCrumb={detailCrumb} navOpen={navOpen} onToggleNav={() => setNavOpen(!navOpen)} />
           <div className={styles.mainScrollArea}>
             <main className={styles.mainContent}>
-              <Outlet />
+              {/* Route pages are lazy-loaded; keep the shell visible while one loads. */}
+              <Suspense fallback={<ListSkeleton />}>
+                <Outlet />
+              </Suspense>
             </main>
           </div>
         </div>

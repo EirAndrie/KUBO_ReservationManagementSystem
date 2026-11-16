@@ -38,6 +38,7 @@
 
 - Use `AppError` (status code + message) for predictable HTTP errors.
 - Controllers should forward errors to `handleControllerError` which logs and returns a consistent JSON error shape.
+- `handleControllerError` sends `AppError` messages to the client unchanged. Any other error becomes a `500` with the fixed message `Internal server error`; its third argument is logged as context and is never sent to the client.
 - Do not expose raw database errors to clients.
 
 ## Security

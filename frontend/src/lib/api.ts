@@ -24,9 +24,7 @@ export const apiClient = axios.create({
 // Request Interceptor: Attach token if present in localStorage
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token =
-      localStorage.getItem('kubo_access_token') ||
-      localStorage.getItem('kubo_token');
+    const token = localStorage.getItem('kubo_access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

@@ -110,7 +110,10 @@ export interface CancelReservationDTO {
 
 export interface ReservationsApiResponse {
   success: boolean;
+  /** Rows on this page. */
   count: number;
+  /** Reservations matching the filters across all pages. */
+  total: number;
   message: string;
   reservations: Reservation[];
 }
