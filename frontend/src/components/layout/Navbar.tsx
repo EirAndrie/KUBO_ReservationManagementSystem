@@ -26,6 +26,7 @@ const SECTION_LABELS: Record<string, string> = {
   'kubo-types': 'Kubo types & rates',
   employees: 'Employees',
   'audit-logs': 'Audit log',
+  'daily-report': 'Daily report',
 };
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);

@@ -1,0 +1,34 @@
+.actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stepper {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.section {
+  margin-top: 16px;
+}
+
+.note {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.totalRow td {
+  font-weight: 600;
+  background: var(--color-surface-2);
+}
+
+@media print {
+  .actions {
+    display: none;
+  }
+
+  .section {
+    break-inside: avoid;
+  }
+}

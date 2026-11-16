@@ -22,6 +22,7 @@ const AdditionalChargeCatalogPage = lazy(() =>
   import('@/features/additional-charge-catalog').then((m) => ({ default: m.AdditionalChargeCatalogPage })),
 );
 const ChargeRequestListPage = lazy(() => import('@/features/charge-request').then((m) => ({ default: m.ChargeRequestListPage })));
+const DailyReportPage = lazy(() => import('@/features/reports').then((m) => ({ default: m.DailyReportPage })));
 
 /** Sends `/` and unknown paths to the role's home page. */
 function HomeRedirect() {
@@ -116,6 +117,14 @@ export function App() {
               element={
                 <ProtectedRoute allowedRoles={['Administrator']}>
                   <AuditLogListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/daily-report"
+              element={
+                <ProtectedRoute allowedRoles={['Administrator']}>
+                  <DailyReportPage />
                 </ProtectedRoute>
               }
             />
