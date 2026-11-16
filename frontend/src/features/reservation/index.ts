@@ -16,6 +16,7 @@ export type { ReservationWizardProps } from './components/reservation-wizard.com
 export { ReservationStatusTag } from './components/reservation-status-tag.component';
 export { CancelReservationModal } from './components/cancel-reservation-modal.component';
 export { EditReservationModal } from './components/edit-reservation-modal.component';
+export { AddKuboModal } from './components/add-kubo-modal.component';
 export { ReservationPickerModal } from './components/reservation-picker-modal.component';
 export type { ReservationStatusTagProps } from './components/reservation-status-tag.component';
 
