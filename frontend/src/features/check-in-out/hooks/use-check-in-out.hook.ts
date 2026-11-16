@@ -70,7 +70,7 @@ export function useCheckInOutQueue(
         });
       }
 
-      if (res.status === 'CheckedIn' && assignment.status === 'CheckedIn') {
+      if (res.status === 'CheckedIn' && (assignment.status === 'CheckedIn' || !assignment.status)) {
         inHouse.push({ reservation: res, assignment, outstandingBalance: balance });
         if (isDue(checkOut)) {
           departures.push({
