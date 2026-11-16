@@ -5,7 +5,7 @@ import { ResponsiveTable } from '@/components/common';
 import type { InputRef } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, EyeOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { useAuth } from '@/features/auth';
 import { stayOf, useReservations } from '@/features/reservation';
 import {
@@ -86,14 +86,14 @@ export const GuestListPage: React.FC = () => {
 
   const stats = useMemo(() => {
     const map = new Map<string, StayStats>();
-    const today = dayjs().startOf('day');
+    const today = resortToday();
     (reservations.data ?? []).forEach((r) => {
       const s = map.get(r.guest_id) ?? { stays: 0, lastStay: null, upcoming: false };
       if (!['Cancelled', 'NoShow'].includes(r.status)) {
         s.stays += 1;
         const start = stayOf(r.assignments).checkIn;
         if (start && (!s.lastStay || start > s.lastStay)) s.lastStay = start;
-        if (start && dayjs(start).isAfter(today) && ['Pending', 'Confirmed'].includes(r.status)) s.upcoming = true;
+        if (start && start > today && ['Pending', 'Confirmed'].includes(r.status)) s.upcoming = true;
       }
       map.set(r.guest_id, s);
     });

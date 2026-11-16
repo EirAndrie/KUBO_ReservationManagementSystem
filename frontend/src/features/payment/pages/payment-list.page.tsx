@@ -16,7 +16,6 @@ import {
   StopOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { useAuth } from '@/features/auth';
 import { ReservationPickerModal, useReservations } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
@@ -107,7 +106,7 @@ function exportCsv(rows: Payment[], guestOf: (id: string) => string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `payments-${dayjs().format('YYYYMMDD')}.csv`;
+  a.download = `payments-${resortTime(new Date()).format('YYYYMMDD')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

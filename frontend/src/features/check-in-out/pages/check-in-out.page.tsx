@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { PageHeader, Section } from '@/components/common';
 import { FrontDeskQueue, type QueueTab } from '../components/front-desk-queue.component';
 import styles from './check-in-out.module.css';
@@ -13,7 +14,7 @@ import styles from './check-in-out.module.css';
  */
 export const CheckInOutPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = resortToday();
   const date = params.get('date') || today;
   const tab = (params.get('tab') as QueueTab) || 'arrivals';
   const isToday = date === today;

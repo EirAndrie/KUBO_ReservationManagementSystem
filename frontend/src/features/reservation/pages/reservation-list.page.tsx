@@ -4,6 +4,7 @@ import { App, Button, DatePicker, Input, Select, Tabs } from 'antd';
 import { ResponsiveTable } from '@/components/common';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
+import { resortTime, resortToday } from '@/lib/time';
 import {
   CheckOutlined,
   CloseCircleOutlined,
@@ -79,7 +80,7 @@ function exportCsv(rows: Reservation[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `reservations-${dayjs().format('YYYYMMDD')}.csv`;
+  a.download = `reservations-${resortTime(new Date()).format('YYYYMMDD')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -115,8 +116,8 @@ export const ReservationListPage: React.FC = () => {
     setParams(next, { replace: true });
   };
 
-  const today = dayjs().format('YYYY-MM-DD');
-  const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
+  const today = resortToday();
+  const tomorrow = resortToday(1);
 
   // Every filter and the sort run on the server before pagination, so each
   // page is a true slice of the full result.

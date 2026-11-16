@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { DatePicker, Modal, Select } from 'antd';
 import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import type { Dayjs } from 'dayjs';
 import { Callout } from '@/components/common';
 import { useAvailableKubos } from '../hooks/use-reservations.hook';
@@ -51,7 +52,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({ assignment, value, onChan
         style={{ width: '100%' }}
         value={value.range}
         allowClear={false}
-        disabledDate={(current) => current && current < dayjs().startOf('day')}
+        disabledDate={(current) => current && current.format('YYYY-MM-DD') < resortToday()}
         onChange={(dates) => dates?.[0] && dates[1] && onChange({ ...value, range: [dates[0], dates[1]] })}
       />
       <Select

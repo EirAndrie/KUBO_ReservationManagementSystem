@@ -11,6 +11,7 @@ import {
   Empty,
 } from 'antd';
 import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import type { Dayjs } from 'dayjs';
 import {
   UserOutlined,
@@ -72,8 +73,8 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
 
   // Step 2: Stay Dates & Source
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>([
-    dayjs().add(1, 'day'),
-    dayjs().add(3, 'day'),
+    dayjs(resortToday(1)),
+    dayjs(resortToday(3)),
   ]);
   const [bookingSource, setBookingSource] = useState<BookingSource>('WalkIn');
   const { user } = useAuth();
@@ -283,7 +284,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                     setDateRange(dates as [Dayjs, Dayjs] | null);
                     setSelectedKubos([]);
                   }}
-                  disabledDate={(current) => current && current < dayjs().startOf('day')}
+                  disabledDate={(current) => current && current.format('YYYY-MM-DD') < resortToday()}
                   allowClear={false}
                   status={isExtendedStay ? 'warning' : undefined}
                 />
