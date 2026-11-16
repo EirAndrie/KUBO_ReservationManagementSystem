@@ -41,7 +41,7 @@ import {
   useWithdrawChargeRequest,
 } from '@/features/payment';
 import type { AdditionalCharge, InvoiceBillingBreakdown, Payment } from '@/features/payment';
-import { CheckInDrawer, useCheckOutKubo } from '@/features/check-in-out';
+import { CheckInDrawer, useCheckOutKubo, useMarkKuboNoShow } from '@/features/check-in-out';
 import type { ArrivalRecord } from '@/features/check-in-out';
 import {
   Callout,
@@ -164,6 +164,7 @@ export const ReservationDetailPage: React.FC = () => {
   const confirm = useConfirmReservation();
   const noShow = useMarkNoShow();
   const checkOut = useCheckOutKubo();
+  const markKuboNoShow = useMarkKuboNoShow();
   const deleteCharge = useDeleteCharge();
   const createChargeAdjustment = useCreateChargeAdjustment();
   const reverseChargeAdjustment = useReverseChargeAdjustment();
@@ -302,6 +303,16 @@ export const ReservationDetailPage: React.FC = () => {
       isEarly: a.check_in_date > resortToday(),
       isOverdue: a.check_in_date < resortToday(),
       canCheckIn: true,
+    });
+
+  const doKuboNoShow = (a: ReservationAssignment) =>
+    modal.confirm({
+      title: `Mark kubo ${a.kubo_number} as no-show?`,
+      content:
+        'Its stay dates have passed and it was never checked in. The kubo is released and its room charge leaves the bill. If no other kubo is still open, the reservation is closed and its balance must be zero.',
+      okText: 'Mark no-show',
+      okButtonProps: { danger: true },
+      onOk: () => markKuboNoShow.mutateAsync({ reservationId, kuboId: a.kubo_id }),
     });
 
   const doCheckOut = () =>
@@ -476,7 +487,11 @@ export const ReservationDetailPage: React.FC = () => {
               a.status === 'Reserved' && ['Confirmed', 'CheckedIn'].includes(reservation.status) ? (
                 <RowMenu
                   label={`Actions for ${a.kubo_number}`}
-                  items={[{ key: 'in', label: 'Check in this kubo', icon: <LoginOutlined />, onClick: () => openCheckIn(a) }]}
+                  items={
+                    reservation.status === 'CheckedIn' && a.check_out_date <= resortToday()
+                      ? [{ key: 'ns', label: 'Mark no-show', icon: <StopOutlined />, danger: true, onClick: () => doKuboNoShow(a) }]
+                      : [{ key: 'in', label: 'Check in this kubo', icon: <LoginOutlined />, onClick: () => openCheckIn(a) }]
+                  }
                 />
               ) : null,
           },

@@ -26,6 +26,15 @@ export const checkInOutService = {
   },
 
   /**
+   * Marks a never-checked-in assignment as NoShow once its stay dates have
+   * passed (issue #67, BR-036/BR-063). Closes the reservation when no
+   * assignment is left open; the balance must then be zero (BR-064).
+   */
+  markKuboNoShow: async (reservationId: string, kuboId: string): Promise<void> => {
+    await apiClient.patch(`/reservations/${reservationId}/kubos/${kuboId}/no-show`);
+  },
+
+  /**
    * Fetches active reservations for operational arrival/departure queue.
    */
   getActiveReservations: async (): Promise<Reservation[]> => {

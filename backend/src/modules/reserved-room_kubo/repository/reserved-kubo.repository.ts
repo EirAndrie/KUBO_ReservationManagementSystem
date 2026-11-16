@@ -234,3 +234,29 @@ export const approveEarlyCheckIn = async (
             throw mapDatabaseError(error, "Failed to approve early check-in");
       }
 };
+
+export const markReservedKuboNoShow = async (
+      reservationId: string,
+      kuboId: string,
+      employeeId: string,
+): Promise<ReservedKuboResponseDTO | null> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_mark_reserved_kubo_no_show(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  )
+                  `,
+                  [reservationId, kuboId, employeeId],
+            );
+            return getReservedKubo(reservationId, kuboId);
+      } catch (error: any) {
+            logger.error("Failed to mark reserved kubo as no-show", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to mark reserved kubo as no-show");
+      }
+};

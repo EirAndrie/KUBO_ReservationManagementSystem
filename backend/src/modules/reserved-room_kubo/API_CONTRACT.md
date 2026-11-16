@@ -83,7 +83,7 @@ Lifecycle:
 |---|---|---|
 | `Reserved` | `CheckedIn` | Check-in endpoint |
 | `Reserved` | `Cancelled` | Reservation cancellation |
-| `Reserved` | `NoShow` | Reservation no-show |
+| `Reserved` | `NoShow` | Reservation no-show, or the single-kubo no-show endpoint (section 11) |
 | `CheckedIn` | `CheckedOut` | Check-out endpoint |
 | `CheckedOut` | Terminal | — |
 | `Cancelled` | Terminal | — |
@@ -153,6 +153,7 @@ Times must use `HH:MM` or `HH:MM:SS` (24-hour).
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-in` | Staff | Record check-in |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-out` | Staff | Record check-out |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/early-check-in` | Staff | Approve early check-in |
+| `PATCH` | `/reservations/:reservationId/kubos/:kuboId/no-show` | Staff | Mark a never-checked-in assignment NoShow after its dates pass |
 
 ---
 
@@ -648,6 +649,51 @@ Behavior notes:
 
 ## 11. Known contract quirks
 
+---
+
+## 11. `PATCH /reservations/:reservationId/kubos/:kuboId/no-show`
+
+Resolve one assignment of a multi-kubo stay that was never checked in once its stay
+dates have passed (issue #67). Check-in is refused on or after `check_out_date`
+(BR-059) and check-out needs a `CheckedIn` assignment (BR-062), so without this
+the reservation stayed `CheckedIn` forever.
+
+### 11.1 Access
+
+Staff only.
+
+### 11.2 Path parameters and body
+
+Same UUID path parameters as section 10. No request body.
+
+### 11.3 Success response — `200 OK`
+
+| Field | Type | Nullable | Notes |
+|---|---|---:|---|
+| `success` | boolean | No | Always `true` |
+| `message` | string | No | `Successfully marked reserved kubo as no-show` |
+| `reservedKubos` | object | No | Assignment with `status: "NoShow"` |
+
+### 11.4 Business rules and failures
+
+| Condition | Status | Message |
+|---|---:|---|
+| Invalid UUID | `400` | Validation detail |
+| Reservation or assignment does not exist | `404` | `Reservation does not exist.` / `Reserved kubo does not exist.` |
+| Reservation is not `CheckedIn` | `400` | `Only a CheckedIn reservation can have a single kubo marked NoShow.` |
+| Assignment is not `Reserved` | `400` | `Only Reserved assignments can be marked NoShow.` |
+| `check_out_date` is still in the future | `400` | `The stay dates for this kubo have not passed yet.` |
+| Closing the reservation with a non-zero balance | `400` | `Outstanding balance must be zero before the reservation can close. Current balance: <n>.` |
+
+- Allowed once `CURRENT_DATE >= check_out_date` for the assignment.
+- Sets the assignment to `NoShow` and releases the kubo when nothing else holds it.
+  A `NoShow` assignment no longer counts toward the balance (`fn_get_reservation_balance`).
+- When no assignment is left open, the reservation becomes `CheckedOut` (BR-063).
+  Because the balance drops, any credit must be refunded first (BR-064); otherwise
+  the whole call fails and nothing changes.
+- A `Confirmed` reservation that never arrived still uses `PATCH /reservations/:id/no-show`.
+- Writes one `kubo.audit_log` row (`Update`, `reservation`).
+
 - The response key is camelCase **`reservedKubos`**, while the nested assignment
   fields are snake_case.
 - `price_at_booking` and `amount` are JSON strings in this module but JSON numbers
@@ -659,6 +705,8 @@ Behavior notes:
 - Scheduled times are compared as clock times, not date-times. A `14:00`
   check-in with a `12:00` next-day check-out is rejected when both are supplied.
 - The early-check-in endpoint is a flag toggle, not a check-in operation.
+- The no-show endpoint resolves one assignment that was never checked in (issue #67).
+  It is not a check-out; see section 11.
 - Check-out is blocked until the entire reservation balance is exactly zero.
 - `DELETE` returns `204` but the controller calls `res.status(204).json()`; clients
   must treat it as an empty `204`.
