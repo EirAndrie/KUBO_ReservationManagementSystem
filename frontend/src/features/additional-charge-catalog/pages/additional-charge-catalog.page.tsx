@@ -12,6 +12,7 @@ import {
   useUpdateCatalogItem,
 } from '../hooks/use-additional-charge-catalog-mutations.hook';
 import { AdditionalChargeCatalogDrawer, type CatalogDrawerValues } from '../components/additional-charge-catalog-drawer.component';
+import { CATALOG_UNIT_PRICE_CONFIRM_THRESHOLD } from '../constants/additional-charge-catalog.constants';
 import type { AdditionalChargeCatalogItem } from '../types/additional-charge-catalog.types';
 import styles from './additional-charge-catalog.module.css';
 
@@ -37,9 +38,31 @@ export const AdditionalChargeCatalogPage: React.FC = () => {
 
   const closeDrawer = () => setDrawerItem(undefined);
 
+  /**
+   * Prices above the confirmation threshold are plausible but easy to mistype.
+   * Resolve only after the Administrator explicitly accepts the amount; Cancel,
+   * the close icon, or the mask all abort the save and leave the drawer open.
+   */
+  const confirmHighPrice = (unitPrice: number, name: string) =>
+    new Promise<boolean>((resolve) => {
+      modal.confirm({
+        title: 'Confirm high unit price',
+        content: `“${name}” will be saved at ${peso.format(unitPrice)}. This is unusually high for a standard catalog charge. Confirm the amount before saving.`,
+        okText: 'Save at this price',
+        cancelText: 'Review price',
+        okButtonProps: { danger: true },
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+
   const saveItem = async (values: CatalogDrawerValues) => {
     const name = values.name.trim();
     const description = values.description.trim();
+    if (values.unitPrice > CATALOG_UNIT_PRICE_CONFIRM_THRESHOLD) {
+      const confirmed = await confirmHighPrice(values.unitPrice, name);
+      if (!confirmed) return;
+    }
     if (drawerItem) {
       await updateItem.mutateAsync({
         catalogId: drawerItem.catalog_id,

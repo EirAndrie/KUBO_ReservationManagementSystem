@@ -8,6 +8,8 @@ import {
   CATALOG_DESCRIPTION_PATTERN,
   CATALOG_NAME_MAX,
   CATALOG_NAME_PATTERN,
+  CATALOG_UNIT_PRICE_MAX,
+  CATALOG_UNIT_PRICE_MIN,
   hasAtLeastTwoLetters,
 } from '../constants/additional-charge-catalog.constants';
 
@@ -138,9 +140,14 @@ export const AdditionalChargeCatalogDrawer: React.FC<AdditionalChargeCatalogDraw
           label="Default unit price"
           rules={[
             { required: true, message: 'Enter a unit price.' },
-            { type: 'number', min: 0.01, message: 'Price must be greater than zero.' },
+            { type: 'number', min: CATALOG_UNIT_PRICE_MIN, message: 'Price must be greater than zero.' },
+            {
+              type: 'number',
+              max: CATALOG_UNIT_PRICE_MAX,
+              message: 'Price cannot exceed ₱800,000.00.',
+            },
           ]}
-          extra="Must be greater than ₱0.00."
+          extra="Must be greater than ₱0.00 and no more than ₱800,000.00. Prices above ₱10,000.00 need confirmation."
         >
           <InputNumber<number>
             style={{ width: '100%' }}
