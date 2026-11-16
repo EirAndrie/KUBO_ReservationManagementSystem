@@ -68,11 +68,16 @@ export const createReservation = async (
  * Lists reservations with every filter, the sort, and pagination applied in
  * PostgreSQL.
  *
- * `fn_search_reservation_ids` returns one page of ordered reservation ids;
- * each row is then loaded through `fn_get_reservation_by_id`, and
- * `WITH ORDINALITY` keeps the search order. Date values are `YYYY-MM-DD`.
- * `arrivalDate` matches an assignment's exact check-in day; `stayFrom`/`stayTo`
- * match any assignment overlapping that inclusive window.
+ * `fn_search_reservation_ids` returns one page of ordered reservation ids,
+ * each with `total_count` (matches before pagination); each row is then loaded
+ * through `fn_get_reservation_by_id`, and `WITH ORDINALITY` keeps the search
+ * order. Date values are `YYYY-MM-DD`. `arrivalDate` matches an assignment's
+ * exact check-in day; `stayFrom`/`stayTo` match any assignment overlapping that
+ * inclusive window.
+ *
+ * @returns The page of reservations and `total`, the number of reservations
+ * matching the filters across all pages. A page past the end has no rows to
+ * carry the total, so it is read again from the first page.
  */
 export const getReservations = async (params: {
       status?: string;
@@ -88,7 +93,7 @@ export const getReservations = async (params: {
       kuboType?: string;
       sort?: "booked" | "checkin";
       pagination: { limit: number; offset: number };
-}): Promise<ReservationResponseDTO[]> => {
+}): Promise<{ reservations: ReservationResponseDTO[]; total: number }> => {
       const {
             status,
             bookingSource,
@@ -104,10 +109,10 @@ export const getReservations = async (params: {
             sort,
             pagination,
       } = params;
-      try {
-            const result = await db.query(
+      const runSearch = (limit: number, offset: number) =>
+            db.query(
                   `
-                  SELECT d.*
+                  SELECT d.*, s.total_count
                   FROM kubo_reservation_management.fn_search_reservation_ids(
                         p_status => $1::kubo.reservation_status,
                         p_booking_source => $2::kubo.booking_source,
@@ -123,7 +128,7 @@ export const getReservations = async (params: {
                         p_sort => $12,
                         p_limit => $13,
                         p_offset => $14
-                  ) WITH ORDINALITY AS s(reservation_id, ord)
+                  ) WITH ORDINALITY AS s(reservation_id, total_count, ord)
                   CROSS JOIN LATERAL kubo_reservation_management.fn_get_reservation_by_id(
                         s.reservation_id
                   ) AS d
@@ -142,11 +147,23 @@ export const getReservations = async (params: {
                         stayTo ?? null,
                         kuboType ?? null,
                         sort ?? "booked",
-                        pagination.limit,
-                        pagination.offset,
+                        limit,
+                        offset,
                   ],
             );
-            return result.rows;
+      try {
+            const result = await runSearch(pagination.limit, pagination.offset);
+            const rows = result.rows;
+            let total = rows.length ? Number(rows[0].total_count) : 0;
+            if (!rows.length && pagination.offset > 0) {
+                  const first = await runSearch(1, 0);
+                  total = first.rows.length ? Number(first.rows[0].total_count) : 0;
+            }
+            const reservations = rows.map(
+                  ({ total_count: _total, ...reservation }) =>
+                        reservation as ReservationResponseDTO,
+            );
+            return { reservations, total };
       } catch (error: any) {
             logger.error("Failed to fetch reservations from database", {
                   message: error.message,

@@ -50,7 +50,7 @@ There is no universal `{ data, meta }` response. Successful JSON responses gener
 | Custom charge requests | `additionalChargeRequests` |
 | Audit records | `auditLogs` |
 
-List resources are arrays and single-resource operations return one object, except where a module contract says otherwise. Many—but not all—list endpoints include `count`; it is generally the number of rows on the current page, not the total number of matches. Paginated endpoints usually take `page` and `limit` (default 1 and 10; maximum limit 100). Filters differ by endpoint. Use the linked module contract rather than assuming a shared pagination or filter shape.
+List resources are arrays and single-resource operations return one object, except where a module contract says otherwise. Many—but not all—list endpoints include `count`; it is generally the number of rows on the current page, not the total number of matches. `GET /reservations` also returns `total` (matches across all pages); use `useReservationCount` for tab and badge counts instead of fetching 100 rows and taking `.length`. Paginated endpoints usually take `page` and `limit` (default 1 and 10; maximum limit 100). Filters differ by endpoint. Use the linked module contract rather than assuming a shared pagination or filter shape.
 
 The backend's shared paginated controllers accept `page` and `limit`; an `offset` query parameter is not a substitute and is stripped by the shared Zod query schema. The reservation, guest, and payment list services now send `page`/`limit`, and their pages render 10 rows (guests: 25) with Previous/Next footers. The audit entity-history endpoint keeps its own `limit`/`offset` contract, so do not route it through the shared page/limit helper.
 
