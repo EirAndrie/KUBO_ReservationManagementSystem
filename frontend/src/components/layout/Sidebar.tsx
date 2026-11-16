@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
   HomeOutlined,
   LoginOutlined,
+  ClearOutlined,
   LogoutOutlined,
   TeamOutlined,
   UserOutlined,
@@ -19,6 +20,7 @@ import { Button } from 'antd';
 import { useAuth } from '@/features/auth';
 import { useCheckInOutQueue } from '@/features/check-in-out';
 import { useChargeRequests } from '@/features/payment';
+import { useCleaningKubos } from '@/features/kubo';
 import { Avatar } from '@/components/common';
 import { useThemeMode } from '@/theme';
 import styles from './shell.module.css';
@@ -69,6 +71,8 @@ export const Sidebar: React.FC<{ open?: boolean }> = ({ open = false }) => {
   const deskCount = useFrontDeskCount(!isAdmin && Boolean(role));
   const pendingRequests = useChargeRequests({ status: 'Pending' }, isAdmin);
   const pendingCount = pendingRequests.data?.length;
+  const cleaning = useCleaningKubos({ enabled: !isAdmin && Boolean(role) });
+  const cleaningCount = cleaning.data?.length;
 
   const main: NavItem[] = isAdmin
     ? [
@@ -81,6 +85,13 @@ export const Sidebar: React.FC<{ open?: boolean }> = ({ open = false }) => {
     : [
         { name: 'Today', to: '/staff', icon: <AppstoreOutlined /> },
         { name: 'Arrivals & departures', to: '/check-in-out', icon: <LoginOutlined />, count: deskCount },
+        {
+          name: 'Housekeeping',
+          to: '/housekeeping',
+          icon: <ClearOutlined />,
+          count: cleaningCount,
+          countLabel: `${cleaningCount ?? 0} to clean`,
+        },
         { name: 'Reservations', to: '/reservations', icon: <CalendarOutlined /> },
         { name: 'Guests', to: '/guests', icon: <UserOutlined /> },
         { name: 'Payments', to: '/payments', icon: <CreditCardOutlined /> },

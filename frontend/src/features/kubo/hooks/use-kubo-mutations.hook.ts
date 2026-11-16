@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppMutation } from '@/hooks/use-app-mutation.hook';
 import { kuboService } from '../services/kubo.service';
-import { kuboKeys } from './use-kubos.hook';
+import { cleaningKubosKey, kuboKeys } from './use-kubos.hook';
 import type {
   Kubo,
   CreateKuboPayload,
@@ -47,6 +47,31 @@ export function useChangeKuboStatus() {
       queryClient.invalidateQueries({ queryKey: kuboKeys.all });
       queryClient.invalidateQueries({ queryKey: kuboKeys.detail(kuboId) });
       queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
+    },
+  });
+}
+
+/** Staff housekeeping: marks a `Cleaning` kubo ready (`Available`). */
+export function useMarkKuboReady() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation<Kubo, string>({
+    mutationFn: (kuboId) => kuboService.markReady(kuboId),
+    successMessage: (kubo) => `Kubo ${kubo.kuboNumber} is ready for guests.`,
+    errorMessage: (error) => error.message || 'Failed to mark kubo ready.',
+    // Drop the row at once so a second click cannot hit a kubo that is
+    // already ready while the list refetches.
+    onSuccess: (_data, kuboId) => {
+      queryClient.setQueryData<Kubo[]>(cleaningKubosKey(), (rows) => rows?.filter((k) => k.kuboId !== kuboId));
+    },
+    // Refresh on failure too: a 400 usually means another employee already
+    // marked it ready, so the stale row should disappear.
+    onSettled: (_data, _error, kuboId) => {
+      queryClient.invalidateQueries({ queryKey: kuboKeys.all });
+      queryClient.invalidateQueries({ queryKey: kuboKeys.detail(kuboId) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
+      // The reservation wizard and edit modal cache bookable kubos.
+      queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
     },
   });
 }

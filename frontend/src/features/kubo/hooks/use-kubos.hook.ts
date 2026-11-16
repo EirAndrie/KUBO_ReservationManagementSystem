@@ -20,6 +20,24 @@ export function useKubos(filters?: KuboFilterParams) {
   });
 }
 
+const CLEANING_FILTER: KuboFilterParams = { status: 'Cleaning' };
+
+/** Query key of the housekeeping (`Cleaning`) list, for cache updates. */
+export const cleaningKubosKey = () => kuboKeys.list(CLEANING_FILTER);
+
+/**
+ * Kubos waiting for housekeeping (`Cleaning`). The housekeeping page and the
+ * Staff sidebar badge share this query, so they read one cached list.
+ */
+export function useCleaningKubos(options?: { enabled?: boolean }) {
+  return useQuery<Kubo[], Error>({
+    queryKey: kuboKeys.list(CLEANING_FILTER),
+    queryFn: () => kuboService.getAll(CLEANING_FILTER),
+    staleTime: 1000 * 30,
+    enabled: options?.enabled ?? true,
+  });
+}
+
 /**
  * Hook to retrieve single kubo cottage by ID.
  */

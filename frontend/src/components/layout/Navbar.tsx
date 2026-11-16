@@ -27,6 +27,7 @@ const SECTION_LABELS: Record<string, string> = {
   employees: 'Employees',
   'audit-logs': 'Audit log',
   'daily-report': 'Daily report',
+  housekeeping: 'Housekeeping',
 };
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
