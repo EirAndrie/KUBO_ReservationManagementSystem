@@ -184,6 +184,7 @@ Unknown fields are stripped by Zod.
 | Username does not exist | `401` | `Invalid username or password` |
 | Password does not match | `401` | `Invalid username or password` |
 | Credentials valid but status is not `Active` | `403` | `Account is not active` |
+| 5 failed sign-ins for the same username from the same client IP within 15 minutes | `429` | `Too many failed sign-in attempts. Try again in N minutes.` (with a `Retry-After` header in seconds) |
 | Login audit write fails | `500` | Database/fallback error |
 | Unexpected lookup failure | `500` | Database/fallback error |
 
@@ -195,8 +196,12 @@ Behavior notes:
   `entityId = employeeId`) before the token is returned.
 - Audit writing is fail-closed: if the audit row cannot be written, login fails and
   no token is returned.
-- There is no lockout, rate-limit, refresh-token, or token-revocation behavior in
-  this module.
+- Failed sign-ins are rate-limited per (client IP, username): after 5 `401`
+  responses within 15 minutes, that pair gets `429` until the window ends. A
+  successful login clears the count; `403` and `500` responses are not counted.
+  The counter lives in process memory, so it resets when the server restarts and
+  is not shared between instances.
+- Logout revokes the presented token (see section 4). There are no refresh tokens.
 
 ### 3.5 Side effects
 

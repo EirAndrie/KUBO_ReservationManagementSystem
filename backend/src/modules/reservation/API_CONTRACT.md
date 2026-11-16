@@ -371,10 +371,16 @@ Any authenticated employee.
 | `employeeId` | string (UUID) | — | Exact creating employee |
 | `checkInDate` | date | — | Assignment `check_in_date` must be ≥ this date |
 | `checkOutDate` | date | — | Assignment `check_out_date` must be ≤ this date |
+| `arrivalDate` | date | — | Some assignment has `check_in_date` equal to this date |
+| `stayFrom` | date | — | Some assignment overlaps the stay window: `check_out_date >= stayFrom` |
+| `stayTo` | date | — | Some assignment overlaps the stay window: `check_in_date <= stayTo`; must be ≥ `stayFrom` |
+| `kuboType` | string | — | Trimmed; 1–100 characters; exact kubo type name of some assignment |
+| `sort` | string | `booked` | `booked` (newest `reserved_at` first) or `checkin` (earliest assignment check-in first) |
 
-Empty-string values for `search`, `guestId`, `employeeId`, `checkInDate`, and
-`checkOutDate` are treated as not supplied. Empty-string enum values such as
-`?status=` fail validation.
+Empty-string values for `search`, `guestId`, `employeeId`, `checkInDate`,
+`checkOutDate`, `arrivalDate`, `stayFrom`, `stayTo`, `kuboType`, and `sort` are
+treated as not supplied. Empty-string enum values such as `?status=` fail
+validation.
 
 ### 4.3 Success response — `200 OK`
 
@@ -383,7 +389,7 @@ Empty-string values for `search`, `guestId`, `employeeId`, `checkInDate`, and
 | `success` | boolean | No | Always `true` |
 | `count` | integer | No | Number of rows on this page |
 | `message` | string | No | `Successfully listed all Reservations` |
-| `reservations` | array | No | Ordered by `reserved_at` descending, then `reservation_id` |
+| `reservations` | array | No | Ordered by `reserved_at` descending, then `reservation_id`; with `sort=checkin`, by earliest assignment check-in first |
 
 Each array item has the full reservation shape from §1.5, including assignments.
 
@@ -393,6 +399,8 @@ Each array item has the full reservation shape from §1.5, including assignments
 |---|---:|---|
 | Invalid pagination or filter values | `400` | Validation detail |
 | `checkOutDate` is not later than `checkInDate` | `400` | `Check-out filter must be later than check-in filter.` |
+| `stayTo` is earlier than `stayFrom` | `400` | `stayTo: Stay-to date cannot be earlier than stay-from date` |
+| `sort` is not `booked` or `checkin` | `400` | `sort: Sort must be booked or checkin` |
 | Not authenticated | `401` | `Authentication required` |
 | Unexpected database failure | `500` | `Failed to fetch reservations from database` |
 
@@ -404,6 +412,10 @@ Behavior notes:
   assignment has `check_in_date >= checkInDate` and
   `check_out_date <= checkOutDate`. This is not an overlap query.
 - Supplying only one of the two date filters applies only that bound.
+- `stayFrom`/`stayTo` are an inclusive **overlap** query, so a single-day window
+  (`stayFrom = stayTo`) returns everyone arriving, staying, or departing that day.
+- Every filter and the sort run in the database before pagination
+  (`fn_search_reservation_ids`, migration `20261116_add_reservation_search_ids.sql`).
 
 ### 4.5 Side effects
 
@@ -711,6 +723,7 @@ No response body.
 |---|---:|---|
 | Invalid UUID | `400` | `Invalid reservationId format` |
 | Reservation does not exist | `404` | `Reservation not found` |
+| Reservation status is `CheckedIn` or `CheckedOut` | `400` | `Reservation is CheckedIn and cannot be deleted.` (or `CheckedOut`) |
 | Reservation has payment or additional-charge history | `409` | `Reservation has financial history; cancel it instead of deleting.` |
 | Reservation has custom charge-request history | `409` | `Reservation has custom charge-request history; cancel it instead of deleting.` |
 | Not authenticated | `401` | `Authentication required` |
@@ -720,6 +733,9 @@ No response body.
 Behavior notes:
 
 - Deletion is a repair action. Business cancellations should use `/cancel`.
+- Only `Pending`, `Confirmed`, `Cancelled`, and `NoShow` reservations can be
+  deleted. A checked-in guest still occupies the kubo, and checked-out stays are
+  history.
 - Any payment, additional charge, or custom charge-request row blocks deletion.
 - Assignment rows are removed by the schema’s `ON DELETE CASCADE` from
   `reserved_kubo.reservation_id`.

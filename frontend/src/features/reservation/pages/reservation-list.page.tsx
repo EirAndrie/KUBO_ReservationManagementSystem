@@ -16,6 +16,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
+import { useKuboTypes } from '@/features/kubo-type';
 import { useReservations } from '../hooks/use-reservations.hook';
 import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-mutations.hook';
 import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
@@ -86,7 +87,8 @@ function exportCsv(rows: Reservation[]) {
 /**
  * Reservations list. Saved-view tabs and filter chips map onto the existing
  * query params (`status`, `bookingSource`, `search`, `checkInDate`,
- * `checkOutDate`, `limit`, `page`) and are mirrored in the URL so a refresh
+ * `arrivalDate`, `stayFrom`, `stayTo`, `kuboType`, `sort`, `limit`, `page`),
+ * all applied by the server before pagination, and are mirrored in the URL so a refresh
  * keeps them. Rare and destructive actions live in the `⋯` menu.
  */
 export const ReservationListPage: React.FC = () => {
@@ -116,56 +118,50 @@ export const ReservationListPage: React.FC = () => {
   const today = dayjs().format('YYYY-MM-DD');
   const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
 
+  // Every filter and the sort run on the server before pagination, so each
+  // page is a true slice of the full result.
   const query: ReservationFilterParams = useMemo(() => {
     const base: ReservationFilterParams = {
       ...TAB_PARAMS[tab],
       search: search || undefined,
       bookingSource: source,
-      checkInDate: from,
-      checkOutDate: to,
+      stayFrom: from,
+      stayTo: to,
+      kuboType,
+      sort,
       limit: PAGE_SIZE,
       page,
     };
     if (tab === 'all' && statusParam) base.status = statusParam;
-    if (tab === 'arriving') base.checkInDate = today;
-    if (tab === 'upcoming') base.checkInDate = from && from > tomorrow ? from : tomorrow;
+    if (tab === 'arriving') base.arrivalDate = today;
+    if (tab === 'upcoming') base.checkInDate = tomorrow;
     return base;
-  }, [tab, statusParam, search, source, from, to, page, today, tomorrow]);
+  }, [tab, statusParam, search, source, from, to, kuboType, sort, page, today, tomorrow]);
 
   const list = useReservations(query);
 
   // Tab counts: one request per status bucket the counts need.
   const pendingCount = useReservations({ status: 'Pending', limit: 100 });
-  const confirmedCount = useReservations({ status: 'Confirmed', limit: 100 });
+  const arrivingCount = useReservations({ status: 'Confirmed', arrivalDate: today, limit: 100 });
   const inHouseCount = useReservations({ status: 'CheckedIn', limit: 100 });
-  const arrivingToday = (confirmedCount.data ?? []).filter((r) =>
-    (r.assignments ?? []).some((a) => a.check_in_date === today),
-  ).length;
+  const kuboTypes = useKuboTypes();
 
   const confirm = useConfirmReservation();
   const noShow = useMarkNoShow();
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
   const [editing, setEditing] = useState<Reservation | null>(null);
 
-  const rows = useMemo(() => {
-    let data = (list.data ?? []).slice(0, PAGE_SIZE);
-    if (tab === 'arriving') data = data.filter((r) => (r.assignments ?? []).some((a) => a.check_in_date === today));
-    if (kuboType) data = data.filter((r) => (r.assignments ?? []).some((a) => a.type_name === kuboType));
-    if (sort === 'checkin') {
-      data = [...data].sort((a, b) => (stayOf(a.assignments).checkIn ?? '').localeCompare(stayOf(b.assignments).checkIn ?? ''));
-    }
-    return data;
-  }, [list.data, tab, today, kuboType, sort]);
+  const rows = useMemo(() => (list.data ?? []).slice(0, PAGE_SIZE), [list.data]);
 
   const hasNext = (list.data?.length ?? 0) === PAGE_SIZE;
   const pastLastPage = page > 1 && (list.data?.length ?? 0) === 0;
-  const typeOptions = useMemo(() => {
-    const names = new Set<string>();
-    [...(list.data ?? []), ...(confirmedCount.data ?? [])].forEach((r) =>
-      (r.assignments ?? []).forEach((a) => a.type_name && names.add(a.type_name)),
-    );
-    return [...names].sort().map((n) => ({ value: n, label: n }));
-  }, [list.data, confirmedCount.data]);
+  const typeOptions = useMemo(
+    () =>
+      [...new Set((kuboTypes.data ?? []).map((t) => t.type_name))]
+        .sort()
+        .map((n) => ({ value: n, label: n })),
+    [kuboTypes.data],
+  );
 
   const askConfirm = (r: Reservation) =>
     modal.confirm({
@@ -257,7 +253,7 @@ export const ReservationListPage: React.FC = () => {
 
   const tabs: Array<{ key: ViewTab; text: string; count?: number }> = [
     { key: 'all', text: 'All' },
-    { key: 'arriving', text: 'Arriving today', count: confirmedCount.isSuccess ? arrivingToday : undefined },
+    { key: 'arriving', text: 'Arriving today', count: arrivingCount.isSuccess ? arrivingCount.data.length : undefined },
     { key: 'inhouse', text: 'In-house', count: inHouseCount.data?.length },
     { key: 'pending', text: 'Pending', count: pendingCount.data?.length },
     { key: 'upcoming', text: 'Upcoming' },

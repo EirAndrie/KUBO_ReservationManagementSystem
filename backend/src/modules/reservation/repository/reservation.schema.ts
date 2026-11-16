@@ -179,6 +179,11 @@ export const CancelReservationSchema = z.object({
 
 export type CancelReservationDTO = z.infer<typeof CancelReservationSchema>;
 
+/** List order: newest booking first (default) or earliest check-in first. */
+export const ReservationSortSchema = z.enum(["booked", "checkin"], {
+      message: "Sort must be booked or checkin",
+});
+
 export const ReservationFilterSchema = z
       .object({
             status: ReservationStatusSchema.optional(),
@@ -209,6 +214,25 @@ export const ReservationFilterSchema = z
                   ),
             checkInDate: optionalDate,
             checkOutDate: optionalDate,
+            // Exact check-in day of any assignment ("arriving on").
+            arrivalDate: optionalDate,
+            // Inclusive overlap window: any assignment staying within it.
+            stayFrom: optionalDate,
+            stayTo: optionalDate,
+            kuboType: z.preprocess(
+                  (value) =>
+                        typeof value === "string" && value.trim() === ""
+                              ? undefined
+                              : value,
+                  z.string().trim().min(1).max(100).optional(),
+            ),
+            sort: z.preprocess(
+                  (value) =>
+                        typeof value === "string" && value.trim() === ""
+                              ? undefined
+                              : value,
+                  ReservationSortSchema.optional(),
+            ),
       })
       .refine(
             (value) =>
@@ -218,6 +242,16 @@ export const ReservationFilterSchema = z
             {
                   message: "Check-out filter must be later than check-in filter",
                   path: ["checkOutDate"],
+            },
+      )
+      .refine(
+            (value) =>
+                  value.stayFrom === undefined ||
+                  value.stayTo === undefined ||
+                  value.stayTo >= value.stayFrom,
+            {
+                  message: "Stay-to date cannot be earlier than stay-from date",
+                  path: ["stayTo"],
             },
       );
 

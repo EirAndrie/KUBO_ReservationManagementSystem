@@ -3,7 +3,7 @@
 Ordered by database dependencies so each entity can be built on top of the
 previous one.
 
-**Last updated:** 2026-11-14
+**Last updated:** 2026-11-16
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
@@ -12,7 +12,7 @@ previous one.
 | 3 | `guest` | In progress | CRUD, reuse-by-email/ID, full profile updates, DB pagination, and unused-guest deletion are in place. Deletion is now Administrator-only and writes are Staff-only. Audit writes are in place (`id_number` masked). First and last names reject digits and unsupported symbols on create and update (Zod, the guest form, and the `guest_name_check` constraint). |
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). Names must include at least two letters and use the allowed name character set, and nightly rates must be greater than zero; Zod, the Admin drawer, the stored functions, and `kubo_type_name_check` / `kubo_type_price_positive_check` enforce both. |
 | 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Character validation enforces non-numeric kubo names (BR-017). Writes are Administrator-only. Audit writes are in place. |
-| 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Unused reservation deletion removes assignment rows before the reservation and releases its kubos. Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
+| 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Unused reservation deletion removes assignment rows before the reservation and releases its kubos; it is refused for `CheckedIn` and `CheckedOut` reservations. The list endpoint applies every filter (status, source, search, exact arrival date, inclusive stay window, kubo type) and the booked/check-in sort in the database before pagination (`fn_search_reservation_ids`). Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
 | 7 | `reserved_kubo` | In progress | Add/update/remove assignments and per-assignment check-in/check-out are wired under `/reservations/:id/kubos`. Assignment writes are Staff-only and audited under the parent reservation. |
 | 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, Administrator increase corrections, and charge-specific reductions via Adjustment/Reversal payments are implemented with audit writes and role enforcement. |
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. Item names and descriptions reject numeric-only, identifier-like, and symbol-only text in Zod, the catalog drawer, and the `additional_charge_catalog_name_check` / `additional_charge_catalog_description_check` constraints. Unit prices must be greater than zero and at most ₱800,000.00, enforced in Zod, the drawer, and `additional_charge_catalog_price_check` / `additional_charge_catalog_price_max_check`; prices above ₱10,000.00 require explicit confirmation in the drawer. |
@@ -39,9 +39,10 @@ previous one.
 
 | Area | Status | Notes |
 |---|---|---|
-| Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. Each token has a `jti`; `POST /auth/logout` revokes it (`kubo_auth_management.revoked_token`). There are no refresh tokens. |
+| Authentication | Complete | JWT bearer authentication: `POST /auth/login`, `GET /auth/me`, HS256 with an 8-hour default lifetime. `JWT_SECRET` is validated at startup and `JWT_EXPIRES_IN` defaults to `8h`. Each token has a `jti`; `POST /auth/logout` revokes it (`kubo_auth_management.revoked_token`). Failed sign-ins are limited to 5 per client IP and username every 15 minutes (`429`, in-memory). There are no refresh tokens. |
 | RBAC | Complete | Global `authenticate` middleware plus per-route `authorizeRoles(...)`. The employee and role are re-read from the database on every request, so status and role changes apply immediately. Role names are canonical lowercase values (`administrator`, `staff`) matched exactly. |
 | Audit writes | Complete | All BR-067 events are audited: tracked mutations plus successful login and logout. |
+| API errors | Complete | A final Express error handler returns the `{ success: false, message }` JSON envelope for body-validation failures and malformed or oversized JSON bodies instead of an HTML page. |
 | CI | Complete | Separate backend and frontend workflows. Backend runs typecheck and build; frontend runs typecheck, lint, and build. |
 | Deployment | Deployed | Backend on Render, frontend on Vercel. See [Deployment](#deployment). |
 | Seed data | Complete | `npm run db:seed` inserts demo administrator/staff accounts, kubo types, kubos, and catalog items. The script is additive and idempotent. |

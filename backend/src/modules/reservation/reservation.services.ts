@@ -116,6 +116,11 @@ export const searchReservationsService = async (params: {
       employeeId?: string;
       checkInDate?: string;
       checkOutDate?: string;
+      arrivalDate?: string;
+      stayFrom?: string;
+      stayTo?: string;
+      kuboType?: string;
+      sort?: "booked" | "checkin";
       pagination: Pagination;
 }) => {
       return getReservations({
@@ -126,6 +131,11 @@ export const searchReservationsService = async (params: {
             employeeId: params.employeeId,
             checkInDate: params.checkInDate,
             checkOutDate: params.checkOutDate,
+            arrivalDate: params.arrivalDate,
+            stayFrom: params.stayFrom,
+            stayTo: params.stayTo,
+            kuboType: params.kuboType,
+            sort: params.sort,
             pagination: {
                   limit: params.pagination.limit,
                   offset: params.pagination.offset,

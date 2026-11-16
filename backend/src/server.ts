@@ -12,6 +12,7 @@ import {
 } from "./utils/serverValidation";
 import apiRoutes from "./modules/index";
 import { runMigrations } from "./utils/migrate";
+import { jsonErrorHandler } from "./utils/http";
 
 const app = express();
 const PORT = validateServerPort(ENV.PORT);
@@ -27,12 +28,19 @@ const SERVE_FRONTEND = ENV.SERVE_FRONTEND !== "false";
 validateJwtSecret(ENV.JWT_SECRET, isProduction);
 
 // --- MIDDLEWARE ---
+// In production the API sits behind one hosting proxy (Render). Trusting that
+// hop makes `req.ip` the real client address, which the login limiter keys on.
+if (isProduction) {
+      app.set("trust proxy", 1);
+}
 app.use(express.json());
 configureCors(app, FR_ORIGIN, isProduction);
 
 // ROUTES SECTION
 app.use(API_BASE_PATH, apiRoutes);
 configureEnvironmentRoutes(app, isProduction, SERVE_FRONTEND);
+// Must be registered last so it receives errors from every route above.
+app.use(jsonErrorHandler);
 
 connectDB()
       .then(async () => {

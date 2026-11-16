@@ -63,6 +63,11 @@ export const getAllReservationsController = async (
                   employeeId: req.query.employeeId,
                   checkInDate: req.query.checkInDate,
                   checkOutDate: req.query.checkOutDate,
+                  arrivalDate: req.query.arrivalDate,
+                  stayFrom: req.query.stayFrom,
+                  stayTo: req.query.stayTo,
+                  kuboType: req.query.kuboType,
+                  sort: req.query.sort,
             });
 
             if (!filters.success) {
@@ -85,7 +90,12 @@ export const getAllReservationsController = async (
                   filters.data.guestId !== undefined ||
                   filters.data.employeeId !== undefined ||
                   filters.data.checkInDate !== undefined ||
-                  filters.data.checkOutDate !== undefined;
+                  filters.data.checkOutDate !== undefined ||
+                  filters.data.arrivalDate !== undefined ||
+                  filters.data.stayFrom !== undefined ||
+                  filters.data.stayTo !== undefined ||
+                  filters.data.kuboType !== undefined ||
+                  filters.data.sort !== undefined;
 
             const reservations = hasFilters
                   ? await searchReservationsService({
@@ -100,6 +110,17 @@ export const getAllReservationsController = async (
                           checkOutDate: filters.data.checkOutDate
                                 ? toDateOnly(filters.data.checkOutDate)
                                 : undefined,
+                          arrivalDate: filters.data.arrivalDate
+                                ? toDateOnly(filters.data.arrivalDate)
+                                : undefined,
+                          stayFrom: filters.data.stayFrom
+                                ? toDateOnly(filters.data.stayFrom)
+                                : undefined,
+                          stayTo: filters.data.stayTo
+                                ? toDateOnly(filters.data.stayTo)
+                                : undefined,
+                          kuboType: filters.data.kuboType,
+                          sort: filters.data.sort,
                           pagination,
                     })
                   : await getAllReservationsService(pagination);
