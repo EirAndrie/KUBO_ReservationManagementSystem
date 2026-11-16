@@ -21,6 +21,7 @@ import { useReservations } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
 import { EmptyState, ErrorState, ListSkeleton, PageHeader, RowMenu, Section, StatusBadge } from '@/components/common';
 import type { RowMenuItem } from '@/components/common';
+import { useDebouncedValue } from '@/hooks/use-debounced-value.hook';
 import { formatDate, formatMoneyWhole, label, pluralize } from '@/lib/format';
 import { useKubos } from '../hooks/use-kubos.hook';
 import { useChangeKuboStatus, useDeleteKubo } from '../hooks/use-kubo-mutations.hook';
@@ -89,7 +90,8 @@ export const KuboListPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const view = (params.get('view') as View) || 'board';
   const status = (params.get('status') as KuboStatus) || undefined;
-  const search = params.get('search') ?? '';
+  const searchInput = params.get('search') ?? '';
+  const search = useDebouncedValue(searchInput.trim(), 300);
   const page = Math.max(1, Number(params.get('page')) || 1);
 
   const set = (patch: Record<string, string | undefined>, resetPage = true) => {
@@ -99,7 +101,10 @@ export const KuboListPage: React.FC = () => {
     setParams(next, { replace: true });
   };
 
-  const kubos = useKubos();
+  const kubos = useKubos({
+    search: search || undefined,
+    limit: 100,
+  });
   const checkedIn = useReservations({ status: 'CheckedIn', limit: 100 });
   const confirmed = useReservations({ status: 'Confirmed', limit: 100 });
   const changeStatus = useChangeKuboStatus();
@@ -135,7 +140,7 @@ export const KuboListPage: React.FC = () => {
     () => [...(kubos.data ?? [])].sort((a, b) => a.kuboNumber.localeCompare(b.kuboNumber, undefined, { numeric: true })),
     [kubos.data],
   );
-  const q = search.trim().toLowerCase();
+  const q = searchInput.trim().toLowerCase();
   const filtered = all.filter(
     (k) => (!status || k.status === status) && (!q || k.kuboNumber.toLowerCase().includes(q) || k.typeName.toLowerCase().includes(q)),
   );
@@ -278,7 +283,7 @@ export const KuboListPage: React.FC = () => {
           allowClear
           prefix={<SearchOutlined className="muted" />}
           placeholder="Find a kubo"
-          value={search}
+          value={searchInput}
           onChange={(e) => set({ search: e.target.value || undefined })}
           style={{ width: 220 }}
           aria-label="Find a kubo"
