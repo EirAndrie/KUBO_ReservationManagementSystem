@@ -17,7 +17,7 @@ import type { Kubo } from '@/features/kubo';
 import { GuestForm, useCreateGuest } from '@/features/guest';
 import type { CreateGuestDTO } from '@/features/guest';
 import { AddChargeModal, RecordPaymentModal } from '@/features/payment';
-import { ReservationPickerModal } from '@/features/reservation';
+import { ReservationPickerModal, useReservations } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
 import { KpiStrip, ResortBanner, Section, StatusBadge } from '@/components/common';
 import { formatMoney, pluralize, toAmount } from '@/lib/format';
@@ -59,6 +59,7 @@ export const StaffDashboardPage: React.FC = () => {
   const [tab, setTab] = useState<QueueTab>('arrivals');
   const queue = useCheckInOutQueue(today);
   const kubos = useKubos();
+  const inHouseReservations = useReservations({ status: 'CheckedIn', limit: 100 });
   const createGuest = useCreateGuest();
 
   const [action, setAction] = useState<QuickAction | null>(null);
@@ -93,7 +94,7 @@ export const StaffDashboardPage: React.FC = () => {
   const cleaningCount = kuboList.filter((k) => k.status === 'Cleaning').length;
   const checkedInToday = queue.inHouse.filter((h) => dayjs(h.assignment.actual_check_in_datetime).isSame(dayjs(), 'day')).length;
   const departureBalance = queue.departures.reduce((sum, d) => sum + d.outstandingBalance, 0);
-  const inHouseGuests = new Set(queue.inHouse.map((h) => h.reservation.reservation_id)).size;
+  const inHouseCount = inHouseReservations.data?.length ?? 0;
 
   const legend = ['Available', 'Occupied', 'Reserved', 'Cleaning'];
 
@@ -110,7 +111,7 @@ export const StaffDashboardPage: React.FC = () => {
       />
 
       <KpiStrip
-        loading={queue.isLoading}
+        loading={queue.isLoading || inHouseReservations.isLoading}
         items={[
           {
             icon: <LoginOutlined />,
@@ -126,7 +127,13 @@ export const StaffDashboardPage: React.FC = () => {
             hint: `${formatMoney(departureBalance)} balance left to settle`,
             to: '/check-in-out',
           },
-          { icon: <HomeOutlined />, label: 'In-house', value: inHouseGuests, hint: 'Guests staying tonight', to: '/reservations?tab=inhouse' },
+          {
+            icon: <HomeOutlined />,
+            label: 'In-house',
+            value: inHouseCount,
+            hint: `${pluralize(inHouseCount, 'reservation')} staying tonight`,
+            to: '/reservations?tab=inhouse',
+          },
           {
             icon: <HomeOutlined />,
             label: 'Ready kubos',

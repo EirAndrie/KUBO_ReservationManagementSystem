@@ -21,6 +21,7 @@ export function useCreateReservation() {
       `Reservation ${created.reference_code} created successfully for ${created.guest_name}.`,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -39,6 +40,7 @@ export function useUpdateReservation() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(updated.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -111,6 +113,7 @@ export function useConfirmReservation() {
     onSuccess: (confirmed) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(confirmed.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -129,6 +132,7 @@ export function useCancelReservation() {
     onSuccess: (cancelled) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(cancelled.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -146,6 +150,7 @@ export function useMarkNoShow() {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(res.reservation_id) });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
@@ -161,6 +166,7 @@ export function useDeleteReservation() {
     successMessage: 'Reservation deleted permanently.',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }
