@@ -71,6 +71,15 @@ export interface ReservationFilterParams {
   employeeId?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  /** Exact check-in day of some assignment (YYYY-MM-DD). */
+  arrivalDate?: string;
+  /** Inclusive stay window; matches any assignment overlapping it. */
+  stayFrom?: string;
+  stayTo?: string;
+  /** Exact kubo type name of some assignment. */
+  kuboType?: string;
+  /** `booked` = newest booking first (default); `checkin` = earliest check-in first. */
+  sort?: 'booked' | 'checkin';
   limit?: number;
   page?: number;
 }

@@ -31,6 +31,11 @@ export const reservationService = {
     if (params?.employeeId) queryParams.employeeId = params.employeeId;
     if (params?.checkInDate) queryParams.checkInDate = params.checkInDate;
     if (params?.checkOutDate) queryParams.checkOutDate = params.checkOutDate;
+    if (params?.arrivalDate) queryParams.arrivalDate = params.arrivalDate;
+    if (params?.stayFrom) queryParams.stayFrom = params.stayFrom;
+    if (params?.stayTo) queryParams.stayTo = params.stayTo;
+    if (params?.kuboType) queryParams.kuboType = params.kuboType;
+    if (params?.sort) queryParams.sort = params.sort;
     if (params?.limit) queryParams.limit = params.limit;
     if (params?.page) queryParams.page = params.page;
 

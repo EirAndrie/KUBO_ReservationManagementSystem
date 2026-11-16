@@ -64,6 +64,16 @@ export const createReservation = async (
       }
 };
 
+/**
+ * Lists reservations with every filter, the sort, and pagination applied in
+ * PostgreSQL.
+ *
+ * `fn_search_reservation_ids` returns one page of ordered reservation ids;
+ * each row is then loaded through `fn_get_reservation_by_id`, and
+ * `WITH ORDINALITY` keeps the search order. Date values are `YYYY-MM-DD`.
+ * `arrivalDate` matches an assignment's exact check-in day; `stayFrom`/`stayTo`
+ * match any assignment overlapping that inclusive window.
+ */
 export const getReservations = async (params: {
       status?: string;
       bookingSource?: string;
@@ -72,6 +82,11 @@ export const getReservations = async (params: {
       employeeId?: string;
       checkInDate?: string;
       checkOutDate?: string;
+      arrivalDate?: string;
+      stayFrom?: string;
+      stayTo?: string;
+      kuboType?: string;
+      sort?: "booked" | "checkin";
       pagination: { limit: number; offset: number };
 }): Promise<ReservationResponseDTO[]> => {
       const {
@@ -82,13 +97,18 @@ export const getReservations = async (params: {
             employeeId,
             checkInDate,
             checkOutDate,
+            arrivalDate,
+            stayFrom,
+            stayTo,
+            kuboType,
+            sort,
             pagination,
       } = params;
       try {
             const result = await db.query(
                   `
-                  SELECT *
-                  FROM kubo_reservation_management.fn_get_reservations(
+                  SELECT d.*
+                  FROM kubo_reservation_management.fn_search_reservation_ids(
                         p_status => $1::kubo.reservation_status,
                         p_booking_source => $2::kubo.booking_source,
                         p_search => $3,
@@ -96,9 +116,18 @@ export const getReservations = async (params: {
                         p_employee_id => $5,
                         p_check_in_date => $6::date,
                         p_check_out_date => $7::date,
-                        p_limit => $8,
-                        p_offset => $9
-                  )
+                        p_arrival_date => $8::date,
+                        p_stay_from => $9::date,
+                        p_stay_to => $10::date,
+                        p_kubo_type_name => $11,
+                        p_sort => $12,
+                        p_limit => $13,
+                        p_offset => $14
+                  ) WITH ORDINALITY AS s(reservation_id, ord)
+                  CROSS JOIN LATERAL kubo_reservation_management.fn_get_reservation_by_id(
+                        s.reservation_id
+                  ) AS d
+                  ORDER BY s.ord
                   `,
                   [
                         status ?? null,
@@ -108,6 +137,11 @@ export const getReservations = async (params: {
                         employeeId ?? null,
                         checkInDate ?? null,
                         checkOutDate ?? null,
+                        arrivalDate ?? null,
+                        stayFrom ?? null,
+                        stayTo ?? null,
+                        kuboType ?? null,
+                        sort ?? "booked",
                         pagination.limit,
                         pagination.offset,
                   ],
