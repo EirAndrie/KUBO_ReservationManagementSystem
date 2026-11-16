@@ -35,7 +35,8 @@ export const kuboService = {
    * Fetches all registered kubo cottages with optional status and search filters.
    */
   getAll: async (filters?: KuboFilterParams): Promise<Kubo[]> => {
-    const params: Record<string, string | undefined> = {};
+    // The API pages at 10 by default; the board and counts need every kubo (API max is 100).
+    const params: Record<string, string | undefined> = { limit: '100' };
     if (filters?.status && filters.status !== 'All') {
       params.status = filters.status;
     }
