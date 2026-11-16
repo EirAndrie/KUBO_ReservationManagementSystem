@@ -1,19 +1,27 @@
+import { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './components/layout/AppShell';
-import { KuboListPage } from '@/features/kubo';
-import { PaymentListPage } from '@/features/payment';
-import { EmployeeListPage } from '@/features/employee';
-import { KuboTypeListPage } from '@/features/kubo-type';
-import { GuestListPage, GuestDetailPage } from '@/features/guest';
-import { ReservationListPage, ReservationDetailPage } from '@/features/reservation';
-import { CheckInOutPage } from '@/features/check-in-out';
 import { AuthProvider, LoginPage, ProtectedRoute, useAuth } from '@/features/auth';
-import { AdminDashboardPage, StaffDashboardPage } from '@/features/dashboard';
-import { AuditLogListPage } from '@/features/audit-logs';
-import { AdditionalChargeCatalogPage } from '@/features/additional-charge-catalog';
-import { ChargeRequestListPage } from '@/features/charge-request';
 import { ThemeProvider } from '@/theme';
+
+// Route pages load on demand (see AppShell's Suspense boundary).
+const KuboListPage = lazy(() => import('@/features/kubo').then((m) => ({ default: m.KuboListPage })));
+const PaymentListPage = lazy(() => import('@/features/payment/lazy').then((m) => ({ default: m.PaymentListPage })));
+const EmployeeListPage = lazy(() => import('@/features/employee').then((m) => ({ default: m.EmployeeListPage })));
+const KuboTypeListPage = lazy(() => import('@/features/kubo-type').then((m) => ({ default: m.KuboTypeListPage })));
+const GuestListPage = lazy(() => import('@/features/guest').then((m) => ({ default: m.GuestListPage })));
+const GuestDetailPage = lazy(() => import('@/features/guest').then((m) => ({ default: m.GuestDetailPage })));
+const ReservationListPage = lazy(() => import('@/features/reservation/lazy').then((m) => ({ default: m.ReservationListPage })));
+const ReservationDetailPage = lazy(() => import('@/features/reservation/lazy').then((m) => ({ default: m.ReservationDetailPage })));
+const CheckInOutPage = lazy(() => import('@/features/check-in-out/lazy').then((m) => ({ default: m.CheckInOutPage })));
+const AdminDashboardPage = lazy(() => import('@/features/dashboard').then((m) => ({ default: m.AdminDashboardPage })));
+const StaffDashboardPage = lazy(() => import('@/features/dashboard').then((m) => ({ default: m.StaffDashboardPage })));
+const AuditLogListPage = lazy(() => import('@/features/audit-logs').then((m) => ({ default: m.AuditLogListPage })));
+const AdditionalChargeCatalogPage = lazy(() =>
+  import('@/features/additional-charge-catalog').then((m) => ({ default: m.AdditionalChargeCatalogPage })),
+);
+const ChargeRequestListPage = lazy(() => import('@/features/charge-request').then((m) => ({ default: m.ChargeRequestListPage })));
 
 /** Sends `/` and unknown paths to the role's home page. */
 function HomeRedirect() {

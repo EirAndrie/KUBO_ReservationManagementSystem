@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AutoComplete, Badge, Button, Input, Popover } from 'antd';
 import type { InputRef } from 'antd';
@@ -6,8 +6,13 @@ import { BellOutlined, MenuOutlined, PlusOutlined, RightOutlined, SearchOutlined
 import { useAuth } from '@/features/auth';
 import { useChargeRequests } from '@/features/payment';
 import { useCheckInOutQueue } from '@/features/check-in-out';
-import { ReservationWizard } from '@/features/reservation';
 import { ThemeToggle } from '@/theme';
+
+// The wizard pulls in the reservation, guest and payment UI plus the date
+// pickers; load it on first use instead of with the app shell.
+const ReservationWizard = lazy(() =>
+  import('@/features/reservation/lazy').then((m) => ({ default: m.ReservationWizard })),
+);
 import styles from './shell.module.css';
 
 const SECTION_LABELS: Record<string, string> = {
@@ -92,6 +97,12 @@ export const Navbar: React.FC<{
   const searchRef = useRef<InputRef>(null);
   const [query, setQuery] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
+  // Mount the lazy wizard on first open, then keep it mounted for its close animation.
+  const [wizardRequested, setWizardRequested] = useState(false);
+  const openWizard = () => {
+    setWizardRequested(true);
+    setWizardOpen(true);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -173,18 +184,20 @@ export const Navbar: React.FC<{
         <Notifications isAdmin={isAdmin} />
         <ThemeToggle />
         {role === 'Staff' && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setWizardOpen(true)} className={styles.newReservation} aria-label="New reservation">
+          <Button type="primary" icon={<PlusOutlined />} onClick={openWizard} className={styles.newReservation} aria-label="New reservation">
             <span className={styles.newReservationLabel}>New reservation</span>
           </Button>
         )}
       </div>
 
-      {role === 'Staff' && (
-        <ReservationWizard
-          open={wizardOpen}
-          onCancel={() => setWizardOpen(false)}
-          onSuccess={() => setWizardOpen(false)}
-        />
+      {role === 'Staff' && wizardRequested && (
+        <Suspense fallback={null}>
+          <ReservationWizard
+            open={wizardOpen}
+            onCancel={() => setWizardOpen(false)}
+            onSuccess={() => setWizardOpen(false)}
+          />
+        </Suspense>
       )}
     </header>
   );
