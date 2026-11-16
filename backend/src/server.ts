@@ -28,6 +28,11 @@ const SERVE_FRONTEND = ENV.SERVE_FRONTEND !== "false";
 validateJwtSecret(ENV.JWT_SECRET, isProduction);
 
 // --- MIDDLEWARE ---
+// In production the API sits behind one hosting proxy (Render). Trusting that
+// hop makes `req.ip` the real client address, which the login limiter keys on.
+if (isProduction) {
+      app.set("trust proxy", 1);
+}
 app.use(express.json());
 configureCors(app, FR_ORIGIN, isProduction);
 
