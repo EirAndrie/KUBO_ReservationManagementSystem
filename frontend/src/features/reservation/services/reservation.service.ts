@@ -5,6 +5,7 @@ import type {
   CreateReservationDTO,
   UpdateReservationDTO,
   CancelReservationDTO,
+  CreateAssignmentDTO,
   ReservationsApiResponse,
   SingleReservationApiResponse,
   AvailableKubo,
@@ -99,6 +100,28 @@ export const reservationService = {
       return (raw as SingleReservationApiResponse).reservations;
     }
     return raw as Reservation;
+  },
+
+  /**
+   * Updates the dates of one kubo assignment (BR-037). Allowed only before check-in;
+   * overlap is re-validated by the database.
+   */
+  updateAssignment: async (
+    reservationId: string,
+    kuboId: string,
+    data: { checkInDate: string; checkOutDate: string },
+  ): Promise<void> => {
+    await apiClient.patch(`/reservations/${reservationId}/kubos/${kuboId}`, data);
+  },
+
+  /** Adds a kubo assignment to an existing reservation. */
+  assignKubo: async (reservationId: string, data: CreateAssignmentDTO): Promise<void> => {
+    await apiClient.post(`/reservations/${reservationId}/kubos`, data);
+  },
+
+  /** Removes a not-yet-checked-in kubo assignment from a reservation. */
+  removeAssignment: async (reservationId: string, kuboId: string): Promise<void> => {
+    await apiClient.delete(`/reservations/${reservationId}/kubos/${kuboId}`);
   },
 
   /**
