@@ -260,6 +260,14 @@ Audit log routes are Administrator-only and read-only. All writes are generated 
 | `GET /audit-logs/history/:entityType/:entityId` | Optional `limit`, `offset` per contract | `auditLogs` |
 | `GET /audit-logs/employees/:employeeId/audit-logs` | Pagination and filters per contract | `auditLogs` |
 
+### Reports
+
+Administrator-only and read-only.
+
+| Method and path | Query / body | Success payload |
+|---|---|---|
+| `GET /reports/daily` | Optional `date` (`YYYY-MM-DD`, resort day; default today in Asia/Manila) | `data` (`collections`, `occupancy`, `departures`) |
+
 ## Contract references
 
 See the backend module contracts for full schemas, filter constraints, enum values, response examples, status codes, and database business-rule errors:
@@ -275,3 +283,4 @@ See the backend module contracts for full schemas, filter constraints, enum valu
 - [Payments and additional charges](../../backend/src/modules/payment/API_CONTRACT.md)
 - [Additional-charge catalog and requests](../../backend/src/modules/additional-charges/API_CONTRACT.md)
 - [Audit logs](../../backend/src/modules/audit-logs/API_CONTRACT.md)
+- [Reports](../../backend/src/modules/report/API_CONTRACT.md)

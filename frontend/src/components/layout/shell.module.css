@@ -411,3 +411,26 @@
     transition: none;
   }
 }
+
+/* Printing a page (e.g. the daily report): only the main content, full height. */
+@media print {
+  .sidebar,
+  .topbar,
+  .backdrop {
+    display: none !important;
+  }
+
+  .shellContainer,
+  .mainWrapper,
+  .mainScrollArea {
+    display: block;
+    height: auto;
+    width: auto;
+    overflow: visible;
+  }
+
+  .mainContent {
+    padding: 0;
+    max-width: none;
+  }
+}
