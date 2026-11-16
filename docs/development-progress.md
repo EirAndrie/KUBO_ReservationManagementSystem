@@ -13,7 +13,7 @@ previous one.
 | 4 | `kubo_type` | In progress | CRUD, paginated search/filtering, case-insensitive names, rate updates, and reference-safe deletion are in place. Writes are Administrator-only. Audit writes are in place (rate changes included). Names must include at least two letters and use the allowed name character set, and nightly rates must be greater than zero; Zod, the Admin drawer, the stored functions, and `kubo_type_name_check` / `kubo_type_price_positive_check` enforce both. |
 | 5 | `kubo` | In progress | CRUD, paginated search, type changes, status transitions, availability filtering, and reference-safe deletion are in place and mounted at `/kubos`. Character validation enforces non-numeric kubo names (BR-017). Writes are Administrator-only. Audit writes are in place. |
 | 6 | `reservation` | In progress | Atomic create/update, generated reference codes, nested assignments, derived totals, confirm/cancel/no-show, check-in, and zero-balance checkout guard are in place. Unused reservation deletion removes assignment rows before the reservation and releases its kubos; it is refused for `CheckedIn` and `CheckedOut` reservations. The list endpoint applies every filter (status, source, search, exact arrival date, inclusive stay window, kubo type) and the booked/check-in sort in the database before pagination (`fn_search_reservation_ids`). Lifecycle operations are Staff-only, reservation creation records the authenticated employee, and all lifecycle mutations write audit rows. |
-| 7 | `reserved_kubo` | In progress | Add/update/remove assignments and per-assignment check-in/check-out are wired under `/reservations/:id/kubos`. Assignment writes are Staff-only and audited under the parent reservation. |
+| 7 | `reserved_kubo` | In progress | Add/update/remove assignments and per-assignment check-in/check-out are wired under `/reservations/:id/kubos`. Assignment writes are Staff-only and audited under the parent reservation. The database now backs up the procedures: the `reserved_kubo_no_overlap` exclusion constraint blocks double bookings (G-01), and deferred triggers keep at least one assignment per reservation (G-05). |
 | 8 | `additional_charge` | In progress | Catalog application, pre-settlement deletion, Administrator increase corrections, and charge-specific reductions via Adjustment/Reversal payments are implemented with audit writes and role enforcement. |
 | 9 | `additional_charge_catalog` | In progress | Admin CRUD, activation/deactivation, usage totals, reference-safe deletion, and audit writes are implemented. Writes are Administrator-only. Item names and descriptions reject numeric-only, identifier-like, and symbol-only text in Zod, the catalog drawer, and the `additional_charge_catalog_name_check` / `additional_charge_catalog_description_check` constraints. Unit prices must be greater than zero and at most ₱800,000.00, enforced in Zod, the drawer, and `additional_charge_catalog_price_check` / `additional_charge_catalog_price_max_check`; prices above ₱10,000.00 require explicit confirmation in the drawer. |
 | 10 | `additional_charge_request` | In progress | Staff submission/withdrawal and Admin approval/rejection/adjustment are implemented with audit writes and role enforcement. |
@@ -81,6 +81,9 @@ previous one.
 
 ## Notes
 
+- Data-integrity gaps G-01, G-03, G-05, and G-15 are closed in the database
+  (`docs/business_rules.md`, section 14). `updated_at` on guest, employee, and the
+  charge catalog is maintained by triggers.
 - Migrations now cover role, employee, guest, kubo type, kubo, reservation,
   reserved kubo, additional charges/catalog/requests, payment, audit
   infrastructure, and authentication routines (`kubo_auth_management`).

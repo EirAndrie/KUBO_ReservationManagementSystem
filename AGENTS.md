@@ -164,8 +164,9 @@ frontend/src/
 - Validate external input with Zod before business logic: bodies at the route,
   query/path values in the controller or `requireUuidParam`.
 - PostgreSQL is the constraint authority, but some invariants are application-only.
-  `docs/business_rules.md` lists the gaps (overlapping stays, at-least-one-kubo,
-  status transitions).
+  `docs/business_rules.md` lists the gaps (for example status transitions, G-14).
+  Overlapping stays and at-least-one-kubo are enforced in the database as well as
+  in the procedures (G-01, G-05).
 - Reservation totals, charges, net paid, and balances are derived
   (`fn_get_reservation_balance`), never stored. `reservationTotalAmount` in the
   backend reservation schema is stale (BR-040/G-06).
