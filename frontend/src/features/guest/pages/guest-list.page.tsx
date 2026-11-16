@@ -82,8 +82,9 @@ export const GuestListPage: React.FC = () => {
 
   const stats = useMemo(() => new Map((stayStats.data ?? []).map((s) => [s.guest_id, s])), [stayStats.data]);
 
-  // Delete is offered only once the server confirms the guest has no reservations.
-  const canDelete = (g: Guest) => stats.get(g.guest_id)?.reservations_count === 0;
+  // Delete is offered only once the server confirms the guest has no reservations,
+  // and not while stats refetch: the cached count may predate a new booking.
+  const canDelete = (g: Guest) => !stayStats.isFetching && stats.get(g.guest_id)?.reservations_count === 0;
 
   const rows = useMemo(() => {
     let data = pageGuests;
