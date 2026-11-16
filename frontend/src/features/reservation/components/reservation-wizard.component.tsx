@@ -72,6 +72,8 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
   const [isRegisterGuestOpen, setIsRegisterGuestOpen] = useState(false);
 
   // Step 2: Stay Dates & Source
+  // Once per render, not once per calendar cell.
+  const today = resortToday();
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>([
     dayjs(resortToday(1)),
     dayjs(resortToday(3)),
@@ -284,7 +286,7 @@ export const ReservationWizard: React.FC<ReservationWizardProps> = ({
                     setDateRange(dates as [Dayjs, Dayjs] | null);
                     setSelectedKubos([]);
                   }}
-                  disabledDate={(current) => current && current.format('YYYY-MM-DD') < resortToday()}
+                  disabledDate={(current) => current && current.format('YYYY-MM-DD') < today}
                   allowClear={false}
                   status={isExtendedStay ? 'warning' : undefined}
                 />

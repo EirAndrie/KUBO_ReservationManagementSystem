@@ -44,6 +44,8 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({ assignment, value, onChan
     }
     return list;
   }, [availability.data, assignment]);
+  // Once per render, not once per calendar cell.
+  const today = resortToday();
 
   return (
     <div style={{ display: 'grid', gap: 8, padding: '12px 0', borderTop: '1px solid var(--color-border, #e5e7eb)' }}>
@@ -52,7 +54,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({ assignment, value, onChan
         style={{ width: '100%' }}
         value={value.range}
         allowClear={false}
-        disabledDate={(current) => current && current.format('YYYY-MM-DD') < resortToday()}
+        disabledDate={(current) => current && current.format('YYYY-MM-DD') < today}
         onChange={(dates) => dates?.[0] && dates[1] && onChange({ ...value, range: [dates[0], dates[1]] })}
       />
       <Select
