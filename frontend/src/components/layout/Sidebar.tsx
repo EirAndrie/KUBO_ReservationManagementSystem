@@ -14,6 +14,7 @@ import {
   BlockOutlined,
   TagsOutlined,
   FileDoneOutlined,
+  ProfileOutlined,
 } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useAuth } from '@/features/auth';
@@ -76,6 +77,7 @@ export const Sidebar: React.FC<{ open?: boolean }> = ({ open = false }) => {
   const main: NavItem[] = isAdmin
     ? [
         { name: 'Overview', to: '/admin', icon: <AppstoreOutlined /> },
+        { name: 'Daily report', to: '/daily-report', icon: <ProfileOutlined /> },
         { name: 'Reservations', to: '/reservations', icon: <CalendarOutlined /> },
         { name: 'Kubos', to: '/kubos', icon: <HomeOutlined /> },
         { name: 'Kubo types & rates', to: '/kubo-types', icon: <BlockOutlined /> },

@@ -9,6 +9,7 @@ import reservedRoomsRoutes from "../modules/reserved-room_kubo/reserved-room_kub
 import paymentRoutes from "../modules/payment/payment.routes";
 import additinalChargesRoutes from "../modules/additional-charges/additional-charges.routes";
 import auditLogsRoutes from "../modules/audit-logs/audit-logs.routes";
+import reportRoutes from "../modules/report/report.routes";
 import authRoutes from "./auth/auth.routes";
 import { authenticate } from "./auth/auth.middleware";
 import { db } from "../config/connectDB";
@@ -76,6 +77,7 @@ router.use("/employees", employeeRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/reservations", reservedRoomsRoutes);
 router.use("/audit-logs", auditLogsRoutes);
+router.use("/reports", reportRoutes);
 router.use("/", paymentRoutes);
 router.use("/", additinalChargesRoutes);
 
