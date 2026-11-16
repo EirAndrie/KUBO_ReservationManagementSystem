@@ -516,8 +516,19 @@ instead (retained from old rule `l`).
   become `NoShow`. A no-show reservation cannot be checked in later; a new reservation
   is required. No-show handling does not automatically refund payments; refunds follow
   BR-054.
+
+  **Single-assignment no-show (issue #67).** In a multi-kubo stay that is already
+  `CheckedIn`, a `Reserved` assignment that was never checked in may be marked
+  `NoShow` by Staff once `CURRENT_DATE >= check_out_date` for that assignment. The
+  kubo is released. When no assignment remains open, the reservation becomes
+  `CheckedOut` under BR-063, and the outstanding balance must be zero first (BR-064);
+  the `NoShow` assignment no longer counts toward the balance, so any resulting
+  credit is refunded before the reservation can close.
 - **Entities:** `reservation`, `reserved_kubo`, `payment`, `audit_log`
 - **Enforcement:** Application-level state transition.
+  `fn_mark_no_show` handles the whole reservation;
+  `fn_mark_reserved_kubo_no_show` (`20261118_add_reserved_kubo_no_show.sql`) handles
+  one assignment.
 
 #### BR-037 — Modifying a reservation
 - **Rule:** Reservation details (guest, booking source, dates, and assigned kubos) may

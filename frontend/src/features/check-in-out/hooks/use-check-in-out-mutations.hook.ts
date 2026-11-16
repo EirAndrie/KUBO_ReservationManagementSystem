@@ -52,6 +52,26 @@ export function useApproveEarlyCheckIn() {
 }
 
 /**
+ * Mutation hook to mark one never-checked-in assignment as NoShow after its
+ * stay dates have passed (issue #67).
+ */
+export function useMarkKuboNoShow() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation({
+    mutationFn: ({ reservationId, kuboId }: CheckInOutActionParams) =>
+      checkInOutService.markKuboNoShow(reservationId, kuboId),
+    successMessage: 'Kubo marked as no-show.',
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checkInOutKeys.operationalQueue() });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
+    },
+  });
+}
+
+/**
  * Mutation hook to check out a reserved kubo assignment (BR-062, BR-063).
  * Kubo is transitioned to 'Cleaning'.
  */

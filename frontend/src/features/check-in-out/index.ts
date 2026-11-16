@@ -21,6 +21,7 @@ export {
   useCheckInKubo,
   useApproveEarlyCheckIn,
   useCheckOutKubo,
+  useMarkKuboNoShow,
 } from './hooks/use-check-in-out-mutations.hook';
 
 // Services

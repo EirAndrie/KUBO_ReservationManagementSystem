@@ -8,6 +8,7 @@ import {
       checkInReservedKuboController,
       checkOutReservedKuboController,
       approveEarlyCheckInController,
+      markReservedKuboNoShowController,
 } from "./reserved-room_kubo.controllers";
 import {
       CreateReservedKuboSchema,
@@ -72,6 +73,13 @@ router.patch(
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       approveEarlyCheckInController,
+);
+router.patch(
+      "/:reservationId/kubos/:kuboId/no-show",
+      authorizeRoles("staff"),
+      requireUuidParam("reservationId"),
+      requireUuidParam("kuboId"),
+      markReservedKuboNoShowController,
 );
 
 export default router;

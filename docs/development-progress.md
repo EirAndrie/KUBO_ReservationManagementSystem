@@ -82,6 +82,13 @@ previous one.
 
 ## Notes
 
+- Issue #67 is addressed: Staff can mark a never-checked-in assignment of a `CheckedIn`
+  multi-kubo reservation as `NoShow` after its stay dates pass
+  (`PATCH /reservations/:reservationId/kubos/:kuboId/no-show`, reservation detail
+  row menu). Known gap left open: an overstaying `CheckedIn` guest past
+  `check_out_date` does not block a new booking on the same kubo, because
+  availability only looks at `[check_in_date, check_out_date)`.
+
 - Data-integrity gaps G-01, G-03, G-05, and G-15 are closed in the database
   (`docs/business_rules.md`, section 14). `updated_at` on guest, employee, and the
   charge catalog is maintained by triggers. Review follow-ups: stale assignments

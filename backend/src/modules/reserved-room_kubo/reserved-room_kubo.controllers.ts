@@ -14,6 +14,7 @@ import {
       checkInReservedKuboService,
       checkOutReservedKuboService,
       approveEarlyCheckInService,
+      markReservedKuboNoShowService,
 } from "./reserved-room_kubo.services";
 
 export const assignKuboController = async (req: Request, res: Response) => {
@@ -203,6 +204,31 @@ export const approveEarlyCheckInController = async (
             });
       } catch (error: any) {
             logger.error("Failed to approve early check-in", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const markReservedKuboNoShowController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const reservedKubos = await markReservedKuboNoShowService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+                  req.auth!.employeeId,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully marked reserved kubo as no-show",
+                  reservedKubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to mark reserved kubo as no-show", {
                   message: error.message,
                   stack: error.stack,
             });
