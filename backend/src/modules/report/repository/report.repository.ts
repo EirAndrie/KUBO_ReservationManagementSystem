@@ -44,6 +44,7 @@ export const getDailyReport = async (
                         scheduled_check_out_time::text AS scheduled_check_out_time,
                         assignment_status,
                         actual_check_out_datetime,
+                        overdue,
                         outstanding_balance
                   FROM kubo_reservation_management.fn_get_daily_departures($1::date)
                   `,

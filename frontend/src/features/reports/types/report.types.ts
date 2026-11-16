@@ -35,6 +35,8 @@ export interface DailyDeparture {
   scheduled_check_out_time: string | null;
   assignment_status: 'Reserved' | 'CheckedIn' | 'CheckedOut';
   actual_check_out_datetime: string | null;
+  /** Still checked in after the scheduled check-out date (today's report only). */
+  overdue: boolean;
   outstanding_balance: string;
 }
 

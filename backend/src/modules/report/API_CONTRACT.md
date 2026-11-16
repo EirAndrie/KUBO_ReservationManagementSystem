@@ -63,15 +63,23 @@ counted. `Failed` and `Cancelled` payments are ignored.
 
 Assignments and reservations with status `Cancelled` or `NoShow` are ignored.
 
+An assignment's **departure day** is the date it actually checked out
+(`actual_check_out_datetime` in Asia/Manila) once it is `CheckedOut`;
+otherwise its scheduled `check_out_date`. An assignment is **overdue** when it
+is still `CheckedIn` after its `check_out_date`; overdue assignments are
+reported only in **today's** report, because "still checked in" is a
+current-state fact.
+
 | Field | Meaning |
 |---|---|
 | `total_kubos` | Every kubo row, whatever its status |
-| `booked_kubos` | Distinct kubos with an assignment covering that night (`check_in_date <= date < check_out_date`) |
+| `booked_kubos` | Distinct kubos with an assignment covering that night (`check_in_date <= date < departure day`), plus, in today's report, kubos with an overdue assignment |
 | `arrivals` | Assignments with `check_in_date = date` |
-| `departures` | Assignments with `check_out_date = date`; equals `departures.length` |
+| `departures` | Assignments whose departure day is `date`, plus overdue ones in today's report; equals `departures.length` |
 
-This is booked nights, so it works for any date. The Administrator dashboard's
-"Occupancy tonight" instead counts kubos whose current status is `Occupied`.
+This is booked nights, so it works for any date, and an early check-out frees
+the later nights. The Administrator dashboard's "Occupancy tonight" instead
+counts kubos whose current status is `Occupied`.
 
 ### 2.5 Departure row
 
@@ -86,10 +94,11 @@ This is booked nights, so it works for any date. The Administrator dashboard's
 | `scheduled_check_out_time` | string | Yes | `HH:MM:SS` |
 | `assignment_status` | string | No | `Reserved` (never checked in), `CheckedIn` (still to leave), or `CheckedOut` (left) |
 | `actual_check_out_datetime` | string | Yes | ISO timestamp once checked out |
+| `overdue` | boolean | No | Still `CheckedIn` after `check_out_date` (today's report only) |
 | `outstanding_balance` | string (decimal) | No | Derived reservation balance from `fn_get_reservation_balance`; never stored |
 
-Rows are ordered with those not yet checked out first, then by scheduled
-check-out time and kubo number.
+Rows are ordered overdue first, then those not yet checked out, then by
+scheduled check-out time and kubo number (text order).
 
 ### 2.6 Business rules and failures
 
@@ -103,7 +112,8 @@ check-out time and kubo number.
 
 ### 2.7 Implementation and side effects
 
-- Stored functions (migration `20261116_add_daily_summary_report.sql`):
+- Stored functions (migrations `20261116_add_daily_summary_report.sql` and
+  `20261116_refine_daily_summary_report.sql`):
   `kubo_payment_management.fn_get_daily_collections`,
   `kubo_reservation_management.fn_get_daily_departures`, and
   `kubo_reservation_management.fn_get_daily_occupancy`.

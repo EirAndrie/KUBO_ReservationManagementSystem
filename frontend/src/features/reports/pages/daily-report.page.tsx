@@ -15,7 +15,7 @@ import {
   StatusBadge,
   TwoLine,
 } from '@/components/common';
-import { formatDateTime, formatMoney, label, pluralize, toAmount } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney, label, pluralize, toAmount } from '@/lib/format';
 import { resortToday } from '@/lib/time';
 import { PAYMENT_METHOD_LABELS } from '@/features/payment';
 import type { PaymentMethod } from '@/features/payment';
@@ -46,18 +46,23 @@ function formatTime(value: string | null): string {
 export const DailyReportPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const today = resortToday();
-  const date = params.get('date') || today;
+  // A malformed ?date= falls back to today so the stepper keeps working.
+  const rawDate = params.get('date');
+  const date =
+    rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && dayjs(rawDate).format('YYYY-MM-DD') === rawDate ? rawDate : today;
   const isToday = date === today;
   const report = useDailyReport(date);
-  const data = report.data;
+  // While another day loads, the cache still holds the previous day: never
+  // show (or print) it under this date's heading.
+  const data = report.data?.date === date ? report.data : undefined;
 
-  const shift = (days: number) => {
-    const next = dayjs(date).add(days, 'day').format('YYYY-MM-DD');
+  const goTo = (next: string) => {
     const nextParams = new URLSearchParams(params);
     if (next === today) nextParams.delete('date');
     else nextParams.set('date', next);
     setParams(nextParams, { replace: true });
   };
+  const shift = (days: number) => goTo(dayjs(date).add(days, 'day').format('YYYY-MM-DD'));
 
   const methodLabel = (method: string) =>
     method === TOTAL_KEY ? 'All methods' : (PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? label(method));
@@ -121,6 +126,8 @@ export const DailyReportPage: React.FC = () => {
       render: (_, d) =>
         d.actual_check_out_datetime ? (
           <TwoLine primary={formatDateTime(d.actual_check_out_datetime)} secondary="Actual" />
+        ) : d.overdue ? (
+          <TwoLine primary={formatDate(d.check_out_date)} secondary="Was due" />
         ) : (
           <TwoLine primary={formatTime(d.scheduled_check_out_time)} secondary="Scheduled" />
         ),
@@ -128,7 +135,12 @@ export const DailyReportPage: React.FC = () => {
     {
       title: 'Status',
       width: 150,
-      render: (_, d) => <StatusBadge status={d.assignment_status} text={DEPARTURE_STATE[d.assignment_status]} />,
+      render: (_, d) =>
+        d.overdue ? (
+          <StatusBadge status="Overdue" tone="red" text="Overdue" />
+        ) : (
+          <StatusBadge status={d.assignment_status} text={DEPARTURE_STATE[d.assignment_status]} />
+        ),
     },
     {
       title: 'Balance',
@@ -156,7 +168,7 @@ export const DailyReportPage: React.FC = () => {
           <div className={styles.actions}>
             <div className={styles.stepper} role="group" aria-label="Choose date">
               <Button icon={<LeftOutlined />} aria-label="Previous day" onClick={() => shift(-1)} />
-              <Button onClick={() => shift(dayjs(today).diff(dayjs(date), 'day'))} disabled={isToday}>
+              <Button onClick={() => goTo(today)} disabled={isToday}>
                 Today
               </Button>
               <Button icon={<RightOutlined />} aria-label="Next day" onClick={() => shift(1)} />
