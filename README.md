@@ -213,6 +213,7 @@ is the source of truth for mounted routes.
 | `/additional-charges`, `/reservations/:reservationId/charges` | Applied charges                                                           |
 | `/additional-charge-requests`                                 | Custom charge requests and approval                                       |
 | `/audit-logs`                                                 | Audit log reads (Administrator only)                                      |
+| `/reports/daily`                                              | End-of-day report: collections by method, occupancy, departures (Administrator only) |
 
 ### Authentication
 
@@ -286,7 +287,8 @@ For a folder-by-folder explanation with comments, see [`docs/PROJECT_STRUCTURE.m
 │           ├── reserved-room_kubo/
 │           ├── additional-charges/
 │           ├── payment/
-│           └── audit-logs/
+│           ├── audit-logs/
+│           └── report/
 ├── .github/workflows/        # backend-ci, frontend-ci, keep-alive
 ├── docs/                     # Business rules, architecture, API, ERD, flowcharts, Infisical guide
 ├── frontend/                 # Vite + React app (src/features/*, src/components, src/lib) and UI docs

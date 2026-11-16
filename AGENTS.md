@@ -146,7 +146,7 @@ frontend/src/
 - Public: `GET /health` (200, or 503 JSON when the database is unreachable) and
   `/auth/login`. Everything else passes the global `authenticate` middleware.
 - Prefixes: `/auth`, `/roles`, `/guests`, `/kubo-types`, `/kubos`, `/employees`,
-  `/reservations`, `/audit-logs`, plus root-mounted payment and additional-charge
+  `/reservations`, `/audit-logs`, `/reports`, plus root-mounted payment and additional-charge
   route groups.
 - Reservation assignments: `/reservations/:reservationId/kubos`. Payments:
   `/reservations/:reservationId/payments` and `/payments`. Overpayment approvals:
