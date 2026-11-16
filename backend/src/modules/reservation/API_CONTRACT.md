@@ -711,6 +711,7 @@ No response body.
 |---|---:|---|
 | Invalid UUID | `400` | `Invalid reservationId format` |
 | Reservation does not exist | `404` | `Reservation not found` |
+| Reservation status is `CheckedIn` or `CheckedOut` | `400` | `Reservation is CheckedIn and cannot be deleted.` (or `CheckedOut`) |
 | Reservation has payment or additional-charge history | `409` | `Reservation has financial history; cancel it instead of deleting.` |
 | Reservation has custom charge-request history | `409` | `Reservation has custom charge-request history; cancel it instead of deleting.` |
 | Not authenticated | `401` | `Authentication required` |
@@ -720,6 +721,9 @@ No response body.
 Behavior notes:
 
 - Deletion is a repair action. Business cancellations should use `/cancel`.
+- Only `Pending`, `Confirmed`, `Cancelled`, and `NoShow` reservations can be
+  deleted. A checked-in guest still occupies the kubo, and checked-out stays are
+  history.
 - Any payment, additional charge, or custom charge-request row blocks deletion.
 - Assignment rows are removed by the schema’s `ON DELETE CASCADE` from
   `reserved_kubo.reservation_id`.

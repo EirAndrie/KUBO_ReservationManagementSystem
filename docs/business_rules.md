@@ -505,12 +505,14 @@ instead (retained from old rule `l`).
 #### BR-038 — Reservations are cancelled, not deleted
 - **Rule:** Normal operations must not delete reservations. Use `Cancelled` to release
   the booking. Hard deletion is an administrative repair action only, must be audited,
-  and is blocked by the database when payments or additional charges exist.
+  and is blocked by the database when payments or additional charges exist or when the
+  reservation is `CheckedIn` or `CheckedOut`.
 - **Entities:** `reservation`, `reserved_kubo`, `payment`, `additional_charge`,
   `audit_log`
 - **Enforcement:** `reserved_kubo` cascades on reservation deletion, but `payment` and
   `additional_charge` use `ON DELETE RESTRICT`, so a reservation with financial history
-  cannot be deleted. Application policy forbids routine deletion.
+  cannot be deleted. `fn_delete_reservation` also refuses `CheckedIn` and `CheckedOut`
+  reservations. Application policy forbids routine deletion.
 
 ---
 
