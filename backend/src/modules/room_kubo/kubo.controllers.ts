@@ -16,6 +16,7 @@ import {
       getKuboByIdService,
       updateKuboService,
       changeKuboStatusService,
+      markKuboReadyService,
       deleteKuboService,
       searchKubosService,
       getAvailableKubosService,
@@ -156,6 +157,31 @@ export const changeKuboStatusController = async (
             });
       } catch (error: any) {
             logger.error("Failed to change Kubo status", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+/** Staff housekeeping: `Cleaning` → `Available`. The actor is the signed-in employee. */
+export const markKuboReadyController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const kubos = await markKuboReadyService(
+                  String(req.params.kuboId),
+                  req.auth!.employeeId,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Kubo marked ready",
+                  kubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to mark Kubo ready", {
                   message: error.message,
                   stack: error.stack,
             });

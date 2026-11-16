@@ -4,6 +4,7 @@ import {
       getKuboById,
       updateKubo,
       changeKuboStatus,
+      markKuboReady,
       deleteKubo,
       searchKubos,
       getAvailableKubos,
@@ -66,6 +67,23 @@ export const changeKuboStatusService = async (
             throw new AppError(404, "Kubo not found");
       }
       return changeKuboStatus(kuboId, status, actorEmployeeId);
+};
+
+/**
+ * Staff housekeeping: marks a `Cleaning` kubo `Available` (BR-021, BR-063).
+ * The stored function enforces the transition and writes the audit row.
+ */
+export const markKuboReadyService = async (
+      kuboId: string,
+      actorEmployeeId: string,
+) => {
+      const kubo = await markKuboReady(kuboId, actorEmployeeId);
+      // The function raises P0002 ("Kubo does not exist.") for an unknown id;
+      // this guard only covers an unexpected empty result, with the same text.
+      if (!kubo) {
+            throw new AppError(404, "Kubo does not exist.");
+      }
+      return kubo;
 };
 
 // To be checked: Prevent deletion of kubo if it is currently 

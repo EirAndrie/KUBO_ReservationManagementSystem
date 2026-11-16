@@ -5,6 +5,7 @@ import {
       getKuboByIdController,
       updateKuboController,
       changeKuboStatusController,
+      markKuboReadyController,
       deleteKuboController,
       getKubosByTypeController,
       getAvailableKubosController,
@@ -40,6 +41,14 @@ router.patch(
       requireUuidParam("kuboId"),
       validateBody(ChangeKuboStatusSchema),
       changeKuboStatusController,
+);
+// Housekeeping (BR-021, BR-063): Staff return a cleaned kubo to service. Only
+// Cleaning -> Available; other status changes stay on the Administrator route.
+router.patch(
+      "/:kuboId/ready",
+      authorizeRoles("staff"),
+      requireUuidParam("kuboId"),
+      markKuboReadyController,
 );
 router.patch(
       "/:kuboId",

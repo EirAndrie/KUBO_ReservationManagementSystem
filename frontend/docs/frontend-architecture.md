@@ -204,7 +204,7 @@ sequenceDiagram
 
 **Route code splitting:** `App.tsx` loads every route page with `React.lazy`, and `AppShell` wraps the `<Outlet />` in a `Suspense` boundary (`ListSkeleton` fallback). `package.json` declares `"sideEffects": ["**/*.css"]` so unused barrel re-exports are dropped from the startup bundle; keep module top-level code free of side effects other than CSS imports.
 - Lazy-import a page from its feature's `index.ts` when the app shell does not import that barrel.
-- The reservation, payment, and check-in-out barrels are part of the shell's startup graph (`Sidebar`/`Navbar` hooks, and the check-in-out service's use of `reservationService`). A lazy import of one of those barrels would pull all its pages into the first load, so those features also expose a `lazy.ts` entry with only their lazily loaded components. Use `lazy.ts` only inside `import()`; every other import still goes through `index.ts`.
+- The reservation, payment, check-in-out, and kubo barrels are part of the shell's startup graph (`Sidebar`/`Navbar` hooks, including the Staff housekeeping badge, and the check-in-out service's use of `reservationService`). A lazy import of one of those barrels would pull all its pages into the first load, so those features also expose a `lazy.ts` entry with only their lazily loaded components. Use `lazy.ts` only inside `import()`; every other import still goes through `index.ts`.
 
 ### G. Cross-Feature Communication Pattern (Guardrail)
 **Rule:** Circular dependencies between features are explicitly forbidden.

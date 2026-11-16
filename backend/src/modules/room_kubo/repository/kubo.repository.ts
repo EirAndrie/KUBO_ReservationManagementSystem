@@ -148,6 +148,39 @@ export const changeKuboStatus = async (
       }
 };
 
+/**
+ * Housekeeping action: returns a cleaned kubo to service (`Cleaning` →
+ * `Available`) through `fn_mark_kubo_ready`.
+ *
+ * The function locks the kubo row, rejects any other current status with
+ * `23514` (mapped to `400`), raises `P0002` (`404`) for an unknown kubo, and
+ * writes the BR-067 audit row in the same transaction.
+ */
+export const markKuboReady = async (
+      kuboId: string,
+      actorEmployeeId: string,
+): Promise<KuboResponseDTO | null> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_management.fn_mark_kubo_ready(
+                        p_kubo_id => $1,
+                        p_actor_employee_id => $2
+                  )
+                  `,
+                  [kuboId, actorEmployeeId],
+            );
+            return result.rows[0] ?? null;
+      } catch (error: any) {
+            logger.error("Failed to mark kubo ready in database", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to mark kubo ready");
+      }
+};
+
 export const deleteKubo = async (
       kuboId: string,
       actorEmployeeId: string,
