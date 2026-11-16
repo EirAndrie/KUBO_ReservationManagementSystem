@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { resortToday } from '@/lib/time';
 import { checkInOutService } from '../services/check-in-out.service';
 import type { ArrivalRecord, DepartureRecord, InHouseRecord } from '../types/check-in-out.types';
 
@@ -27,7 +28,7 @@ export const checkInOutKeys = {
  * shares the same active-reservation list.
  */
 export function useCheckInOutQueue(
-  targetDate: string = dayjs().format('YYYY-MM-DD'),
+  targetDate: string = resortToday(),
   options: { enabled?: boolean } = {},
 ) {
   const query = useQuery({
@@ -40,7 +41,9 @@ export function useCheckInOutQueue(
 
   const reservations = query.data ?? [];
   const target = dayjs(targetDate).startOf('day');
-  const today = dayjs().startOf('day');
+  // "Today" is the resort's date (Asia/Manila), the same day CheckInOutPage
+  // passes in; parsed like targetDate so the two compare as calendar days.
+  const today = dayjs(resortToday()).startOf('day');
   const isTodayView = target.isSame(today, 'day');
   /** Scheduled for the target date, or overdue and carried onto today's view. */
   const isDue = (day: dayjs.Dayjs) => day.isSame(target, 'day') || (isTodayView && day.isBefore(today, 'day'));

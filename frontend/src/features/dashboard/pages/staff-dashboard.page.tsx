@@ -17,10 +17,11 @@ import type { Kubo } from '@/features/kubo';
 import { GuestForm, useCreateGuest } from '@/features/guest';
 import type { CreateGuestDTO } from '@/features/guest';
 import { AddChargeModal, RecordPaymentModal } from '@/features/payment';
-import { ReservationPickerModal, useReservations } from '@/features/reservation';
+import { ReservationPickerModal, useReservationCount } from '@/features/reservation';
 import type { Reservation } from '@/features/reservation';
 import { KpiStrip, ResortBanner, Section, StatusBadge } from '@/components/common';
 import { formatMoney, pluralize, toAmount } from '@/lib/format';
+import { resortTime, resortToday } from '@/lib/time';
 import styles from './staff-dashboard.module.css';
 
 type QuickAction = 'payment' | 'guest' | 'charge';
@@ -36,7 +37,7 @@ const KUBO_TILE_TONE: Record<string, string> = {
 };
 
 function greeting(): string {
-  const h = dayjs().hour();
+  const h = resortTime(new Date()).hour();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
@@ -55,11 +56,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export const StaffDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const today = dayjs().format('YYYY-MM-DD');
+  // The resort's date (Asia/Manila), whatever the browser's time zone.
+  const today = resortToday();
   const [tab, setTab] = useState<QueueTab>('arrivals');
   const queue = useCheckInOutQueue(today);
   const kubos = useKubos();
-  const inHouseReservations = useReservations({ status: 'CheckedIn', limit: 100 });
+  // The list's `total`, so the count is not capped at one 100-row page.
+  const inHouseReservations = useReservationCount({ status: 'CheckedIn' });
   const createGuest = useCreateGuest();
 
   const [action, setAction] = useState<QuickAction | null>(null);
@@ -92,9 +95,11 @@ export const StaffDashboardPage: React.FC = () => {
   );
   const readyCount = kuboList.filter((k) => k.status === 'Available').length;
   const cleaningCount = kuboList.filter((k) => k.status === 'Cleaning').length;
-  const checkedInToday = queue.inHouse.filter((h) => dayjs(h.assignment.actual_check_in_datetime).isSame(dayjs(), 'day')).length;
+  const checkedInToday = queue.inHouse.filter(
+    (h) => h.assignment.actual_check_in_datetime && resortTime(h.assignment.actual_check_in_datetime).format('YYYY-MM-DD') === today,
+  ).length;
   const departureBalance = queue.departures.reduce((sum, d) => sum + d.outstandingBalance, 0);
-  const inHouseCount = inHouseReservations.data?.length ?? 0;
+  const inHouseCount = inHouseReservations.data ?? 0;
 
   const legend = ['Available', 'Occupied', 'Reserved', 'Cleaning'];
 
@@ -106,7 +111,7 @@ export const StaffDashboardPage: React.FC = () => {
   return (
     <div>
       <ResortBanner
-        title={`Today, ${dayjs().format('MMMM D')}`}
+        title={`Today, ${dayjs(today).format('MMMM D')}`}
         description={`${greeting()}, ${user?.firstName ?? 'there'}. ${pluralize(queue.arrivals.length, 'guest')} arriving, ${queue.departures.length} departing.`}
       />
 
