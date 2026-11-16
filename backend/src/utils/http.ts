@@ -48,6 +48,14 @@ export const mapDatabaseError = (
                         400,
                         databaseError.message ?? "Business rule violation",
                   );
+            case "23P01":
+                  // Exclusion violation; today only reserved_kubo_no_overlap
+                  // (G-01). The raw message names the constraint, so a fixed
+                  // message matching the procedures' own check is returned.
+                  return new AppError(
+                        400,
+                        "Kubo is not available for the selected dates.",
+                  );
             case "22023":
                   return new AppError(
                         400,

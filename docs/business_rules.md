@@ -222,9 +222,10 @@ The DDL has no permission table, so this matrix is enforced by the application.
   `SeniorCitizenID`, `StudentID`, or `Other`. `id_number` is required. The pair
   (`valid_id_type`, `id_number`) must not be duplicated across guests.
 - **Entities:** `guest`
-- **Enforcement:** Enum and `NOT NULL` constraints in the DDL. The DDL has **no unique
-  constraint** on (`valid_id_type`, `id_number`), so uniqueness must be checked by the
-  application (see gap G-03).
+- **Enforcement:** Enum and `NOT NULL` constraints in the DDL. The unique index
+  `guest_valid_id_unique` on (`valid_id_type`, `lower(id_number)`), added by
+  `20261031_harden_guest_management.sql`, rejects duplicates case-insensitively
+  (`23505` → `400`). Gap G-03 is resolved.
 
 #### BR-012 — Guest phone number
 - **Rule:** `phone` is required and must be a valid Philippine contact number,
@@ -399,9 +400,16 @@ instead (retained from old rule `l`).
   reservation with no assigned kubo is invalid. A reservation may contain multiple
   kubos.
 - **Entities:** `reservation`, `reserved_kubo`
-- **Enforcement:** **Not enforceable by the DDL** (a header row can exist with zero
-  child rows). The create/update procedure must enforce it inside a transaction.
-  See gap G-05.
+- **Enforcement:** `fn_create_reservation` rejects an empty assignment list and
+  `fn_delete_reserved_kubo` refuses to remove the last assignment. As a backstop,
+  deferred constraint triggers (`reservation_requires_kubo`,
+  `reserved_kubo_keeps_reservation_assigned`, added by
+  `20261116_require_reservation_kubo_assignment.sql`) reject a commit that leaves an
+  existing reservation without assignments (`23514`). The check runs as
+  `SECURITY DEFINER` and locks the parent reservation, so two concurrent deletes of
+  its last assignments cannot both commit
+  (`20261117_harden_data_integrity_backstops.sql`). Reservations that already had no
+  assignments before the triggers existed are not rechecked. Gap G-05 is resolved.
 
 #### BR-029 — Booking date validation
 - **Rule:** Every assignment must have `check_in_date` and `check_out_date`, and
@@ -430,9 +438,21 @@ instead (retained from old rule `l`).
   Assignments with status `Cancelled`, `NoShow`, or `CheckedOut` do not block new
   bookings.
 - **Entities:** `reserved_kubo`
-- **Enforcement:** **Not enforceable by the DDL** — there is no exclusion constraint or
-  unique constraint on kubo/date ranges. The availability check and insert must run in
-  one transaction (BR-032). See gap G-01.
+- **Enforcement:** `fn_validate_kubo_assignment` locks the kubo and checks for
+  overlaps in the same transaction as the insert or update (BR-032), returning
+  `400 Kubo is not available for the selected dates.` The exclusion constraint
+  `reserved_kubo_no_overlap` (`btree_gist`, added by
+  `20261116_add_reserved_kubo_overlap_exclusion.sql`) backs this up in the database:
+  `EXCLUDE USING gist (kubo_id WITH =, daterange(check_in_date, check_out_date, '[)') WITH &&) WHERE (status IN ('Reserved', 'CheckedIn'))`.
+  The range is half-open, so a stay may start on another stay's check-out date.
+  Before the constraint is added, `20261116_add_reserved_kubo_overlap_cleanup.sql`
+  moves assignments still `Reserved`/`CheckedIn` under a `Cancelled`, `NoShow`, or
+  `CheckedOut` reservation to the matching inactive status (the procedures already
+  ignore them), and fails listing every remaining double booking.
+  `20261117_harden_data_integrity_backstops.sql` adds the constraint if it is
+  missing and fails startup if `btree_gist` cannot be created. A `23P01` from the
+  constraint is returned as `400 Kubo is not available for the selected dates.` Gap
+  G-01 is resolved.
 
 #### BR-032 — Availability checks must be atomic
 - **Rule:** The overlap check and the reservation/assignment insert (or update) must
@@ -934,11 +954,16 @@ instead (retained from old rule `l`).
 #### BR-073 — Timestamps
 - **Rule:** `created_at`, `reserved_at`, `payment_date`, `charge_date`, and audit
   `created_at` are system-generated and must not be supplied by the client.
-  `updated_at` is application-managed; the DDL has no update trigger.
+  `updated_at` on `guest`, `employee`, and `additional_charge_catalog` is set by a
+  `BEFORE UPDATE` trigger (`kubo.fn_set_updated_at`, added by
+  `20261116_add_updated_at_triggers.sql`, corrected by
+  `20261117_harden_data_integrity_backstops.sql`) whenever a row actually changes.
+  The comparison ignores `updated_at` itself, so a no-op update keeps the previous
+  value even when a procedure sets `updated_at`.
 - **Entities:** `guest`, `employee`, `reservation`, `payment`, `additional_charge`,
   `audit_log`
-- **Enforcement:** Defaults in the DDL; client-side immutability and `updated_at`
-  maintenance are application-level.
+- **Enforcement:** Defaults in the DDL and the `updated_at` triggers; client-side
+  immutability is application-level.
 
 #### BR-074 — Concurrency and status consistency
 - **Rule:** Availability, payment, and status-changing operations must serialize on the
@@ -1117,11 +1142,11 @@ instead (retained from old rule `l`).
 
 | ID | Gap | Consequence |
 |---|---|---|
-| **G-01** | No exclusion constraint or unique constraint prevents overlapping `reserved_kubo` date ranges. | Double bookings are possible unless the application/procedure checks and locks atomically. |
+| **G-01 (resolved 2026-11-16)** | The exclusion constraint `reserved_kubo_no_overlap` rejects overlapping `Reserved`/`CheckedIn` date ranges for the same kubo. | The procedures still check and lock first and return their own `400`; the constraint (`23P01`, also mapped to `400`) catches writes that bypass them. Startup fails until `btree_gist` can be created, so the constraint is never silently missing. |
 | **G-02** | No `is_active` flag on `kubo_type`. | A kubo type cannot be deactivated; only its kubos can be taken out of service. |
-| **G-03** | No unique constraint on (`valid_id_type`, `id_number`). | Duplicate guest IDs can be stored unless the application checks; concurrent requests can still race. |
+| **G-03 (resolved 2026-10-31)** | The unique index `guest_valid_id_unique` covers (`valid_id_type`, `lower(id_number)`). | Duplicate guest IDs are rejected by the database, including concurrent requests. |
 | **G-04** | No soft-delete flag on `guest` or `kubo`. | Records without references can be hard-deleted; history policy must be enforced operationally. |
-| **G-05** | No database constraint requires at least one `reserved_kubo` per reservation. | Header-only reservations are possible unless the procedure enforces the invariant. |
+| **G-05 (resolved 2026-11-16)** | Deferred constraint triggers require every reservation to keep at least one `reserved_kubo` row at commit. | Header-only reservations are rejected (`23514`). `fn_delete_reservation` deletes the assignments before the reservation; the check skips a reservation that no longer exists at commit. Reservations created without assignments before the triggers existed are not rechecked. |
 | **G-06** | The DDL has no `total_reservation_amount`, but the ERD/backend code still reference a total amount, and the ERD's `AUDIT_LOG` has `ip_address`, which the DDL lacks. | Totals must be derived; the ERD and backend schema are stale and must not be treated as the source of truth. |
 | **G-07 (resolved 2026-11-08)** | Payment corrections now store a description and links to the applied charge or Adjustment they reference. Completed Adjustments reduce the bill; completed Reversals offset an Adjustment. | Actual refunds remain separate Refund transactions; Adjustment/Reversal amounts are derived separately from cash `net_paid`. |
 | **G-08** | No party-size/guest-count column on `reservation` or `reserved_kubo`. | The system cannot validate occupancy against `kubo_type.capacity`; staff must do it manually. |
@@ -1130,8 +1155,8 @@ instead (retained from old rule `l`).
 | **G-11** | No Schedule table; availability is derived from `reserved_kubo`. | The old real-time schedule table rule cannot be implemented as described. |
 | **G-12** | No separate cancellation table; cancellation is stored on `reservation`. | Old `Cancellation` entity rules are replaced by BR-035. |
 | **G-13** | `audit_log.employee_id` is `NOT NULL`, so failed login attempts by unknown users cannot be recorded. | Authentication-failure auditing needs a schema change or a designated system employee. |
-| **G-14** | No database triggers enforce status-transition or timestamp-consistency rules. | All lifecycle rules depend on the application/procedure layer. |
-| **G-15** | No explicit `updated_at` trigger. | `updated_at` will be stale unless the application sets it on every update. |
+| **G-14** | No database triggers enforce status-transition rules. (Triggers now maintain `updated_at` (G-15) and require a kubo per reservation (G-05).) | All lifecycle rules depend on the application/procedure layer. |
+| **G-15 (resolved 2026-11-16)** | `BEFORE UPDATE` triggers maintain `updated_at` on `guest`, `employee`, and `additional_charge_catalog`. | `updated_at` changes whenever a row changes, even for writes outside the procedures; no-op updates leave it unchanged. |
 | **G-16** | Applied `additional_charge` rows have no status/void flag; approval status lives in `additional_charge_request`. | Applied charges remain append-only after settlement; corrections are new records or payment adjustments. |
 
 ---
@@ -1146,7 +1171,7 @@ instead (retained from old rule `l`).
 | d — shift schedule, date_hired, employment state | Removed; fields no longer exist | — |
 | e — time_in/time_out vs shift | Removed; no attendance tables | — |
 | f — Customer name and PH contact number | Retained as guest | BR-009, BR-012 |
-| g — valid ID types and unique ID per type | Retained; enum expanded; uniqueness is app-level | BR-011, G-03 |
+| g — valid ID types and unique ID per type | Retained; enum expanded; uniqueness is enforced by a unique index | BR-011, G-03 |
 | h — reservation guest/staff, no deletion on termination | Retained | BR-007, BR-027, BR-072 |
 | i — table/time-slot/party-size reservation | Replaced by date-range kubo booking; party size unsupported | BR-029, BR-031, G-08 |
 | j — reservation status and cancellation record | Revised to current enum and cancellation columns | BR-033, BR-035 |
