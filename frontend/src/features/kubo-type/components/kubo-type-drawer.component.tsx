@@ -75,7 +75,8 @@ export const KuboTypeDrawer: React.FC<KuboTypeDrawerProps> = ({
   const pct = changed && oldRate ? ((current! - oldRate) / oldRate) * 100 : 0;
 
   const submit = async () => {
-    const v = await form.validateFields();
+    const v = await form.validateFields().catch(() => null);
+    if (!v) return; // Field errors are already shown inline.
     await onSubmit({
       kuboTypeName: v.kuboTypeName.trim(),
       kuboTypeCapacity: v.kuboTypeCapacity,
