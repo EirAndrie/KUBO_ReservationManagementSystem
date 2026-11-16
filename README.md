@@ -382,6 +382,7 @@ Some `docs/*.md` files describe an older target layout (for example an `/api` ba
 - Refunds recorded before `20261114_link_refunds_to_original_payment.sql` are linked by a backfill from their audit description; any refund whose description could not be matched stays unlinked.
 - Page-1 of the draw.io ERDs predates the uuid keys and derived totals. The "Charges, payments & auth (2026-11)" page covers the newer tables; the migrations remain the source of truth.
 - The additional-charge migration skips its routines if the `kubo_additional_charges_management` schema does not exist.
+- The double-booking exclusion constraint (`reserved_kubo_no_overlap`) needs the `btree_gist` extension. If the database user cannot install it, startup fails with a message saying so (`20261117_harden_data_integrity_backstops.sql`) until a database owner installs it. Startup also fails, listing every conflict, if existing data already contains a double booking between active reservations; assignments left active under cancelled, no-show, or checked-out reservations are repaired automatically first.
 - Catalog rows created before the ₱800,000.00 unit-price cap remain readable and applicable until an Administrator corrects them on their next edit; the cap constraint is `NOT VALID` so deployment is not blocked by existing data.
 
 ---

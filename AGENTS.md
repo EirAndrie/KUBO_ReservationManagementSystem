@@ -116,7 +116,8 @@ backend/src/modules/<feature>/
   `handleControllerError(...)`.
 - Error handling is per-controller: `throw new AppError(status, message)`, catch in
   the controller, then call `handleControllerError`. `mapDatabaseError` maps
-  `23505`/`23514`/`22023` -> `400`, `23503` -> `409`, `P0002` -> `404`, `42501` -> `403`.
+  `23505`/`23514`/`22023` -> `400`, `23P01` -> `400` (fixed message), `23503` -> `409`,
+  `P0002` -> `404`, `42501` -> `403`.
 - Response envelopes differ by module (`data`, `guests`, `payments`,
   `overpaymentApprovals`, raw arrays). Match the module you are editing.
 
@@ -167,8 +168,9 @@ frontend/src/
 - Validate external input with Zod before business logic: bodies at the route,
   query/path values in the controller or `requireUuidParam`.
 - PostgreSQL is the constraint authority, but some invariants are application-only.
-  `docs/business_rules.md` lists the gaps (overlapping stays, at-least-one-kubo,
-  status transitions).
+  `docs/business_rules.md` lists the gaps (for example status transitions, G-14).
+  Overlapping stays and at-least-one-kubo are enforced in the database as well as
+  in the procedures (G-01, G-05).
 - Reservation totals, charges, net paid, and balances are derived
   (`fn_get_reservation_balance`), never stored. `reservationTotalAmount` in the
   backend reservation schema is stale (BR-040/G-06).
@@ -224,6 +226,12 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
 - `20261108_fix_reservation_delete_and_payment_adjustments.sql`
 - `20261114_add_overpayment_approval.sql`, `20261114_add_token_revocation.sql`,
   `20261114_link_refunds_to_original_payment.sql`
+- Data-integrity backstops: `20261116_add_reserved_kubo_overlap_cleanup.sql`,
+  `20261116_add_reserved_kubo_overlap_exclusion.sql` (G-01),
+  `20261116_require_reservation_kubo_assignment.sql` (G-05),
+  `20261116_add_updated_at_triggers.sql` (G-15), and
+  `20261117_harden_data_integrity_backstops.sql` (fixes for all three; fails startup
+  if `btree_gist` is unavailable).
 
 ### Known gaps and risks
 
