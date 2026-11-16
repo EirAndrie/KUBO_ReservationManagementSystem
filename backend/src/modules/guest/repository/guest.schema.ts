@@ -108,3 +108,43 @@ export type UpdateGuestDTO = z.infer<typeof UpdateGuestSchema>;
 
 // Response DTO
 export type GuestResponseDTO = z.infer<typeof GuestSchema>;
+
+const MAX_STAY_STATS_GUESTS = 100;
+
+/**
+ * `GET /guests/stay-stats?guestIds=<uuid>,<uuid>` — the guests on one list
+ * page (1 to 100 distinct ids, comma-separated).
+ */
+export const GuestStayStatsQuerySchema = z.object({
+      // A missing or repeated parameter (undefined or an array) gets the same
+      // contract message as an empty one.
+      guestIds: z
+            .string({ message: "guestIds is required" })
+            .trim()
+            .min(1, { message: "guestIds is required" })
+            .transform((value) => [
+                  ...new Set(
+                        value
+                              .split(",")
+                              .map((id) => id.trim())
+                              .filter(Boolean),
+                  ),
+            ])
+            .pipe(
+                  z
+                        .array(z.string().uuid({ message: "Invalid guest ID" }))
+                        .min(1, { message: "guestIds is required" })
+                        .max(MAX_STAY_STATS_GUESTS, {
+                              message: `At most ${MAX_STAY_STATS_GUESTS} guest IDs per request`,
+                        }),
+            ),
+});
+
+export interface GuestStayStatsDTO {
+      guest_id: string;
+      reservations_count: number;
+      stays: number;
+      last_stay: string | null;
+      upcoming: boolean;
+      is_returning: boolean;
+}

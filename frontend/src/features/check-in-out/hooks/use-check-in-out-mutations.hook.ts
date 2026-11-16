@@ -6,6 +6,14 @@ import { checkInOutKeys } from './use-check-in-out.hook';
 import type { CheckInOutActionParams } from '../types/check-in-out.types';
 
 /**
+ * The guest list's stay stats (`guestKeys.stayStatsAll()` in the guest feature).
+ * Check-in and check-out change `last_stay` and the Returning badge. The key is
+ * written out, like `['kubos']` below, so this feature does not import the guest
+ * barrel and add another cross-feature cycle.
+ */
+const GUEST_STAY_STATS_KEY = ['guests', 'stay-stats'] as const;
+
+/**
  * Mutation hook to check in a reserved kubo assignment (BR-058, BR-060).
  */
 export function useCheckInKubo() {
@@ -19,6 +27,7 @@ export function useCheckInKubo() {
       queryClient.invalidateQueries({ queryKey: checkInOutKeys.operationalQueue() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
     },
   });
 }
@@ -37,6 +46,7 @@ export function useApproveEarlyCheckIn() {
       queryClient.invalidateQueries({ queryKey: checkInOutKeys.operationalQueue() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
     },
   });
 }
@@ -56,6 +66,7 @@ export function useCheckOutKubo() {
       queryClient.invalidateQueries({ queryKey: checkInOutKeys.operationalQueue() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
     },
   });
 }

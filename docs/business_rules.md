@@ -257,6 +257,16 @@ The DDL has no permission table, so this matrix is enforced by the application.
 - **Enforcement:** `reservation.guest_id` uses `ON DELETE RESTRICT`. See gap G-04 for
   guests without reservations.
 
+**Guest stay statistics (display only, not enforced).** The guest list shows figures
+from `kubo_guest_management.fn_get_guest_stay_stats` (`GET /guests/stay-stats`):
+- a **stay** is a reservation that is not `Cancelled` or `NoShow`;
+- **last stay** is the latest start of a stay that actually began (`CheckedIn` or
+  `CheckedOut`);
+- **upcoming** means a `Pending` or `Confirmed` reservation starts after today
+  (Asia/Manila);
+- a **returning guest** has two or more stays and at least one `CheckedOut`
+  reservation, that is, has stayed before and booked again.
+
 ---
 
 ## 5. Kubo Types, Kubos, and Rates

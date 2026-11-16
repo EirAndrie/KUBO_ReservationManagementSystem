@@ -2,6 +2,7 @@ import type {
       CreateGuestDTO,
       UpdateGuestDTO,
       GuestResponseDTO,
+      GuestStayStatsDTO,
 } from "./guest.schema";
 import { db } from "../../../config/connectDB";
 import { mapDatabaseError } from "../../../utils/http";
@@ -255,5 +256,37 @@ export const searchGuests = async (params: {
                   stack: error.stack,
             });
             throw mapDatabaseError(error, "Failed to search guests in database");
+      }
+};
+
+/**
+ * Stay statistics for a set of guests via `fn_get_guest_stay_stats`
+ * (migration `20261116_add_guest_stay_stats.sql`). Unknown ids are omitted;
+ * guests without reservations get zeros. `last_stay` is `YYYY-MM-DD`.
+ */
+export const getGuestStayStats = async (
+      guestIds: string[],
+): Promise<GuestStayStatsDTO[]> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT
+                        guest_id,
+                        reservations_count,
+                        stays,
+                        to_char(last_stay, 'YYYY-MM-DD') AS last_stay,
+                        upcoming,
+                        is_returning
+                  FROM kubo_guest_management.fn_get_guest_stay_stats($1::uuid[])
+                  `,
+                  [guestIds],
+            );
+            return result.rows;
+      } catch (error: any) {
+            logger.error("Failed to load guest stay stats from database", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to load guest stay stats");
       }
 };

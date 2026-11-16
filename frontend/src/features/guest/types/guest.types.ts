@@ -119,3 +119,25 @@ export interface GuestReservationsApiResponse {
   message: string;
   reservations: GuestReservationHistoryItem[];
 }
+
+/** `GET /guests/stay-stats` row (backend guest `API_CONTRACT.md`). */
+export interface GuestStayStats {
+  guest_id: string;
+  /** Every reservation, any status; any reservation blocks deletion (BR-015). */
+  reservations_count: number;
+  /** Reservations that are not Cancelled or NoShow. */
+  stays: number;
+  /** Latest stay start (`YYYY-MM-DD`) among those stays. */
+  last_stay: string | null;
+  /** A Pending/Confirmed reservation starts after today (resort time). */
+  upcoming: boolean;
+  /** Two or more stays, at least one of them checked out. */
+  is_returning: boolean;
+}
+
+export interface GuestStayStatsApiResponse {
+  success: boolean;
+  count: number;
+  message: string;
+  stats: GuestStayStats[];
+}

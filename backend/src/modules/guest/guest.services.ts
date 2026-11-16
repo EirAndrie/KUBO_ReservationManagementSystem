@@ -7,6 +7,7 @@ import {
       updateGuest,
       deleteGuest,
       searchGuests,
+      getGuestStayStats,
 } from "./repository/guest.repository";
 import { AppError } from "../../utils/http";
 import type { CreateGuestDTO, UpdateGuestDTO } from "./repository/guest.schema";
@@ -105,4 +106,12 @@ export const searchGuestsService = async (params: {
                   offset: params.pagination.offset,
             },
       });
+};
+
+/**
+ * Stays, last stay, upcoming booking, Returning flag, and reservation count
+ * for the guests on one list page. Read-only.
+ */
+export const getGuestStayStatsService = async (guestIds: string[]) => {
+      return getGuestStayStats(guestIds);
 };

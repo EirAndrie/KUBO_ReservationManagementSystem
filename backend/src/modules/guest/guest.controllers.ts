@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import type { CreateGuestDTO, UpdateGuestDTO } from "./repository/guest.schema";
-import { GuestFilterSchema } from "./repository/guest.schema";
+import {
+      GuestFilterSchema,
+      GuestStayStatsQuerySchema,
+} from "./repository/guest.schema";
 import { AppError, getPagination, handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
 import {
@@ -10,6 +13,7 @@ import {
       updateGuestService,
       deleteGuestService,
       searchGuestsService,
+      getGuestStayStatsService,
 } from "./guest.services";
 
 export const createGuestController = async (req: Request, res: Response) => {
@@ -138,6 +142,39 @@ export const deleteGuestController = async (req: Request, res: Response) => {
             });
       } catch (error: any) {
             logger.error("Failed to delete Guest", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+/** `GET /guests/stay-stats?guestIds=<uuid>,<uuid>` (1 to 100 ids). */
+export const getGuestStayStatsController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const query = GuestStayStatsQuerySchema.safeParse({
+                  guestIds: req.query.guestIds,
+            });
+            if (!query.success) {
+                  throw new AppError(
+                        400,
+                        query.error.issues.map((issue) => issue.message).join("; "),
+                  );
+            }
+
+            const stats = await getGuestStayStatsService(query.data.guestIds);
+
+            res.status(200).json({
+                  success: true,
+                  count: stats.length,
+                  message: "Guest stay stats loaded",
+                  stats,
+            });
+      } catch (error: any) {
+            logger.error("Failed to load guest stay stats", {
                   message: error.message,
                   stack: error.stack,
             });
