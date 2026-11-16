@@ -140,6 +140,7 @@ values return `400 Invalid guestId format`.
 |---|---|---|---|
 | `POST` | `/guests` | Staff | Create a guest or reuse an existing one |
 | `GET` | `/guests` | Authenticated | List/search guests |
+| `GET` | `/guests/stay-stats` | Authenticated | Stay statistics for up to 100 guests |
 | `GET` | `/guests/:guestId` | Authenticated | Get one guest |
 | `PATCH` | `/guests/:guestId` | Staff | Update a guest profile |
 | `DELETE` | `/guests/:guestId` | Administrator | Delete an unused guest |
@@ -354,6 +355,60 @@ Behavior notes:
 ### 4.5 Side effects
 
 None.
+
+---
+
+## 4A. `GET /guests/stay-stats`
+
+Stay statistics for the guests on one list page, computed across all of each
+guest's reservations (used for the Stays and Last stay columns, the Returning
+badge, the Has upcoming stay filter, and delete eligibility).
+
+### 4A.1 Access
+
+Any authenticated employee. Registered before `/:guestId`, so `stay-stats` is
+not read as a guest id.
+
+### 4A.2 Query parameters
+
+| Parameter | Type | Required | Constraints |
+|---|---|---:|---|
+| `guestIds` | string | Yes | Comma-separated guest UUIDs; duplicates and blanks are ignored; 1–100 distinct ids |
+
+### 4A.3 Success response — `200 OK`
+
+| Field | Type | Nullable | Notes |
+|---|---|---:|---|
+| `success` | boolean | No | Always `true` |
+| `count` | integer | No | Number of rows returned |
+| `message` | string | No | `Guest stay stats loaded` |
+| `stats` | array | No | One row per requested guest that exists, in no particular order; unknown ids are omitted |
+
+Each row:
+
+| Field | Type | Nullable | Notes |
+|---|---|---:|---|
+| `guest_id` | string (UUID) | No | |
+| `reservations_count` | integer | No | Every reservation, any status. A guest with any reservation cannot be deleted (BR-015). |
+| `stays` | integer | No | Reservations that are not `Cancelled` or `NoShow` |
+| `last_stay` | string | Yes | Latest stay start (`YYYY-MM-DD`) among those stays; a stay starts at its earliest assignment check-in |
+| `upcoming` | boolean | No | A `Pending` or `Confirmed` reservation starts after today (Asia/Manila) |
+| `is_returning` | boolean | No | `stays >= 2` |
+
+### 4A.4 Business rules and failures
+
+| Condition | Status | Message |
+|---|---:|---|
+| `guestIds` missing or empty | `400` | `guestIds is required` |
+| An id is not a UUID | `400` | `Invalid guest ID` |
+| More than 100 distinct ids | `400` | `At most 100 guest IDs per request` |
+| Not authenticated | `401` | `Authentication required` |
+| Unexpected database failure | `500` | `Failed to load guest stay stats` |
+
+### 4A.5 Side effects
+
+None. Runs `kubo_guest_management.fn_get_guest_stay_stats` (migration
+`20261116_add_guest_stay_stats.sql`).
 
 ---
 

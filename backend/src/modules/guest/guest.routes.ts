@@ -5,6 +5,7 @@ import {
       getGuestByIdController,
       updateGuestController,
       deleteGuestController,
+      getGuestStayStatsController,
 } from "./guest.controllers";
 import { CreateGuestSchema, UpdateGuestSchema } from "./repository/guest.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
@@ -19,6 +20,8 @@ router.post(
       createGuestController,
 );
 router.get("/", getAllGuestsController);
+// Registered before "/:guestId" so the path is not read as a guest id.
+router.get("/stay-stats", getGuestStayStatsController);
 router.get("/:guestId", requireUuidParam("guestId"), getGuestByIdController);
 router.patch(
       "/:guestId",
