@@ -5,6 +5,7 @@ import { reservationKeys } from './use-reservations.hook';
 import { guestKeys } from '@/features/guest';
 import type {
   CreateReservationDTO,
+  CreateAssignmentDTO,
   UpdateReservationDTO,
   CancelReservationDTO,
   BookingSource,
@@ -103,6 +104,32 @@ export function useEditReservation() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.detail(vars.reservationId) });
       queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
+    },
+  });
+}
+
+/**
+ * Hook to add a kubo assignment to a Pending or Confirmed reservation (BR-037).
+ * The server re-checks availability, snapshots the kubo type's current nightly
+ * rate, and writes the audit row; the client never computes totals. Refreshes on
+ * settle because the server may have applied the write before failing later.
+ */
+export function useAddAssignment() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation({
+    mutationFn: ({ reservationId, data }: { reservationId: string; data: CreateAssignmentDTO }) =>
+      reservationService.assignKubo(reservationId, data),
+    successMessage: 'Kubo added to the reservation.',
+    onSettled: (_data, _error, vars) => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      // Guest list stays, Returning badge, and delete eligibility.
+      queryClient.invalidateQueries({ queryKey: guestKeys.stayStatsAll() });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.detail(vars.reservationId) });
+      queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
+      // A newly assigned unit may flip to Reserved in the kubo board.
+      queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
     },
   });
 }

@@ -175,6 +175,8 @@ Create a reservation with at least one assignment. The backend takes the acting 
 
 Reservation totals and balances are derived from assignments, charges, and payments. Do not send or store a client-computed reservation total.
 
+The reservation detail page's `⋯` menu uses `POST /reservations/:reservationId/kubos` as **Add kubo**: Staff can attach another kubo, with its own date range, to a Pending or Confirmed reservation before any check-in (BR-037). The form sends only `kuboId`, `checkInDate`, and `checkOutDate`; availability, the rate snapshot, totals, and the audit row are the server's.
+
 ### Payments and refunds
 
 Create a payment at `POST /reservations/:reservationId/payments` with:
