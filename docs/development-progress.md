@@ -3,7 +3,7 @@
 Ordered by database dependencies so each entity can be built on top of the
 previous one.
 
-**Last updated:** 2026-11-16
+**Last updated:** 2026-11-17
 
 | Order | Entity | Status | Notes |
 |---:|---|---|---|
@@ -72,7 +72,7 @@ previous one.
 ## Next up
 
 1. Run the Postman collection (read-only and write tests) and the Admin/Staff checklist (`docs/admin-staff-test-checklist.md`) against the deployed stack before submission.
-2. Bootstrap the additional-charge management schema safely when it is absent (the migration currently skips its routines).
+2. Rebase `feat/day-use-bookings` work in December (see Planned work).
 
 ## Planned work
 
@@ -154,13 +154,21 @@ previous one.
   logs, and entity-history reads.
 - Authentication, route-level RBAC, the actor refactors, the audit migrations, and the
   audit read/write wiring are committed on `main`.
-- The additional-charge migration expects the pre-existing
-  `kubo_additional_charges_management` schema and skips its routines if that schema is
-  absent. The payment migration creates `kubo_payment_management` itself.
+- `20240921_baseline_core_schema.sql` creates the core tables, enum types and the
+  routine schemas (`kubo_additional_charges_management`, `kubo_employee_management`,
+  `kubo_guest_management`, `kubo_kubo_type_management`, `kubo_management`,
+  `kubo_role_management`) that the "harden" migrations require, so none of them skips
+  itself on a new database. It is idempotent and a no-op where the objects exist. It was
+  verified by migrating an empty database, seeding it, running a full reservation,
+  payment, check-out and delete-guard flow, and comparing its tables, columns,
+  constraints, indexes, enums, schemas and triggers with the existing schema (equal apart
+  from `kubo.role` text/varchar typing and unused legacy routines).
+  `20261118_reapply_reservation_charge_request_delete_guard.sql` reinstalls the delete
+  guard that originally skipped itself on a new database. The payment migration creates
+  `kubo_payment_management` itself.
 - The authentication migration (`20261103_add_auth_management.sql`) creates
   `kubo_auth_management.get_login_credentials` and `get_authenticated_employee`. The base
-  `employee` table and `role_status` enum remain pre-existing schema and are not created
-  by the migrations in this repository.
+  `employee` table and `role_status` enum are created by the baseline migration above.
 - Role and employee management, audit-log reads, configuration writes, charge
   Adjustments/Reversals, and request review are Administrator-only. Guest and
   reservation writes, assignments, check-in/out, routine payments/refunds, and charge
