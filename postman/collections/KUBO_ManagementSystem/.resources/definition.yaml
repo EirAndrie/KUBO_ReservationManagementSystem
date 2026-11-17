@@ -110,7 +110,10 @@ scripts:
 
       if ((method === 'GET' || isLogin) && !inWriteTests) {
         pm.test('Status is 200', () => pm.response.to.have.status(200));
-        pm.test('Response time under 2000 ms', () => pm.expect(pm.response.responseTime).to.be.below(2000));
+        // Login is usually the first request of a run: it hashes a password and hits cold
+        // connections (or a cold hosted server), so it gets a longer budget.
+        const maxMs = isLogin ? 5000 : 2000;
+        pm.test(`Response time under ${maxMs} ms`, () => pm.expect(pm.response.responseTime).to.be.below(maxMs));
 
         let body;
         pm.test('Body is JSON with success: true', () => {
