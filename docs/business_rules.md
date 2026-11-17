@@ -850,9 +850,13 @@ instead (retained from old rule `l`).
   before that date is allowed only when `early_check_in_approved = true` has been set by
   an authorized employee and the approval is audited. Check-in must not occur on or
   after `check_out_date`. Scheduled times are advisory, not hard constraints.
-- **Entities:** `reserved_kubo`, `audit_log`
+- **Standard times and fees (issue #107):** the standard stay is 12:00 on `check_in_date`
+  to 12:00 on `check_out_date`, resort time (Asia/Manila). Checking in earlier than 12:00
+  on `check_in_date` adds an `EarlyCheckIn` charge of PHP 150.00 per hour before 12:00 (a
+  part hour counts as a full hour). The fee is added by the check-in itself.
+- **Entities:** `reserved_kubo`, `additional_charge`, `audit_log`
 - **Enforcement:** Application-level validation. The DDL stores the approval boolean
-  but does not enforce the date rule.
+  but does not enforce the date rule. The early fee is written by `fn_check_in_reserved_kubo`.
 
 #### BR-060 — Recording check-in
 - **Rule:** Check-in records `actual_check_in_datetime`, sets the assignment's
@@ -872,8 +876,13 @@ instead (retained from old rule `l`).
 #### BR-062 — Check-out preconditions
 - **Rule:** Check-out is allowed only for an assignment whose
   `reserved_kubo.status = 'CheckedIn'` and whose reservation is `CheckedIn`.
-- **Entities:** `reserved_kubo`, `reservation`
-- **Enforcement:** Application-level state check.
+- **Late check-out (issue #107):** checking out after 12:00 on `check_out_date` carries a
+  `LateCheckOut` charge of PHP 150.00 per hour past 12:00 (a part hour counts as a full
+  hour). Check-out is refused until Staff has applied the fee; BR-064 then requires the
+  guest to settle it. The fee is fixed when applied.
+- **Entities:** `reserved_kubo`, `reservation`, `additional_charge`
+- **Enforcement:** Application-level state check. The late-fee requirement is enforced in
+  `fn_check_out_reserved_kubo`; the fee is applied by `fn_apply_late_check_out_fee`.
 
 #### BR-063 — Recording check-out and reserving status aggregation
 - **Rule:** Check-out records `actual_check_out_datetime`, sets the assignment status to

@@ -6,6 +6,7 @@ import { RecordPaymentModal } from '@/features/payment';
 import { Callout, StatusBadge } from '@/components/common';
 import { formatMoney, formatStayRange, label, maskId, nightsBetween, pluralize, toAmount } from '@/lib/format';
 import { useApproveEarlyCheckIn, useCheckInKubo } from '../hooks/use-check-in-out-mutations.hook';
+import { useTimeFees } from '../hooks/use-check-in-out.hook';
 import type { ArrivalRecord } from '../types/check-in-out.types';
 import { isKuboReady } from '../utils/kubo-readiness';
 import styles from './check-in-drawer.module.css';
@@ -37,13 +38,19 @@ const CheckInDrawerContent: React.FC<CheckInDrawerProps> = ({ arrival, kuboStatu
   const [keyHanded, setKeyHanded] = useState(false);
   const [payment, setPayment] = useState<PaymentChoice>('checkout');
   const [collectOpen, setCollectOpen] = useState(false);
+  const [collectAmount, setCollectAmount] = useState(0);
   const checkIn = useCheckInKubo();
   const approveEarly = useApproveEarlyCheckIn();
   const guest = useGuest(arrival?.reservation.guest_id);
+  const timeFees = useTimeFees(arrival?.reservation.reservation_id, arrival?.assignment.kubo_id);
 
   const reservation = arrival?.reservation;
   const assignment = arrival?.assignment;
   const balance = toAmount(reservation?.outstanding_balance);
+  // Early check-in fee (issue #107): added to the bill by the check-in itself.
+  const earlyHours = timeFees.data && !timeFees.data.early_applied ? timeFees.data.early_hours : 0;
+  const earlyFee = earlyHours > 0 ? toAmount(timeFees.data?.early_fee) : 0;
+  const balanceAfterCheckIn = balance + earlyFee;
   const ready = isKuboReady(kuboStatus);
   const needsEarlyApproval = Boolean(arrival?.isEarly && !assignment?.early_check_in_approved);
   const pending = checkIn.isPending || approveEarly.isPending;
@@ -55,8 +62,11 @@ const CheckInDrawerContent: React.FC<CheckInDrawerProps> = ({ arrival, kuboStatu
       if (needsEarlyApproval) {
         await approveEarly.mutateAsync({ reservationId: reservation.reservation_id, kuboId: assignment.kubo_id });
       }
+      // Frozen now: the reservation refetches after check-in and would otherwise double count the fee.
+      const dueAfterCheckIn = balanceAfterCheckIn;
       await checkIn.mutateAsync({ reservationId: reservation.reservation_id, kuboId: assignment.kubo_id });
-      if (payment === 'now' && balance > 0) {
+      if (payment === 'now' && dueAfterCheckIn > 0) {
+        setCollectAmount(dueAfterCheckIn);
         setCollectOpen(true);
       } else {
         onClose();
@@ -124,6 +134,14 @@ const CheckInDrawerContent: React.FC<CheckInDrawerProps> = ({ arrival, kuboStatu
           </Callout>
         )}
 
+        {earlyHours > 0 && (
+          <Callout tone="warn" style={{ marginBottom: 16 }}>
+            Check-in is {earlyHours} h before the standard 12:00 check-in time. An early check-in fee of{' '}
+            <strong className="tabular">{formatMoney(earlyFee)}</strong> ({earlyHours} h at{' '}
+            {formatMoney(timeFees.data?.hourly_rate)}/h) is added to the bill when you confirm.
+          </Callout>
+        )}
+
         <div className={styles.sectionTitle}>Before handing over the key</div>
         <div className={styles.checklist}>
           <Checkbox checked={idChecked} onChange={(e) => setIdChecked(e.target.checked)}>
@@ -139,10 +157,10 @@ const CheckInDrawerContent: React.FC<CheckInDrawerProps> = ({ arrival, kuboStatu
 
         <div className={styles.sectionTitle}>Payment</div>
         <div className={styles.balanceRow}>
-          <span>Balance due</span>
-          <strong className="tabular">{formatMoney(balance)}</strong>
+          <span>{earlyFee > 0 ? 'Balance due after check-in' : 'Balance due'}</span>
+          <strong className="tabular">{formatMoney(balanceAfterCheckIn)}</strong>
         </div>
-        {balance > 0 && (
+        {balanceAfterCheckIn > 0 && (
           <Segmented<PaymentChoice>
             value={payment}
             onChange={setPayment}
@@ -164,9 +182,9 @@ const CheckInDrawerContent: React.FC<CheckInDrawerProps> = ({ arrival, kuboStatu
           }}
           reservationId={reservation.reservation_id}
           referenceCode={reservation.reference_code}
-          outstandingBalance={balance}
+          outstandingBalance={collectAmount}
           netPaid={toAmount(reservation.net_paid)}
-          defaultAmount={balance}
+          defaultAmount={collectAmount}
         />
       )}
     </>

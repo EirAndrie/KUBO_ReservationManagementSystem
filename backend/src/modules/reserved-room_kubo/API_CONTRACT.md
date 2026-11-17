@@ -153,6 +153,8 @@ Times must use `HH:MM` or `HH:MM:SS` (24-hour).
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-in` | Staff | Record check-in |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-out` | Staff | Record check-out |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/early-check-in` | Staff | Approve early check-in |
+| `GET` | `/reservations/:reservationId/kubos/:kuboId/time-fees` | Authenticated | Early check-in and late check-out fee preview (section 13) |
+| `POST` | `/reservations/:reservationId/kubos/:kuboId/late-check-out-fee` | Staff | Put the late check-out fee on the bill (section 13) |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/reassign` | Staff | Replace a Reserved kubo with another for the same dates |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/no-show` | Staff | Mark a never-checked-in assignment NoShow after its dates pass |
 
@@ -743,6 +745,57 @@ Staff only.
   was set to Out of Service or Maintenance keeps that status.
 - Writes two `kubo.audit_log` rows on the reservation (`Create` for the new kubo,
   `Delete` for the old one).
+
+---
+
+## 13. Early check-in and late check-out fees (issue #107)
+
+The standard stay runs from **12:00 on `check_in_date` to 12:00 on `check_out_date`**,
+resort time (Asia/Manila, the database clock). Time outside it is billed at
+**PHP 150.00 per hour, a part hour counting as a full hour**.
+
+| When | Fee | How it reaches the bill |
+|---|---|---|
+| Check-in before 12:00 on `check_in_date` (or on an earlier approved date) | `EarlyCheckIn` charge, whole hours before 12:00 | Added automatically inside `PATCH .../check-in` |
+| Check-out after 12:00 on `check_out_date` | `LateCheckOut` charge, whole hours after 12:00 | Staff applies it with `POST .../late-check-out-fee`; `PATCH .../check-out` is refused until then |
+
+Both are ordinary `additional_charge` rows (`quantity` = hours, `unit_amount` = 150.00),
+so they count in the balance, show in the charge list, and are audited. At most one
+fee of each type exists per kubo per reservation. The fee is fixed when it is applied:
+settling the balance later does not add hours.
+
+### 13.1 `GET /reservations/:reservationId/kubos/:kuboId/time-fees`
+
+Any authenticated employee. Read-only. Response key **`timeFees`**:
+
+| Field | Type | Notes |
+|---|---|---|
+| `hourly_rate` | string (decimal) | `150.00` |
+| `early_hours`, `early_fee`, `early_applied` | integer, string, boolean | Fee for a `Reserved` assignment if checked in now, or the billed fee once applied |
+| `late_hours`, `late_fee`, `late_applied` | integer, string, boolean | Fee for a `CheckedIn` assignment if checked out now, or the billed fee once applied |
+
+Failures: `404` `Reserved kubo does not exist.`
+
+### 13.2 `POST /reservations/:reservationId/kubos/:kuboId/late-check-out-fee`
+
+Staff only; no body. Idempotent: a repeat call returns the fee already applied.
+Response key **`lateFee`**: `{ charge_id, hours, amount }`.
+
+| Condition | Status | Message |
+|---|---:|---|
+| Reservation or assignment does not exist | `404` | `Reservation does not exist.` / `Reserved kubo does not exist.` |
+| Assignment is not `CheckedIn` | `400` | `Only a CheckedIn kubo can be charged a late check-out fee.` |
+| Not past 12:00 on `check_out_date` | `400` | `No late check-out fee applies.` |
+| Not authenticated / not Staff | `401` / `403` | `Authentication required` / `Insufficient privileges` |
+
+Writes one `additional_charge` audit row (`Create`).
+
+### 13.3 Changes to existing endpoints
+
+- `PATCH .../check-in` adds the early fee in the same transaction when it applies.
+- `PATCH .../check-out` returns `400` `A late check-out fee applies (<n> hour(s) past 12:00). Apply the fee before checking out.`
+  when a late fee is due and not yet applied. After it is applied the zero-balance rule
+  (BR-064) makes the guest settle it before check-out completes.
 
 - The response key is camelCase **`reservedKubos`**, while the nested assignment
   fields are snake_case.

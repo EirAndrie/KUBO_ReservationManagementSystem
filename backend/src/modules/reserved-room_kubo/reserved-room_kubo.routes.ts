@@ -10,6 +10,8 @@ import {
       approveEarlyCheckInController,
       markReservedKuboNoShowController,
       reassignReservedKuboController,
+      getTimeFeesController,
+      applyLateCheckOutFeeController,
 } from "./reserved-room_kubo.controllers";
 import {
       CreateReservedKuboSchema,
@@ -90,6 +92,19 @@ router.patch(
       requireUuidParam("kuboId"),
       validateBody(ReassignReservedKuboSchema),
       reassignReservedKuboController,
+);
+router.get(
+      "/:reservationId/kubos/:kuboId/time-fees",
+      requireUuidParam("reservationId"),
+      requireUuidParam("kuboId"),
+      getTimeFeesController,
+);
+router.post(
+      "/:reservationId/kubos/:kuboId/late-check-out-fee",
+      authorizeRoles("staff"),
+      requireUuidParam("reservationId"),
+      requireUuidParam("kuboId"),
+      applyLateCheckOutFeeController,
 );
 
 export default router;
