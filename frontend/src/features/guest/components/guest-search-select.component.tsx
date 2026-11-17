@@ -134,7 +134,7 @@ export const GuestSearchSelect: React.FC<GuestSearchSelectProps> = ({
       }}
       aria-label={ariaLabel}
       listHeight={320}
-      dropdownStyle={{ minWidth: 420 }}
+      dropdownStyle={{ minWidth: 'min(420px, calc(100vw - 64px))' }}
     >
       {options.map((guest) => (
         <Option key={guest.guest_id} value={guest.guest_id}>

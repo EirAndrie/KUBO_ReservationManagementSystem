@@ -19,8 +19,11 @@
 
 .optionMeta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
+  /* antd option content is nowrap; allow the ID badge to wrap on narrow popups. */
+  white-space: normal;
   font-size: 0.78rem;
   color: var(--color-muted);
 }

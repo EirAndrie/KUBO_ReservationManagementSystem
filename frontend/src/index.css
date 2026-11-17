@@ -215,6 +215,20 @@ body {
     width: 100vw !important;
   }
 
+  /*
+   * Range pickers show one month on phones. Two panels are 576px wide and run off
+   * a 360px screen. antd hides the next-month arrows on the left panel because the
+   * right panel normally carries them, so reveal them here.
+   */
+  .ant-picker-range-wrapper .ant-picker-panels > :not(:first-child) {
+    display: none;
+  }
+
+  .ant-picker-range-wrapper .ant-picker-panels > :first-child .ant-picker-header-next-btn,
+  .ant-picker-range-wrapper .ant-picker-panels > :first-child .ant-picker-header-super-next-btn {
+    visibility: visible !important;
+  }
+
   /* Pagination wraps instead of overflowing. */
   .ant-pagination {
     flex-wrap: wrap;
