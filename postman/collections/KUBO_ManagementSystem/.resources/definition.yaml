@@ -77,7 +77,11 @@ scripts:
         ['bearer_token_0lbs', 'bearer_token_06r9', 'bearer_token_17vt', 'bearer_token_05b7']
           .forEach((k) => pm.collectionVariables.set(k, staff));
         // Route protected writes and Administrator-only screens with the Admin token.
-        const path = pm.request.url.getPath();
+        // Strip the API base path (for example /KUBO_Resort/Management-System/v0.0.1)
+        // so the module prefixes below match.
+        const basePath = (base || '').replace(/^https?:\/\/[^/]+/, '');
+        const fullPath = pm.request.url.getPath();
+        const path = basePath && fullPath.startsWith(basePath) ? fullPath.slice(basePath.length) : fullPath;
         const method = pm.request.method;
         const adminOnly =
           /^\/(roles|employees|audit-logs)(\/|$)/.test(path) ||
