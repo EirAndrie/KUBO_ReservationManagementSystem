@@ -123,6 +123,21 @@ export type UpdateReservedKuboDTO = z.infer<
       typeof UpdateReservedKuboSchema
 >;
 
+export const ReassignReservedKuboSchema = z.preprocess(
+      (value) => {
+            if (value === null || typeof value !== "object" || Array.isArray(value)) {
+                  return value;
+            }
+            const input = value as Record<string, unknown>;
+            return { newKuboId: input.newKuboId ?? input.new_kubo_id };
+      },
+      z.object({
+            newKuboId: z.string().uuid({ message: "Invalid kubo ID format" }),
+      }),
+);
+
+export type ReassignReservedKuboDTO = z.infer<typeof ReassignReservedKuboSchema>;
+
 /**
  * Internal wrapper adding the acting employee (sourced from the access token,
  * never from the client) to a validated mutation payload.

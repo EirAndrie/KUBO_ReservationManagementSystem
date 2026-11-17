@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
       CreateReservedKuboDTO,
       UpdateReservedKuboDTO,
+      ReassignReservedKuboDTO,
 } from "./repository/reserved-kubo.schema";
 import { handleControllerError } from "../../utils/http";
 import logger from "../../utils/logger";
@@ -15,6 +16,7 @@ import {
       checkOutReservedKuboService,
       approveEarlyCheckInService,
       markReservedKuboNoShowService,
+      reassignReservedKuboService,
 } from "./reserved-room_kubo.services";
 
 export const assignKuboController = async (req: Request, res: Response) => {
@@ -229,6 +231,33 @@ export const markReservedKuboNoShowController = async (
             });
       } catch (error: any) {
             logger.error("Failed to mark reserved kubo as no-show", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const reassignReservedKuboController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const { newKuboId } = req.body as ReassignReservedKuboDTO;
+            const reservedKubos = await reassignReservedKuboService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+                  newKuboId,
+                  req.auth!.employeeId,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully reassigned reserved kubo",
+                  reservedKubos,
+            });
+      } catch (error: any) {
+            logger.error("Failed to reassign reserved kubo", {
                   message: error.message,
                   stack: error.stack,
             });

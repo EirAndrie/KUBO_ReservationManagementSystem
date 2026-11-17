@@ -153,6 +153,7 @@ Times must use `HH:MM` or `HH:MM:SS` (24-hour).
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-in` | Staff | Record check-in |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/check-out` | Staff | Record check-out |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/early-check-in` | Staff | Approve early check-in |
+| `PATCH` | `/reservations/:reservationId/kubos/:kuboId/reassign` | Staff | Replace a Reserved kubo with another for the same dates |
 | `PATCH` | `/reservations/:reservationId/kubos/:kuboId/no-show` | Staff | Mark a never-checked-in assignment NoShow after its dates pass |
 
 ---
@@ -693,6 +694,55 @@ Same UUID path parameters as section 10. No request body.
   the whole call fails and nothing changes.
 - A `Confirmed` reservation that never arrived still uses `PATCH /reservations/:id/no-show`.
 - Writes one `kubo.audit_log` row (`Update`, `reservation`).
+
+---
+
+## 12. `PATCH /reservations/:reservationId/kubos/:kuboId/reassign`
+
+Replace one `Reserved` assignment with another kubo for the same dates (issue #70),
+for example when the assigned kubo is later set to Out of Service or Maintenance.
+
+### 12.1 Access
+
+Staff only.
+
+### 12.2 Path parameters and body
+
+`reservationId` and `kuboId` (the kubo being replaced) are UUIDs.
+
+| Field | Type | Required | Notes |
+|---|---|---:|---|
+| `newKuboId` | string (UUID) | Yes | Alias `new_kubo_id`. The replacement kubo |
+
+### 12.3 Success response — `200 OK`
+
+| Field | Type | Nullable | Notes |
+|---|---|---:|---|
+| `success` | boolean | No | Always `true` |
+| `message` | string | No | `Successfully reassigned reserved kubo` |
+| `reservedKubos` | object | No | The new assignment |
+
+### 12.4 Business rules and failures
+
+| Condition | Status | Message |
+|---|---:|---|
+| Invalid UUID or missing `newKuboId` | `400` | Validation detail |
+| `newKuboId` equals `kuboId` | `400` | `Choose a different kubo to reassign to.` |
+| Reservation or assignment does not exist | `404` | `Reservation does not exist.` / `Reserved kubo does not exist.` |
+| Reservation is not `Pending` or `Confirmed` | `400` | `Only Pending or Confirmed reservations can be modified.` |
+| Assignment is not `Reserved` | `400` | `Only Reserved assignments can be reassigned.` |
+| New kubo is not bookable (Out of Service, Maintenance, ...) or booked for those dates | `400` | The same message `POST /reservations/:id/kubos` returns, for example `Kubo is not available for booking.` |
+| Not authenticated / not Staff | `401` / `403` | `Authentication required` / `Insufficient privileges` |
+
+- The new assignment keeps the old one's stay dates and scheduled times and takes the
+  new kubo's **current** nightly rate (`price_at_booking`), so the reservation total
+  can change. The reservation status is unchanged.
+- The swap is one transaction (`fn_reassign_reserved_kubo`): the new kubo is added,
+  then the old one removed. If either step fails, nothing changes.
+- The old kubo is released unless another active reservation holds it; a kubo that
+  was set to Out of Service or Maintenance keeps that status.
+- Writes two `kubo.audit_log` rows on the reservation (`Create` for the new kubo,
+  `Delete` for the old one).
 
 - The response key is camelCase **`reservedKubos`**, while the nested assignment
   fields are snake_case.

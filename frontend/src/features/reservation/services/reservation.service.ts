@@ -141,6 +141,14 @@ export const reservationService = {
     await apiClient.post(`/reservations/${reservationId}/kubos`, data);
   },
 
+  /**
+   * Replaces a Reserved kubo assignment with another kubo for the same dates in one
+   * database transaction; the server validates availability and applies the new rate.
+   */
+  reassignKubo: async (reservationId: string, kuboId: string, newKuboId: string): Promise<void> => {
+    await apiClient.patch(`/reservations/${reservationId}/kubos/${kuboId}/reassign`, { newKuboId });
+  },
+
   /** Removes a not-yet-checked-in kubo assignment from a reservation. */
   removeAssignment: async (reservationId: string, kuboId: string): Promise<void> => {
     await apiClient.delete(`/reservations/${reservationId}/kubos/${kuboId}`);
