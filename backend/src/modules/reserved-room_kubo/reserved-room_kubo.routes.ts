@@ -9,10 +9,12 @@ import {
       checkOutReservedKuboController,
       approveEarlyCheckInController,
       markReservedKuboNoShowController,
+      reassignReservedKuboController,
 } from "./reserved-room_kubo.controllers";
 import {
       CreateReservedKuboSchema,
       UpdateReservedKuboSchema,
+      ReassignReservedKuboSchema,
 } from "./repository/reserved-kubo.schema";
 import { validateBody, requireUuidParam } from "../../utils/http";
 import { authorizeRoles } from "../auth/auth.middleware";
@@ -80,6 +82,14 @@ router.patch(
       requireUuidParam("reservationId"),
       requireUuidParam("kuboId"),
       markReservedKuboNoShowController,
+);
+router.patch(
+      "/:reservationId/kubos/:kuboId/reassign",
+      authorizeRoles("staff"),
+      requireUuidParam("reservationId"),
+      requireUuidParam("kuboId"),
+      validateBody(ReassignReservedKuboSchema),
+      reassignReservedKuboController,
 );
 
 export default router;

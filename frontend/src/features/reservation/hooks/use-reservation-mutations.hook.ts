@@ -135,6 +135,28 @@ export function useAddAssignment() {
 }
 
 /**
+ * Replaces one Reserved kubo with another for the same dates (issue #70). The server
+ * swaps atomically, so a refused kubo leaves the reservation unchanged. Refreshes on
+ * settle for the same reason as `useAddAssignment`.
+ */
+export function useReassignAssignment() {
+  const queryClient = useQueryClient();
+
+  return useAppMutation({
+    mutationFn: ({ reservationId, kuboId, newKuboId }: { reservationId: string; kuboId: string; newKuboId: string }) =>
+      reservationService.reassignKubo(reservationId, kuboId, newKuboId),
+    successMessage: 'Kubo reassigned.',
+    onSettled: (_data, _error, vars) => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.detail(vars.reservationId) });
+      queryClient.invalidateQueries({ queryKey: ['available-kubos'] });
+      queryClient.invalidateQueries({ queryKey: ['kubos'] });
+      queryClient.invalidateQueries({ queryKey: ['check-in-out'] });
+    },
+  });
+}
+
+/**
  * Hook to confirm a pending reservation.
  */
 export function useConfirmReservation() {

@@ -8,6 +8,7 @@ import {
       checkOutReservedKubo,
       approveEarlyCheckIn,
       markReservedKuboNoShow,
+      reassignReservedKubo,
 } from "./repository/reserved-kubo.repository";
 import { AppError } from "../../utils/http";
 import type {
@@ -129,6 +130,24 @@ export const markReservedKuboNoShowService = async (
       employeeId: string,
 ) => {
       const assignment = await markReservedKuboNoShow(reservationId, kuboId, employeeId);
+      if (!assignment) {
+            throw new AppError(404, "Reserved kubo not found");
+      }
+      return assignment;
+};
+
+export const reassignReservedKuboService = async (
+      reservationId: string,
+      oldKuboId: string,
+      newKuboId: string,
+      employeeId: string,
+) => {
+      const assignment = await reassignReservedKubo(
+            reservationId,
+            oldKuboId,
+            newKuboId,
+            employeeId,
+      );
       if (!assignment) {
             throw new AppError(404, "Reserved kubo not found");
       }

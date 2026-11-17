@@ -19,6 +19,7 @@ import {
   RightOutlined,
   RollbackOutlined,
   StopOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { resortToday } from '@/lib/time';
@@ -72,6 +73,7 @@ import { useConfirmReservation, useMarkNoShow } from '../hooks/use-reservation-m
 import { CancelReservationModal } from '../components/cancel-reservation-modal.component';
 import { EditReservationModal } from '../components/edit-reservation-modal.component';
 import { AddKuboModal } from '../components/add-kubo-modal.component';
+import { ReassignKuboModal } from '../components/reassign-kubo-modal.component';
 import type { Reservation, ReservationAssignment } from '../types/reservation.types';
 import { stayOf } from '../utils/reservation.utils';
 import styles from './reservation-detail.module.css';
@@ -174,6 +176,7 @@ export const ReservationDetailPage: React.FC = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [addKuboOpen, setAddKuboOpen] = useState(false);
+  const [reassignFor, setReassignFor] = useState<ReservationAssignment | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState<{ amount?: number } | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -490,17 +493,21 @@ export const ReservationDetailPage: React.FC = () => {
           {
             key: 'menu',
             width: 48,
-            render: (_: unknown, a: ReservationAssignment) =>
-              a.status === 'Reserved' && ['Confirmed', 'CheckedIn'].includes(reservation.status) ? (
-                <RowMenu
-                  label={`Actions for ${a.kubo_number}`}
-                  items={
-                    reservation.status === 'CheckedIn' && a.check_out_date <= resortToday()
-                      ? [{ key: 'ns', label: 'Mark no-show', icon: <StopOutlined />, danger: true, onClick: () => doKuboNoShow(a) }]
-                      : [{ key: 'in', label: 'Check in this kubo', icon: <LoginOutlined />, onClick: () => openCheckIn(a) }]
-                  }
-                />
-              ) : null,
+            render: (_: unknown, a: ReservationAssignment) => {
+              if (a.status !== 'Reserved') return null;
+              const rowItems: RowMenuItem[] = [];
+              if (['Confirmed', 'CheckedIn'].includes(reservation.status)) {
+                rowItems.push(
+                  reservation.status === 'CheckedIn' && a.check_out_date <= resortToday()
+                    ? { key: 'ns', label: 'Mark no-show', icon: <StopOutlined />, danger: true, onClick: () => doKuboNoShow(a) }
+                    : { key: 'in', label: 'Check in this kubo', icon: <LoginOutlined />, onClick: () => openCheckIn(a) },
+                );
+              }
+              if (canModifyAssignments) {
+                rowItems.push({ key: 'reassign', label: 'Reassign kubo', icon: <SwapOutlined />, onClick: () => setReassignFor(a) });
+              }
+              return rowItems.length > 0 ? <RowMenu label={`Actions for ${a.kubo_number}`} items={rowItems} /> : null;
+            },
           },
         ]
       : []),
@@ -762,6 +769,7 @@ export const ReservationDetailPage: React.FC = () => {
       <CancelReservationModal reservation={cancelOpen ? reservation : null} onClose={() => setCancelOpen(false)} />
       <EditReservationModal reservation={editOpen ? reservation : null} onClose={() => setEditOpen(false)} />
       <AddKuboModal reservation={addKuboOpen ? reservation : null} onClose={() => setAddKuboOpen(false)} />
+      <ReassignKuboModal reservation={reassignFor ? reservation : null} assignment={reassignFor} onClose={() => setReassignFor(null)} />
       <AddChargeModal open={chargeOpen} onClose={() => setChargeOpen(false)} reservationId={reservationId} />
       <RecordPaymentModal
         open={Boolean(paymentOpen)}

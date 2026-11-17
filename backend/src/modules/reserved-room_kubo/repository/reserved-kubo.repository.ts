@@ -260,3 +260,42 @@ export const markReservedKuboNoShow = async (
             throw mapDatabaseError(error, "Failed to mark reserved kubo as no-show");
       }
 };
+
+/**
+ * Replaces a Reserved assignment with another kubo (same dates and scheduled
+ * times) in one transaction via `fn_reassign_reserved_kubo`.
+ *
+ * Database side effects: adds the new assignment at the new kubo's current
+ * rate, removes the old one, updates both kubos' statuses and writes audit rows.
+ * Failure behavior: the database refuses an unavailable kubo, a non-Reserved
+ * assignment, or a reservation that is not Pending/Confirmed; nothing changes.
+ *
+ * @returns the new assignment.
+ */
+export const reassignReservedKubo = async (
+      reservationId: string,
+      oldKuboId: string,
+      newKuboId: string,
+      employeeId: string,
+): Promise<ReservedKuboResponseDTO | null> => {
+      try {
+            await db.query(
+                  `
+                  SELECT kubo_reservation_management.fn_reassign_reserved_kubo(
+                        p_reservation_id => $1,
+                        p_old_kubo_id => $2,
+                        p_new_kubo_id => $3,
+                        p_actor_employee_id => $4
+                  )
+                  `,
+                  [reservationId, oldKuboId, newKuboId, employeeId],
+            );
+            return getReservedKubo(reservationId, newKuboId);
+      } catch (error: any) {
+            logger.error("Failed to reassign reserved kubo", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to reassign reserved kubo");
+      }
+};
