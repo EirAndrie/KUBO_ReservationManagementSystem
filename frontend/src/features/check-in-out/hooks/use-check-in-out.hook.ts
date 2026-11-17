@@ -6,9 +6,24 @@ import type { ArrivalRecord, DepartureRecord, InHouseRecord } from '../types/che
 
 export const checkInOutKeys = {
   all: ['check-in-out'] as const,
+  timeFees: (reservationId: string, kuboId: string) =>
+    ['check-in-out', 'time-fees', reservationId, kuboId] as const,
   operationalQueue: () => [...checkInOutKeys.all, 'queue'] as const,
   queueForDate: (date: string) => [...checkInOutKeys.operationalQueue(), date] as const,
 };
+
+/**
+ * Early check-in / late check-out fee preview for one kubo (issue #107). Short
+ * stale time because the fee depends on the current hour.
+ */
+export function useTimeFees(reservationId?: string, kuboId?: string) {
+  return useQuery({
+    queryKey: checkInOutKeys.timeFees(reservationId ?? '', kuboId ?? ''),
+    queryFn: () => checkInOutService.getTimeFees(reservationId as string, kuboId as string),
+    enabled: Boolean(reservationId && kuboId),
+    staleTime: 1000 * 30,
+  });
+}
 
 /**
  * Front-desk queues for one operational date, derived from Confirmed and

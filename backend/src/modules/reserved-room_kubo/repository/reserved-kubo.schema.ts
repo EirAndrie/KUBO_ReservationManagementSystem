@@ -162,3 +162,25 @@ export type ReservedKuboResponseDTO = {
       nights: number;
       amount: string;
 };
+
+/**
+ * Early check-in and late check-out fees for one assignment (issue #107).
+ * Amounts are PostgreSQL `numeric`, serialized as strings like the rest of this
+ * module. `*_applied` is true once the fee is on the bill; the hours and amount
+ * are then the billed values, otherwise the fee that would apply right now.
+ */
+export type TimeFeesResponseDTO = {
+      hourly_rate: string;
+      early_hours: number;
+      early_fee: string;
+      early_applied: boolean;
+      late_hours: number;
+      late_fee: string;
+      late_applied: boolean;
+};
+
+export type LateCheckOutFeeResponseDTO = {
+      charge_id: string;
+      hours: number;
+      amount: string;
+};

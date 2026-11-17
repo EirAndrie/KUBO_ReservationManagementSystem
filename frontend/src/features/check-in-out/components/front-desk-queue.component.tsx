@@ -35,6 +35,7 @@ import {
 } from "@/lib/format";
 import { useCheckInOutQueue } from "../hooks/use-check-in-out.hook";
 import { useCheckOutKubo } from "../hooks/use-check-in-out-mutations.hook";
+import { checkInOutService } from "../services/check-in-out.service";
 import { CheckInDrawer } from "./check-in-drawer.component";
 import { isKuboReady } from "../utils/kubo-readiness";
 import type { ArrivalRecord } from "../types/check-in-out.types";
@@ -297,19 +298,31 @@ export const FrontDeskQueue: React.FC<FrontDeskQueueProps> = ({
                                 checkOut.variables?.kuboId ===
                                     r.assignment.kubo_id
                             }
-                            onClick={() =>
+                            onClick={async () => {
+                                // Late fee past 12:00 on the check-out date (issue #107).
+                                const lateFee =
+                                    await checkInOutService.getPendingLateFee(
+                                        r.reservation.reservation_id,
+                                        [r.assignment.kubo_id],
+                                    );
                                 modal.confirm({
                                     title: `Check out ${r.reservation.guest_name}?`,
-                                    content: `${r.assignment.kubo_number} will be marked for cleaning.`,
-                                    okText: "Check out",
+                                    content:
+                                        lateFee > 0
+                                            ? `Check-out is past 12:00. A late check-out fee of ${formatMoney(lateFee)} will be added to the bill first, and the guest must settle the balance before check-out completes.`
+                                            : `${r.assignment.kubo_number} will be marked for cleaning.`,
+                                    okText:
+                                        lateFee > 0
+                                            ? "Add late fee"
+                                            : "Check out",
                                     onOk: () =>
                                         checkOut.mutateAsync({
                                             reservationId:
                                                 r.reservation.reservation_id,
                                             kuboId: r.assignment.kubo_id,
                                         }),
-                                })
-                            }
+                                });
+                            }}
                         >
                             Check out
                         </Button>

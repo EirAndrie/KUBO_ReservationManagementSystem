@@ -2,6 +2,8 @@ import type {
       CreateReservedKuboDTO,
       UpdateReservedKuboDTO,
       ReservedKuboResponseDTO,
+      TimeFeesResponseDTO,
+      LateCheckOutFeeResponseDTO,
       WithActor,
 } from "./reserved-kubo.schema";
 import { db } from "../../../config/connectDB";
@@ -297,5 +299,68 @@ export const reassignReservedKubo = async (
                   stack: error.stack,
             });
             throw mapDatabaseError(error, "Failed to reassign reserved kubo");
+      }
+};
+
+/**
+ * Reads the early check-in and late check-out fee for one assignment through
+ * `fn_get_time_fees`: the billed fee once applied, otherwise the fee that would
+ * apply at this moment (hours past 12:00, resort time, at PHP 150/hour).
+ * Read-only; the clock is the database's.
+ */
+export const getTimeFees = async (
+      reservationId: string,
+      kuboId: string,
+): Promise<TimeFeesResponseDTO | null> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_reservation_management.fn_get_time_fees($1, $2)
+                  `,
+                  [reservationId, kuboId],
+            );
+            return result.rows[0] ?? null;
+      } catch (error: any) {
+            logger.error("Failed to get time fees", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to get time fees");
+      }
+};
+
+/**
+ * Puts the late check-out fee on the bill (`fn_apply_late_check_out_fee`).
+ * Idempotent: a second call returns the fee already applied.
+ *
+ * Database side effects: inserts one `LateCheckOut` additional charge and an
+ * audit row. Failure behavior: refused when the assignment is not CheckedIn or
+ * when no late fee applies yet; nothing changes.
+ */
+export const applyLateCheckOutFee = async (
+      reservationId: string,
+      kuboId: string,
+      employeeId: string,
+): Promise<LateCheckOutFeeResponseDTO | null> => {
+      try {
+            const result = await db.query(
+                  `
+                  SELECT *
+                  FROM kubo_reservation_management.fn_apply_late_check_out_fee(
+                        p_reservation_id => $1,
+                        p_kubo_id => $2,
+                        p_actor_employee_id => $3
+                  )
+                  `,
+                  [reservationId, kuboId, employeeId],
+            );
+            return result.rows[0] ?? null;
+      } catch (error: any) {
+            logger.error("Failed to apply late check-out fee", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            throw mapDatabaseError(error, "Failed to apply late check-out fee");
       }
 };

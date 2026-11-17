@@ -17,6 +17,8 @@ import {
       approveEarlyCheckInService,
       markReservedKuboNoShowService,
       reassignReservedKuboService,
+      getTimeFeesService,
+      applyLateCheckOutFeeService,
 } from "./reserved-room_kubo.services";
 
 export const assignKuboController = async (req: Request, res: Response) => {
@@ -258,6 +260,52 @@ export const reassignReservedKuboController = async (
             });
       } catch (error: any) {
             logger.error("Failed to reassign reserved kubo", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const getTimeFeesController = async (req: Request, res: Response) => {
+      try {
+            const fees = await getTimeFeesService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully retrieved time fees",
+                  timeFees: fees,
+            });
+      } catch (error: any) {
+            logger.error("Failed to get time fees", {
+                  message: error.message,
+                  stack: error.stack,
+            });
+            handleControllerError(res, error, error.message);
+      }
+};
+
+export const applyLateCheckOutFeeController = async (
+      req: Request,
+      res: Response,
+) => {
+      try {
+            const lateFee = await applyLateCheckOutFeeService(
+                  req.params.reservationId as string,
+                  req.params.kuboId as string,
+                  req.auth!.employeeId,
+            );
+
+            res.status(200).json({
+                  success: true,
+                  message: "Successfully applied late check-out fee",
+                  lateFee,
+            });
+      } catch (error: any) {
+            logger.error("Failed to apply late check-out fee", {
                   message: error.message,
                   stack: error.stack,
             });

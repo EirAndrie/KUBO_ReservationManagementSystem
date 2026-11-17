@@ -16,7 +16,7 @@ export type { CheckInDrawerProps } from './components/check-in-drawer.component'
 export { isKuboReady, READY_KUBO_STATUSES } from './utils/kubo-readiness';
 
 // Hooks
-export { useCheckInOutQueue, checkInOutKeys } from './hooks/use-check-in-out.hook';
+export { useCheckInOutQueue, useTimeFees, checkInOutKeys } from './hooks/use-check-in-out.hook';
 export {
   useCheckInKubo,
   useApproveEarlyCheckIn,
@@ -30,6 +30,7 @@ export { checkInOutService } from './services/check-in-out.service';
 // Types & DTOs
 export type {
   CheckInOutActionParams,
+  TimeFees,
   ArrivalRecord,
   DepartureRecord,
   InHouseRecord,

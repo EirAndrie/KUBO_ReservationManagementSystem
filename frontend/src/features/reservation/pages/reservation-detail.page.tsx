@@ -42,7 +42,7 @@ import {
   useWithdrawChargeRequest,
 } from '@/features/payment';
 import type { AdditionalCharge, InvoiceBillingBreakdown, Payment } from '@/features/payment';
-import { CheckInDrawer, useCheckOutKubo, useMarkKuboNoShow } from '@/features/check-in-out';
+import { CheckInDrawer, checkInOutService, useCheckOutKubo, useMarkKuboNoShow } from '@/features/check-in-out';
 import type { ArrivalRecord } from '@/features/check-in-out';
 import {
   Callout,
@@ -320,17 +320,26 @@ export const ReservationDetailPage: React.FC = () => {
       onOk: () => markKuboNoShow.mutateAsync({ reservationId, kuboId: a.kubo_id }),
     });
 
-  const doCheckOut = () =>
+  const doCheckOut = async () => {
+    // Late fee past 12:00 on the check-out date (issue #107), shown before anything changes.
+    const lateFee = await checkInOutService.getPendingLateFee(
+      reservationId,
+      checkedInAssignments.map((a) => a.kubo_id),
+    );
     modal.confirm({
       title: `Check out ${reservation.guest_name}?`,
-      content: `${pluralize(checkedInAssignments.length, 'kubo')} will be checked out and marked for cleaning.`,
-      okText: 'Check out',
+      content:
+        lateFee > 0
+          ? `Check-out is past 12:00. A late check-out fee of ${formatMoney(lateFee)} will be added to the bill first, and the guest must settle the balance before check-out completes.`
+          : `${pluralize(checkedInAssignments.length, 'kubo')} will be checked out and marked for cleaning.`,
+      okText: lateFee > 0 ? 'Add late fee' : 'Check out',
       onOk: async () => {
         for (const a of checkedInAssignments) {
           await checkOut.mutateAsync({ reservationId, kuboId: a.kubo_id });
         }
       },
     });
+  };
 
   const submitCorrection = async (values: CorrectionFormValues) => {
     if (!correctionTarget) return;
