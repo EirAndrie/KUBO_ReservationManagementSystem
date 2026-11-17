@@ -387,7 +387,6 @@ export const EmployeeListPage: React.FC = () => {
       <EmployeeFormModal
         open={Boolean(form)}
         employee={form?.employee}
-        activeAdminCount={activeAdmins.length}
         onClose={() => setForm(null)}
       />
       <ResetPasswordModal open={Boolean(resetFor)} employee={resetFor} onClose={() => setResetFor(null)} />

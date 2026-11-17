@@ -168,14 +168,14 @@ The DDL has no permission table, so this matrix is enforced by the application.
 - **Enforcement:** Application middleware/service layer. The DDL has no permission
   table, so the matrix is enforced in code.
 
-#### BR-006 — At most one active Administrator (operational policy)
-- **Rule:** At most one `Administrator` account may have `status = 'Active'` at a time.
-  This retains the old "only one Owner" rule. If the project owner wants multiple
-  administrators, this rule must be explicitly relaxed.
+#### BR-006 — Multiple active Administrators allowed; never zero (operational policy)
+- **Rule:** Several `Administrator` accounts may be `Active` at once (relaxed 2026-11-19,
+  issue #86, because the old one-Owner cap made a suspended Administrator impossible
+  to restore). The last active Administrator cannot be suspended, demoted, or deleted.
 - **Entities:** `employee`, `role`
-- **Enforcement:** Application-level check when creating or activating an
-  administrator. **Not enforced by the DDL**, which permits any number of employees
-  with the same role.
+- **Enforcement:** The employee stored functions refuse to remove the last active
+  Administrator (`20261119_allow_multiple_active_administrators.sql` dropped the cap).
+  Not enforced by the DDL.
 
 #### BR-007 — Employees are retained, not deleted
 - **Rule:** Employees with historical records must not be hard-deleted. Employment
@@ -1152,7 +1152,7 @@ instead (retained from old rule `l`).
 | **A-02** | `reserved_kubo.price_at_booking` stores the **nightly rate** snapshot, not the total stay price. | Pricing formula, invoices, and reports would change. |
 | **A-03** | All monetary amounts are in PHP and use two decimal places. | Currency display and rounding rules would change. |
 | **A-04** | Check-out normally requires a zero outstanding balance; pay-after-stay requires explicit owner policy. | Check-out blocking and exception handling would change. |
-| **A-05** | At most one active Administrator is required (old "one Owner" rule). | Multiple administrator accounts may be allowed. |
+| **A-05** | (Relaxed 2026-11-19) Several active Administrators are allowed; at least one must always remain. | Reinstating the old one-Owner cap would need a new migration. |
 | **A-06** | Confirmation does not require a deposit; deposits are optional. | Confirmation rules would change. |
 | **A-07** | Kubos in `Maintenance`, `OutOfService`, or `UnderInspection` are excluded from availability for all dates. `Cleaning`, `Occupied`, and `Reserved` do not block future date ranges. | Availability results would change, especially for future maintenance. |
 | **A-08** | A Pending reservation's assignments are considered `Reserved` and therefore block overlapping bookings. | Tentative bookings might be allowed to overlap. |

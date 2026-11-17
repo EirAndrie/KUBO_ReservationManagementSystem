@@ -222,7 +222,6 @@ Administrator only.
 | Username already exists (service pre-check) | `400` | `Username already exists, try another username` |
 | Username duplicated during insert | `400` | `Employee username already exists.` |
 | Role does not exist | `404` | `Employee role does not exist.` |
-| Creating an active Administrator while one already exists | `400` | `At most one active Administrator is allowed.` |
 | Names/username blank or over 100 characters | `400` | `Valid names, username and status are required.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not an Administrator | `403` | `Insufficient privileges` |
@@ -234,8 +233,8 @@ Behavior notes:
 - Usernames are pre-checked before insertion; the database also enforces a unique
   username constraint.
 - Names and username are trimmed by the database routine.
-- At most one **active Administrator** is allowed. The check applies only when
-  creating an `Active` employee whose role is `Admin`/`Administrator`.
+- Several **active Administrators** may exist (BR-006). Only the last-Administrator
+  protection applies (see the update contract).
 - The create and audit rows are written in the same transaction.
 
 ### 3.5 Side effects
@@ -490,7 +489,6 @@ not accepted here; use the password-reset endpoint.
 | Username already taken | `400` | `Employee username already exists.` |
 | Replacement role does not exist | `404` | `Replacement role does not exist.` |
 | Employee does not exist | `404` | `Employee not found` |
-| Creating a second active Administrator | `400` | `At most one active Administrator is allowed.` |
 | Deactivating/reassigning the last active Administrator | `400` | `The last active Administrator cannot be deactivated or reassigned.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not an Administrator | `403` | `Insufficient privileges` |

@@ -164,9 +164,8 @@ existing data, and reports what it inserted or skipped.
 | `admin` | `Admin@123` | `administrator` |
 | `staff` | `Staff@123` | `staff`         |
 
-The sample `admin` account is skipped when another active Administrator already exists
-(BR-006). Deactivate the existing administrator and re-run if you need the demo
-account.
+Several active Administrators may exist (BR-006), so the sample `admin` account is
+added even when another Administrator is already active.
 
 ### Rules
 
