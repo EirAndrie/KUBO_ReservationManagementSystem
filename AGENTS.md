@@ -215,6 +215,9 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
 ### Migration inventory
 
 - `20240920_create_role_schema.sql`
+- `20240921_baseline_core_schema.sql`: baseline for the core tables, enums, and
+  routine schemas the later migrations expect (idempotent; a no-op on existing
+  databases), so a new database builds from the repo alone.
 - `20261031_*`: audit management and history, employee filters/profile fix, guest,
   role/employee hardening.
 - `20261101_*`: kubo, kubo type, reservation hardening.
@@ -232,12 +235,17 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
   `20261116_add_updated_at_triggers.sql` (G-15), and
   `20261117_harden_data_integrity_backstops.sql` (fixes for all three; fails startup
   if `btree_gist` is unavailable).
+- `20261118_reapply_reservation_charge_request_delete_guard.sql`: reinstalls the
+  reservation delete guard, which skipped itself on a database built from scratch.
 
 ### Known gaps and risks
 
 - No refresh tokens; sessions end at token expiry.
-- The additional-charge migration skips its routines if the pre-existing
-  `kubo_additional_charges_management` schema is absent.
+- On a database built from scratch, `kubo.role` columns are `text` (the original
+  database used `varchar`), and a few legacy routines that only the original database
+  had (`kubo.authenticate_employee`, `kubo.register_employee`, `kubo.sp_create_kubo_type`,
+  `kubo_guest_management.sp_create_guest` and two siblings,
+  `kubo_management.sp_create_kubo_unit`) are not recreated. The API calls none of them.
 - Page-1 of `docs/ERD.drawio` and `docs/ERD&Flowcharts.drawio` predates uuid keys and
   derived totals; the "Charges, payments & auth (2026-11)" page covers the newer
   tables. The migrations are the source of truth.
