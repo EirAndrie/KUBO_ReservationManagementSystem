@@ -26,6 +26,8 @@ Use a disposable database with one active Staff account and the active Administr
 - [ ] Check in the assigned kubo. Confirm the assignment becomes `CheckedIn`, the kubo becomes `Occupied`, the reservation becomes `CheckedIn`, and the action is audited.
 - [ ] Try check-in for a `Pending`, cancelled, no-show, or already checked-in reservation. Confirm it is rejected.
 - [ ] Try checking in a kubo in `Cleaning`, `Maintenance`, `UnderInspection`, `OutOfService`, or `Occupied`. Confirm it is rejected until the kubo is assignable.
+- [ ] Check a guest in before 12:00 on the arrival day. Confirm the drawer shows the early check-in fee (PHP 150 per hour before 12:00), the balance includes it after check-in, and an `EarlyCheckIn` charge appears.
+- [ ] Check out after 12:00 on the check-out date. Confirm the dialog shows the late fee, check-out stops after adding a `LateCheckOut` charge, and check-out completes only once the balance is paid.
 - [ ] For an early arrival, approve early check-in first and confirm that the approval is audited. Without approval, early check-in should be rejected.
 
 ### 4. Add catalog charges and submit custom requests

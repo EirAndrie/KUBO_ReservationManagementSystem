@@ -3,6 +3,7 @@ import { useAppMutation } from '@/hooks/use-app-mutation.hook';
 import { reservationKeys } from '@/features/reservation';
 import { checkInOutService } from '../services/check-in-out.service';
 import { checkInOutKeys } from './use-check-in-out.hook';
+import { formatMoney } from '@/lib/format';
 import type { CheckInOutActionParams } from '../types/check-in-out.types';
 
 /**
@@ -74,15 +75,30 @@ export function useMarkKuboNoShow() {
 /**
  * Mutation hook to check out a reserved kubo assignment (BR-062, BR-063).
  * Kubo is transitioned to 'Cleaning'.
+ *
+ * Past 12:00 on the check-out date a late fee applies (issue #107). If it is not
+ * on the bill yet, this puts it there and stops with a message instead of checking
+ * out, because the zero-balance rule means the guest must pay it first. Once the
+ * balance is settled, running it again checks the guest out.
  */
 export function useCheckOutKubo() {
   const queryClient = useQueryClient();
 
   return useAppMutation({
-    mutationFn: ({ reservationId, kuboId }: CheckInOutActionParams) =>
-      checkInOutService.checkOutKubo(reservationId, kuboId),
+    mutationFn: async ({ reservationId, kuboId }: CheckInOutActionParams) => {
+      const fees = await checkInOutService.getTimeFees(reservationId, kuboId);
+      if (fees.late_hours > 0 && !fees.late_applied) {
+        const fee = await checkInOutService.applyLateCheckOutFee(reservationId, kuboId);
+        throw new Error(
+          `A late check-out fee of ${formatMoney(fee.amount)} (${fee.hours} h past 12:00) was added to the bill. ` +
+            'Collect the balance, then check out.',
+        );
+      }
+      await checkInOutService.checkOutKubo(reservationId, kuboId);
+    },
     successMessage: 'Guest checked out. The kubo is marked for cleaning.',
-    onSuccess: () => {
+    // Also refresh after the "fee added" stop, so the new balance shows.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: checkInOutKeys.operationalQueue() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
