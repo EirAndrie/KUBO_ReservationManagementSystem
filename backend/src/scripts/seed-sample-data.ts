@@ -14,9 +14,8 @@ import { ADMINISTRATOR_ROLE, STAFF_ROLE } from "../utils/role-names";
  * Direct inserts are used instead of the stored procedures because the first
  * administrator has no acting employee to satisfy the audit routines.
  *
- * Business rules: role names are the canonical lowercase values (BR-001), and
- * at most one active Administrator may exist (BR-006). If another active
- * administrator is already present, the sample `admin` account is skipped.
+ * Business rules: role names are the canonical lowercase values (BR-001).
+ * Several active Administrators may exist (BR-006).
  *
  * Run with `npm run db:seed` from `backend/`, after migrations have applied.
  */
@@ -207,30 +206,6 @@ const seedAccounts = async (client: PoolClient, totals: Map<string, Totals>) => 
                   );
                   bump(totals, "employees", false);
                   continue;
-            }
-
-            if (account.roleName === ADMINISTRATOR_ROLE) {
-                  const activeAdmin = await client.query(
-                        `
-                        SELECT e.username
-                        FROM kubo.employee AS e
-                        JOIN kubo.role AS r ON r.role_id = e.role_id
-                        WHERE r.role_name = $1
-                          AND e.status = 'Active'
-                        LIMIT 1
-                        `,
-                        [ADMINISTRATOR_ROLE],
-                  );
-
-                  if ((activeAdmin.rowCount ?? 0) > 0) {
-                        const activeUsername = activeAdmin.rows[0].username;
-                        log(
-                              `Skipped sample administrator: active administrator "${activeUsername}" already exists. ` +
-                                    `Deactivate it and re-run to create ${account.username}/${account.password}.`,
-                        );
-                        bump(totals, "employees", false);
-                        continue;
-                  }
             }
 
             const role = await client.query(

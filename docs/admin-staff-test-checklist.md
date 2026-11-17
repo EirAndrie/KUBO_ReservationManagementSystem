@@ -69,7 +69,7 @@ Use a disposable database with one active Staff account and the active Administr
 
 - [ ] Create an employee with a unique username and valid role. Confirm the password is not returned in the response or written to audit data.
 - [ ] Update the employee's name, role, or status and reset the password. Confirm each operation is Administrator-only and audited.
-- [ ] With one active Administrator, try creating or activating a second active Administrator. Confirm the change is rejected.
+- [ ] Create or restore a second active Administrator while another is active. Confirm it succeeds and is audited (BR-006 allows several).
 - [ ] Try deactivating, terminating, reassigning, or deleting the last active Administrator. Confirm the change is rejected.
 - [ ] Try deleting a role that is still assigned to an employee. Confirm the deletion is rejected.
 

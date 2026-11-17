@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo } from 'react';
-import { Modal, Form, Input, Select, Alert, Row, Col } from 'antd';
-import { UserOutlined, LockOutlined, CrownOutlined } from '@ant-design/icons';
-import { formatRoleLabel, isAdministratorRole } from '@/features/auth';
+import React, { useEffect } from 'react';
+import { Modal, Form, Input, Select, Row, Col } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { formatRoleLabel } from '@/features/auth';
 import { useCreateEmployee, useUpdateEmployee } from '../hooks/use-employee-mutations.hook';
 import { useRoles } from '../hooks/use-employees.hook';
 import { EMPLOYEE_STATUS_OPTIONS, EMPLOYEE_POLICIES, EMPLOYEE_NAME_REGEX, EMPLOYEE_LIMITS } from '../constants/employee.constants';
@@ -12,7 +12,6 @@ export interface EmployeeFormModalProps {
   open: boolean;
   onClose: () => void;
   employee?: Employee | null;
-  activeAdminCount?: number;
 }
 
 interface FormValues {
@@ -47,7 +46,6 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   open,
   onClose,
   employee,
-  activeAdminCount = 0,
 }) => {
   const [form] = Form.useForm<FormValues>();
   const isEditing = Boolean(employee);
@@ -58,20 +56,6 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const selectedRoleId = Form.useWatch('roleId', form);
-  const selectedStatus = Form.useWatch('status', form);
-
-  const isAssigningAdmin = useMemo(() => {
-    const role = roles.find((r) => r.roleId === selectedRoleId);
-    return isAdministratorRole(role?.roleName);
-  }, [roles, selectedRoleId]);
-
-  const showSecondAdminWarning = useMemo(() => {
-    if (isEditing && isAdministratorRole(employee?.roleName)) {
-      return false; // Already this admin
-    }
-    return Boolean(isAssigningAdmin && selectedStatus === 'Active' && activeAdminCount >= 1);
-  }, [isEditing, employee, isAssigningAdmin, selectedStatus, activeAdminCount]);
 
   useEffect(() => {
     if (open) {
@@ -146,17 +130,6 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       width={600}
     >
       <div className={styles.modalContent}>
-        {showSecondAdminWarning && (
-          <Alert
-            type="warning"
-            showIcon
-            icon={<CrownOutlined />}
-            message="Only one active administrator"
-            description="The system operational policy allows at most one Active Administrator. Designating another Active Administrator requires owner authorization."
-            className={styles.adminNotice}
-          />
-        )}
-
         <Form
           form={form}
           layout="vertical"
