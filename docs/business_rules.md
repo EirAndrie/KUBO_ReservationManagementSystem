@@ -854,6 +854,7 @@ instead (retained from old rule `l`).
   to 12:00 on `check_out_date`, resort time (Asia/Manila). Checking in earlier than 12:00
   on `check_in_date` adds an `EarlyCheckIn` charge of PHP 150.00 per hour before 12:00 (a
   part hour counts as a full hour). The fee is added by the check-in itself.
+  "Today" in these date checks is the resort date (Asia/Manila), not the database server's date.
 - **Entities:** `reserved_kubo`, `additional_charge`, `audit_log`
 - **Enforcement:** Application-level validation. The DDL stores the approval boolean
   but does not enforce the date rule. The early fee is written by `fn_check_in_reserved_kubo`.
