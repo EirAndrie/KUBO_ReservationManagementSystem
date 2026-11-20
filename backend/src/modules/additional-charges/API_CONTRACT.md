@@ -765,6 +765,7 @@ No response body.
 | Invalid UUID | `400` | `Invalid chargeId format` |
 | Charge does not exist | `404` | `Additional charge not found` |
 | Reservation is settled | `400` | `Charge cannot be deleted after settlement.` |
+| Charge is an early check-in or late check-out fee | `400` | `Early check-in and late check-out fees cannot be deleted. Ask an Administrator to record an Adjustment or Reversal.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
 | Audit write fails | `500` | Database/fallback error |
