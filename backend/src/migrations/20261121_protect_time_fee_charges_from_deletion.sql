@@ -26,8 +26,7 @@ BEGIN
               AND table_name = 'additional_charge'
               AND column_name = 'time_fee_kubo_id'
        ) THEN
-        RAISE NOTICE 'time-fee charges are not provisioned; skipping delete protection';
-        RETURN;
+        RAISE EXCEPTION 'time-fee charges are not provisioned; apply 20261120_add_early_late_checkout_fees.sql first';
     END IF;
 
     EXECUTE $sql$

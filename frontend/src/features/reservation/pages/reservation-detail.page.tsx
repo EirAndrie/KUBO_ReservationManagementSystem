@@ -219,6 +219,10 @@ export const ReservationDetailPage: React.FC = () => {
     return Math.max(0, adjustment.payment_amount - alreadyReversed);
   };
 
+  /** Early check-in and late check-out fees cannot be deleted by Staff (the API refuses). */
+  const isTimeFee = (charge: AdditionalCharge) =>
+    charge.charge_type === 'EarlyCheckIn' || charge.charge_type === 'LateCheckOut';
+
   const hasCorrectionHistory = (charge: AdditionalCharge) =>
     paymentList.some((payment) =>
       payment.related_charge_id === charge.additional_charge_id &&
@@ -547,7 +551,13 @@ export const ReservationDetailPage: React.FC = () => {
             render: (_: unknown, r: LedgerRow) => {
               const items: RowMenuItem[] = [];
 
-              if (r.charge && isStaff && !isSettled && !hasCorrectionHistory(r.charge)) {
+              if (
+                r.charge &&
+                isStaff &&
+                !isSettled &&
+                !isTimeFee(r.charge) &&
+                !hasCorrectionHistory(r.charge)
+              ) {
                 items.push({
                   key: 'del',
                   label: 'Remove charge',
