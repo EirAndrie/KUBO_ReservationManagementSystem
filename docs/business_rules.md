@@ -856,6 +856,7 @@ instead (retained from old rule `l`).
   part hour counts as a full hour). The fee is added by the check-in itself.
   Staff cannot delete an early or late fee (`additional_charge.time_fee_kubo_id` is set);
   an Administrator reduces or reverses it with an Adjustment or Reversal payment.
+  "Today" in these date checks is the resort date (Asia/Manila), not the database server's date. Routines that use `CURRENT_DATE` carry `SET timezone TO 'Asia/Manila'`; any migration that redefines one must keep that clause (`CREATE OR REPLACE` drops it otherwise).
 - **Entities:** `reserved_kubo`, `additional_charge`, `audit_log`
 - **Enforcement:** Application-level validation. The DDL stores the approval boolean
   but does not enforce the date rule. The early fee is written by `fn_check_in_reserved_kubo`.
