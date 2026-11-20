@@ -32,6 +32,8 @@ Read these before doing anything else. They are not optional.
 - `docs/business_rules.md` is the authoritative domain specification. The
   `business_rules_DDL.md` and `business_rules_review.md` files it references do not
   exist in this repo.
+- Domain terms are in `GLOSSARY.md`. Use its words in code, UI, and docs, and avoid
+  the synonyms it lists.
 - Read the relevant doc before changing an area: `docs/architecture.md`,
   `database.md`, `api.md`, `validation.md`, `coding-standards.md`,
   `system_flowcharts.md`, and each backend module's `API_CONTRACT.md`.
