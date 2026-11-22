@@ -1,0 +1,14 @@
+$kind: http-request
+url: '{{base_url}}/kubos/911e5b93-93d1-4a70-aa28-c2b5ebdbad5f/ready'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Only a Cleaning kubo can be marked ready (400)', () => pm.response.to.have.status(400));
+      pm.test('Error names the Cleaning rule', () => pm.expect(pm.response.json().message).to.match(/in Cleaning/));
+order: 5800

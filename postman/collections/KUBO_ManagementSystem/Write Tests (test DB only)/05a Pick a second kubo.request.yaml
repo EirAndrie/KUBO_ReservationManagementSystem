@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/kubos?limit=100'
+method: GET
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Kubo list loads (200)', () => pm.response.to.have.status(200));
+      const other = (pm.response.json().kubos || []).find((k) => k.kubo_id !== '911e5b93-93d1-4a70-aa28-c2b5ebdbad5f' && !['Maintenance', 'OutOfService'].includes(k.status));
+      pm.test('A second bookable kubo exists', () => pm.expect(other, 'no second kubo').to.be.an('object'));
+      if (other) pm.collectionVariables.set('wt_kubo2_id', other.kubo_id);
+order: 5100

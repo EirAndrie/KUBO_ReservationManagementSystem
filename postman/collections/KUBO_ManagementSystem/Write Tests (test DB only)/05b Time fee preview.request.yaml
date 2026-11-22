@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/kubos/911e5b93-93d1-4a70-aa28-c2b5ebdbad5f/time-fees'
+method: GET
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Fee preview loads (200)', () => pm.response.to.have.status(200));
+      const f = pm.response.json().timeFees || {};
+      pm.test('Hourly rate is PHP 150', () => pm.expect(Number(f.hourly_rate)).to.eql(150));
+      pm.test('No fee is applied yet', () => {
+        pm.expect(f.early_applied).to.eql(false);
+        pm.expect(f.late_applied).to.eql(false);
+        pm.expect(Number(f.late_fee)).to.eql(0);
+      });
+order: 5200
