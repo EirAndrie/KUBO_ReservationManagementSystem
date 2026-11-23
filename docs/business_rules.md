@@ -854,8 +854,8 @@ instead (retained from old rule `l`).
   to 12:00 on `check_out_date`, resort time (Asia/Manila). Checking in earlier than 12:00
   on `check_in_date` adds an `EarlyCheckIn` charge of PHP 150.00 per hour before 12:00 (a
   part hour counts as a full hour). Only the arrival-day morning is billed: at most 12
-  hours (00:00 to 12:00 on `check_in_date`), so an approved check-in on an earlier date
-  does not add hours for the days before. The fee is added by the check-in itself.
+  hours (00:00 to 12:00 on `check_in_date`). Early check-in can therefore be approved
+  only on the arrival day (resort time); an earlier approval is refused. The fee is added by the check-in itself.
   Staff cannot delete an early or late fee (`additional_charge.time_fee_kubo_id` is set);
   an Administrator reduces or reverses it with an Adjustment or Reversal payment.
   "Today" in these date checks is the resort date (Asia/Manila), not the database server's date. Routines that use `CURRENT_DATE` carry `SET timezone TO 'Asia/Manila'`; any migration that redefines one must keep that clause (`CREATE OR REPLACE` drops it otherwise).
