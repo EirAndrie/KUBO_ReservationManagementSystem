@@ -274,6 +274,10 @@ Context for a new agent; `docs/business_rules.md` stays authoritative.
 - The `Write Tests (test DB only)` folder runs only with `--env-var allow_writes=true`
   and only against a test copy: start a second backend from `backend/` with
   `DB_NAME=kubo_beach_resort_system_test` and `PORT=8081`.
+- `npm run db:verify-overstay` (from `backend/`, with `DB_NAME` set to the test database)
+  checks the overstay fee routines in a rolled-back transaction. It refuses to run unless
+  `DB_NAME` ends in `_test`. Postman cannot build an overstay because the API refuses
+  past stay dates.
 - Report exactly what was run and what was not checked.
 
 ## Documentation Expectations
