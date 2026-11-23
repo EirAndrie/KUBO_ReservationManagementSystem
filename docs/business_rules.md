@@ -853,7 +853,9 @@ instead (retained from old rule `l`).
 - **Standard times and fees (issue #107):** the standard stay is 12:00 on `check_in_date`
   to 12:00 on `check_out_date`, resort time (Asia/Manila). Checking in earlier than 12:00
   on `check_in_date` adds an `EarlyCheckIn` charge of PHP 150.00 per hour before 12:00 (a
-  part hour counts as a full hour). The fee is added by the check-in itself.
+  part hour counts as a full hour). Only the arrival-day morning is billed: at most 12
+  hours (00:00 to 12:00 on `check_in_date`). Early check-in can therefore be approved
+  only on the arrival day (resort time); an earlier approval is refused. The fee is added by the check-in itself.
   Staff cannot delete an early or late fee (`additional_charge.time_fee_kubo_id` is set);
   an Administrator reduces or reverses it with an Adjustment or Reversal payment.
   "Today" in these date checks is the resort date (Asia/Manila), not the database server's date. Routines that use `CURRENT_DATE` carry `SET timezone TO 'Asia/Manila'`; any migration that redefines one must keep that clause (`CREATE OR REPLACE` drops it otherwise).
@@ -881,8 +883,11 @@ instead (retained from old rule `l`).
   `reserved_kubo.status = 'CheckedIn'` and whose reservation is `CheckedIn`.
 - **Late check-out (issue #107):** checking out after 12:00 on `check_out_date` carries a
   `LateCheckOut` charge of PHP 150.00 per hour past 12:00 (a part hour counts as a full
-  hour). Check-out is refused until Staff has applied the fee; BR-064 then requires the
-  guest to settle it. The fee is fixed when applied.
+  hour), at most 12 hours (12:00 to midnight). Each calendar day past `check_out_date`
+  adds one overstay night at the nightly rate booked (`price_at_booking`), recorded as an
+  `Other` charge linked to the kubo. Check-out is refused until Staff has applied the fee
+  and the nights; BR-064 then requires the guest to settle them. The hourly fee is fixed
+  when applied; the nights are topped up if the overstay grows before check-out.
 - **Entities:** `reserved_kubo`, `reservation`, `additional_charge`
 - **Enforcement:** Application-level state check. The late-fee requirement is enforced in
   `fn_check_out_reserved_kubo`; the fee is applied by `fn_apply_late_check_out_fee`.

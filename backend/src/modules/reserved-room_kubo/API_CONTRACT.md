@@ -756,13 +756,16 @@ resort time (Asia/Manila, the database clock). Time outside it is billed at
 
 | When | Fee | How it reaches the bill |
 |---|---|---|
-| Check-in before 12:00 on `check_in_date` (or on an earlier approved date) | `EarlyCheckIn` charge, whole hours before 12:00 | Added automatically inside `PATCH .../check-in` |
-| Check-out after 12:00 on `check_out_date` | `LateCheckOut` charge, whole hours after 12:00 | Staff applies it with `POST .../late-check-out-fee`; `PATCH .../check-out` is refused until then |
+| Check-in before 12:00 on `check_in_date` (or on an earlier approved date) | `EarlyCheckIn` charge, whole hours from 00:00 to 12:00 on `check_in_date` (at most 12; earlier dates add no hours) | Added automatically inside `PATCH .../check-in` |
+| Check-out after 12:00 on `check_out_date` | `LateCheckOut` charge, whole hours after 12:00 (at most 12), plus one `Other` overstay-night charge per calendar day past `check_out_date` at the booked nightly rate | Staff applies it with `POST .../late-check-out-fee`; `PATCH .../check-out` is refused until then |
 
 Both are ordinary `additional_charge` rows (`quantity` = hours, `unit_amount` = 150.00),
 so they count in the balance, show in the charge list, and are audited. At most one
-fee of each type exists per kubo per reservation. The fee is fixed when it is applied:
-settling the balance later does not add hours.
+fee of each type exists per kubo per reservation. The hourly fee is fixed when it is applied:
+settling the balance later does not add hours. Overstay nights (`quantity` = nights,
+`unit_amount` = `price_at_booking`) are topped up by the same call if the overstay has
+grown, and `late_fee` / `late_applied` in 13.1 include them, so `late_applied` is `false`
+until the nights are on the bill.
 
 ### 13.1 `GET /reservations/:reservationId/kubos/:kuboId/time-fees`
 
@@ -779,7 +782,7 @@ Failures: `404` `Reserved kubo does not exist.`
 ### 13.2 `POST /reservations/:reservationId/kubos/:kuboId/late-check-out-fee`
 
 Staff only; no body. Idempotent: a repeat call returns the fee already applied.
-Response key **`lateFee`**: `{ charge_id, hours, amount }`.
+Response key **`lateFee`**: `{ charge_id, hours, amount }` (`amount` is the hourly fee plus any overstay nights).
 
 | Condition | Status | Message |
 |---|---:|---|
@@ -795,7 +798,9 @@ Writes one `additional_charge` audit row (`Create`).
 - `PATCH .../check-in` adds the early fee in the same transaction when it applies.
 - `PATCH .../check-out` returns `400` `A late check-out fee applies (<n> hour(s) past 12:00). Apply the fee before checking out.`
   when a late fee is due and not yet applied. After it is applied the zero-balance rule
-  (BR-064) makes the guest settle it before check-out completes.
+  (BR-064) makes the guest settle it before check-out completes. A guest past the
+  check-out date also gets `400` `The guest is past the check-out date. Apply the late check-out fee before checking out.`
+  until the overstay nights are billed.
 
 - The response key is camelCase **`reservedKubos`**, while the nested assignment
   fields are snake_case.
