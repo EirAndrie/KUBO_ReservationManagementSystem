@@ -318,7 +318,7 @@ Staff only.
 | Kubo does not exist | `404` | `Kubo does not exist.` |
 | Kubo status is `Maintenance`, `OutOfService`, or `UnderInspection` | `400` | `Kubo is not available for booking.` |
 | `Cleaning` kubo with same-day check-in | `400` | `Kubo is being cleaned and is not available for a same-day check-in.` |
-| Overlapping active assignment for the kubo | `400` | `Kubo is not available for the selected dates.` |
+| Overlapping active assignment for the kubo, or a guest still `CheckedIn` past check-out when the stay starts today or earlier | `400` | `Kubo is not available for the selected dates.` |
 | Reference code generation exhausts retries | `400` | `Unable to generate a unique reservation reference code.` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |
