@@ -78,7 +78,6 @@ export function useMarkKuboNoShow() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
       queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
-      queryClient.invalidateQueries({ queryKey: ADDITIONAL_CHARGES_KEY });
     },
   });
 }
