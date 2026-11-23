@@ -28,7 +28,7 @@ Use a disposable database with one active Staff account and the active Administr
 - [x] Try checking in a kubo in `Cleaning`, `Maintenance`, `UnderInspection`, `OutOfService`, or `Occupied`. Confirm it is rejected until the kubo is assignable.
 - [x] Check a guest in before 12:00 on the arrival day. Confirm the drawer shows the early check-in fee (PHP 150 per hour before 12:00), the balance includes it after check-in, and an `EarlyCheckIn` charge appears.
 - [x] Check out after 12:00 on the check-out date. Confirm the dialog shows the late fee, check-out stops after adding a `LateCheckOut` charge, and check-out completes only once the balance is paid.
-- [x] For an early arrival, approve early check-in first and confirm that the approval is audited. Without approval, early check-in should be rejected.
+- [x] For an early arrival, approve early check-in first and confirm that the approval is audited. Without approval, early check-in should be rejected. Known issue: approving a date far before arrival billed hundreds of hours (#141, fixed in the early-fee PR); recheck after it merges.
 
 ### 4. Add catalog charges and submit custom requests
 
@@ -77,8 +77,8 @@ Use a disposable database with one active Staff account and the active Administr
 
 ### 9. Review charge requests and manage the catalog
 
-- [x] Create a catalog item with an allowed category, unique name, optional description, non-negative unit price, and active status.
-- [x] Try a case-insensitive duplicate name, negative price, and price with more than two decimal places. Confirm each is rejected.
+- [x] Create a catalog item with an allowed category, unique name, optional description, unit price greater than zero (up to 800,000.00), and active status.
+- [x] Try a case-insensitive duplicate name, a price of 0, a negative price, and a price with more than two decimal places. Confirm each is rejected.
 - [x] Update the name, description, price, and active state. Confirm already-applied charges retain their recorded amounts.
 - [x] Delete an unused catalog item. Confirm the item is removed and the delete is audited.
 - [x] Apply a catalog item to a test reservation, then try to delete it. Confirm deletion is rejected with a conflict and the used item can be deactivated instead.
