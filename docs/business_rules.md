@@ -883,8 +883,11 @@ instead (retained from old rule `l`).
   `reserved_kubo.status = 'CheckedIn'` and whose reservation is `CheckedIn`.
 - **Late check-out (issue #107):** checking out after 12:00 on `check_out_date` carries a
   `LateCheckOut` charge of PHP 150.00 per hour past 12:00 (a part hour counts as a full
-  hour). Check-out is refused until Staff has applied the fee; BR-064 then requires the
-  guest to settle it. The fee is fixed when applied.
+  hour), at most 12 hours (12:00 to midnight). Each calendar day past `check_out_date`
+  adds one overstay night at the nightly rate booked (`price_at_booking`), recorded as an
+  `Other` charge linked to the kubo. Check-out is refused until Staff has applied the fee
+  and the nights; BR-064 then requires the guest to settle them. The hourly fee is fixed
+  when applied; the nights are topped up if the overstay grows before check-out.
 - **Entities:** `reserved_kubo`, `reservation`, `additional_charge`
 - **Enforcement:** Application-level state check. The late-fee requirement is enforced in
   `fn_check_out_reserved_kubo`; the fee is applied by `fn_apply_late_check_out_fee`.
