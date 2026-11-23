@@ -7,7 +7,7 @@ Use a disposable database with one active Staff account and the active Administr
 ### 1. Register or reuse a guest
 
 - [x] Search by email before creating a guest.
-- [ ] Create a guest with a unique email, valid Philippine phone number, supported ID type, and ID number. Confirm the new profile is returned and the ID number is masked in logs and audit details.
+- [x] Create a guest with a unique email, valid Philippine phone number, supported ID type, and ID number. Confirm the new profile is returned and the ID number is masked in logs and audit details.
 - [x] Submit the same email or valid ID type/number pair again. Confirm the existing guest is reused (`reused: true`) instead of creating a duplicate.
 - [x] Try an invalid phone number and a missing ID number. Confirm validation errors are returned and no guest is created. A matching email or ID pair is an intentional reuse case, not a duplicate-record error.
 
@@ -17,15 +17,15 @@ Use a disposable database with one active Staff account and the active Administr
 - [x] Confirm the server generates the reference code, sets the initial status to `Pending`, and snapshots the current nightly rate for each assignment.
 - [x] Try creating a reservation with no assignments, a checkout date on or before check-in, a past check-in date, and an overlapping stay for the same kubo. Confirm each invalid request is rejected without a partial reservation or assignment.
 - [x] Confirm the reservation. Try to confirm it again or confirm a cancelled reservation; both should be rejected.
-- [ ] Update an eligible `Pending` or `Confirmed` reservation. Confirm new or re-dated assignments use the current rate while unchanged assignments keep their booked rate.
+- [x] Update an eligible `Pending` or `Confirmed` reservation. Confirm new or re-dated assignments use the current rate while unchanged assignments keep their booked rate.
 - [x] Try to modify a reservation after check-in. Confirm the change is rejected.
 
 ### 3. Check in
 
-- [ ] Confirm the reservation is `Confirmed`, the assignment is scheduled for the current date, and the kubo is `Available` or `Reserved`.
-- [ ] Check in the assigned kubo. Confirm the assignment becomes `CheckedIn`, the kubo becomes `Occupied`, the reservation becomes `CheckedIn`, and the action is audited.
+- [x] Confirm the reservation is `Confirmed`, the assignment is scheduled for the current date, and the kubo is `Available` or `Reserved`.
+- [x] Check in the assigned kubo. Confirm the assignment becomes `CheckedIn`, the kubo becomes `Occupied`, the reservation becomes `CheckedIn`, and the action is audited.
 - [x] Try check-in for a `Pending`, cancelled, no-show, or already checked-in reservation. Confirm it is rejected.
-- [ ] Try checking in a kubo in `Cleaning`, `Maintenance`, `UnderInspection`, `OutOfService`, or `Occupied`. Confirm it is rejected until the kubo is assignable.
+- [x] Try checking in a kubo in `Cleaning`, `Maintenance`, `UnderInspection`, `OutOfService`, or `Occupied`. Confirm it is rejected until the kubo is assignable.
 - [x] Check a guest in before 12:00 on the arrival day. Confirm the drawer shows the early check-in fee (PHP 150 per hour before 12:00), the balance includes it after check-in, and an `EarlyCheckIn` charge appears.
 - [x] Check out after 12:00 on the check-out date. Confirm the dialog shows the late fee, check-out stops after adding a `LateCheckOut` charge, and check-out completes only once the balance is paid.
 - [x] For an early arrival, approve early check-in first and confirm that the approval is audited. Without approval, early check-in should be rejected.
@@ -45,7 +45,7 @@ Use a disposable database with one active Staff account and the active Administr
 - [x] Record a payment on an eligible reservation. Confirm the server sets its status to `Pending` and supplies the timestamp; neither value is controlled by the client.
 - [x] Move the payment through valid transitions (`Pending` to `Processing` and then `Completed`, or directly to a terminal result allowed by the API). Confirm only completed payments reduce the outstanding balance.
 - [x] Submit a payment larger than the outstanding balance with no approval. Confirm it is rejected and the dialog asks for an Administrator overpayment approval.
-- [ ] Ask an Administrator to approve an overpayment (maximum excess and reason) on the reservation page. Record a payment up to that excess and choose the approval. Confirm the payment is accepted, the approval shows **Used**, the balance becomes a guest credit, and the reservation page asks for the credit to be refunded before check-out.
+- [x] Ask an Administrator to approve an overpayment (maximum excess and reason) on the reservation page. Record a payment up to that excess and choose the approval. Confirm the payment is accepted, the approval shows **Used**, the balance becomes a guest credit, and the reservation page asks for the credit to be refunded before check-out.
 - [x] Try an excess larger than the approval and try reusing a used approval. Confirm both are rejected.
 - [x] Cancel a pending payment that used an approval. Confirm the approval becomes **Available** again.
 - [x] Refund part of a completed payment on the same reservation. Confirm the refund is a positive amount, its `related_payment_id` is the original payment, the original payment becomes `PartiallyRefunded`, and the balance increases by the refunded amount.
@@ -82,12 +82,12 @@ Use a disposable database with one active Staff account and the active Administr
 - [x] Update the name, description, price, and active state. Confirm already-applied charges retain their recorded amounts.
 - [x] Delete an unused catalog item. Confirm the item is removed and the delete is audited.
 - [x] Apply a catalog item to a test reservation, then try to delete it. Confirm deletion is rejected with a conflict and the used item can be deactivated instead.
-- [ ] Open **Charge requests** (`/charge-requests`). Review pending custom requests, approve one, adjust another with a reason, and reject another with a reason. Confirm all decisions are audited, only approvals create applied charges, and the Status filter shows reviewed, rejected, and withdrawn history.
-- [ ] Approve an overpayment on a reservation, then revoke it while unused. Confirm the approval shows **Revoked**, a used approval cannot be revoked, and both actions are audited.
+- [x] Open **Charge requests** (`/charge-requests`). Review pending custom requests, approve one, adjust another with a reason, and reject another with a reason. Confirm all decisions are audited, only approvals create applied charges, and the Status filter shows reviewed, rejected, and withdrawn history.
+- [x] Approve an overpayment on a reservation, then revoke it while unused. Confirm the approval shows **Revoked**, a used approval cannot be revoked, and both actions are audited.
 
 ### 10. Inspect audit history and role boundaries
 
-- [ ] Search audit logs by employee, action, entity type, entity ID, and date range. Open a record and confirm the actor, affected record, description, and before/after values are appropriate.
+- [x] Search audit logs by employee, action, entity type, entity ID, and date range. Open a record and confirm the actor, affected record, description, and before/after values are appropriate.
 - [x] Open entity history and confirm entries are newest first. Confirm sensitive data such as passwords and full guest ID numbers are not exposed.
 - [x] Try to update or delete an audit row through the application. Confirm no such write operation is available.
 - [x] Sign in as Staff and try an Administrator action such as catalog mutation, employee management, rate adjustment, request approval, or audit-log access. Confirm access is denied.
@@ -97,8 +97,8 @@ Use a disposable database with one active Staff account and the active Administr
 ## Business-rule guards
 
 - [x] **Overpayment:** verify a payment above the derived outstanding balance is rejected unless an unused Administrator overpayment approval covers the excess.
-- [ ] **Settlement lock:** before settlement, verify Staff can remove an applied charge. After any completed payment/refund or a terminal reservation status (`CheckedOut`, `Cancelled`, or `NoShow`), verify deletion is blocked.
-- [ ] **Last Administrator:** verify a second active Administrator is rejected and the last active Administrator cannot be deactivated, terminated, reassigned, or deleted.
+- [x] **Settlement lock:** before settlement, verify Staff can remove an applied charge. After any completed payment/refund or a terminal reservation status (`CheckedOut`, `Cancelled`, or `NoShow`), verify deletion is blocked.
+- [x] **Last Administrator:** verify a second active Administrator is allowed (BR-006) and the last active Administrator cannot be deactivated, terminated, reassigned, or deleted.
 - [x] **Derived totals:** verify accommodation, applied charges, net paid, and outstanding balance change from their source records; do not expect a stored reservation total.
 - [x] **Audit atomicity:** after a rejected mutation, confirm neither partial business data nor a success audit event was committed.
 
