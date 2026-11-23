@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubos/1d7da5f0-69bd-4862-a69c-99176755ee70
+url: '{{base_url}}/kubos/1d7da5f0-69bd-4862-a69c-99176755ee70'
 method: PATCH
 body:
   type: json

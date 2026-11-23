@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-requests/cd0df2fd-7506-4bcb-b12b-07441b046c62/reject
+url: '{{base_url}}/additional-charge-requests/cd0df2fd-7506-4bcb-b12b-07441b046c62/reject'
 method: PATCH
 body:
   type: json

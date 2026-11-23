@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubo-types/0630beae-af48-4ddc-9884-a62a9c99f652
+url: '{{base_url}}/kubo-types/0630beae-af48-4ddc-9884-a62a9c99f652'
 method: DELETE
 headers:
   Authorization: "{{bearer_token_1c7p}}"

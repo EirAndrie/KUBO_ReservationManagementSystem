@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/a6ce695b-011d-436e-904a-66d472519f1c
+url: '{{base_url}}/reservations/a6ce695b-011d-436e-904a-66d472519f1c'
 method: GET
 body:
   type: text

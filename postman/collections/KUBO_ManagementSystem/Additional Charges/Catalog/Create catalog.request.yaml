@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-catalog
+url: '{{base_url}}/additional-charge-catalog'
 method: POST
 body:
   type: json

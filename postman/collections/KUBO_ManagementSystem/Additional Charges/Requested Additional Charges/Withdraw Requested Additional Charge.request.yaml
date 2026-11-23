@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charge-requests/cd7d0c98-83fe-4a1f-ad3e-8ba60cd6af8e/withdraw
+url: '{{base_url}}/additional-charge-requests/cd7d0c98-83fe-4a1f-ad3e-8ba60cd6af8e/withdraw'
 method: PATCH
 body:
   type: json

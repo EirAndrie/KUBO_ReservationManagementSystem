@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/guests?page=1&limit=100
+url: '{{base_url}}/guests?page=1&limit=100'
 method: GET
 headers:
   Authorization: "{{bearer_token_1c7p}}"

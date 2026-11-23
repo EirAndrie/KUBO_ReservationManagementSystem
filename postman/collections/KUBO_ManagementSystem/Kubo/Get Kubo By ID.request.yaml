@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/kubos/c4f6fff3-94fa-4820-88c8-d7d751ffc0dc
+url: '{{base_url}}/kubos/c4f6fff3-94fa-4820-88c8-d7d751ffc0dc'
 method: GET
 headers:
   Authorization: "{{bearer_token_1c7p}}"

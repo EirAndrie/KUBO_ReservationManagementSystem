@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/57cef58b-85a0-4d70-9a52-92b8095b4268/confirm
+url: '{{base_url}}/reservations/57cef58b-85a0-4d70-9a52-92b8095b4268/confirm'
 method: PATCH
 body:
   type: text
