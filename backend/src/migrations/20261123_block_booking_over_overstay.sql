@@ -90,7 +90,9 @@ AS $function$
                          AND rk.check_out_date > p_check_in_date)
                         -- Overstay: the guest is still in the kubo after the
                         -- booked check-out date, so it is not free to book.
+                        -- A guest due out today is not an overstay yet.
                         OR (rk.status = 'CheckedIn'
+                            AND rk.check_out_date < CURRENT_DATE
                             AND p_check_in_date <= CURRENT_DATE)
                   )
             ) THEN
