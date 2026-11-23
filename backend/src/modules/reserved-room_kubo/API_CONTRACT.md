@@ -756,7 +756,7 @@ resort time (Asia/Manila, the database clock). Time outside it is billed at
 
 | When | Fee | How it reaches the bill |
 |---|---|---|
-| Check-in before 12:00 on `check_in_date` (or on an earlier approved date) | `EarlyCheckIn` charge, whole hours before 12:00 | Added automatically inside `PATCH .../check-in` |
+| Check-in before 12:00 on `check_in_date` (or on an earlier approved date) | `EarlyCheckIn` charge, whole hours from 00:00 to 12:00 on `check_in_date` (at most 12; earlier dates add no hours) | Added automatically inside `PATCH .../check-in` |
 | Check-out after 12:00 on `check_out_date` | `LateCheckOut` charge, whole hours after 12:00 | Staff applies it with `POST .../late-check-out-fee`; `PATCH .../check-out` is refused until then |
 
 Both are ordinary `additional_charge` rows (`quantity` = hours, `unit_amount` = 150.00),
