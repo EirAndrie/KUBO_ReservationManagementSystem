@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/kubos/911e5b93-93d1-4a70-aa28-c2b5ebdbad5f/reassign'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{admin_access_token}}'
+body:
+  type: json
+  content: |-
+    { "newKuboId": "{{wt_kubo2_id}}" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Reassign is Staff-only (403)', () => pm.response.to.have.status(403));
+order: 5400

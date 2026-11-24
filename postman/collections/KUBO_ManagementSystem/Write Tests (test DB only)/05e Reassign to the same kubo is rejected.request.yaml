@@ -1,0 +1,17 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/kubos/911e5b93-93d1-4a70-aa28-c2b5ebdbad5f/reassign'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    { "newKuboId": "911e5b93-93d1-4a70-aa28-c2b5ebdbad5f" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Same-kubo reassign is rejected (400)', () => pm.response.to.have.status(400));
+      pm.test('Error asks for a different kubo', () => pm.expect(pm.response.json().message).to.match(/different kubo/i));
+order: 5500

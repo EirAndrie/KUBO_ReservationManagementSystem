@@ -1,0 +1,17 @@
+$kind: http-request
+url: '{{base_url}}/reservations/{{wt_reservation_id}}/kubos/{{wt_kubo2_id}}/reassign'
+method: PATCH
+headers:
+  - key: Authorization
+    value: '{{staff_access_token}}'
+body:
+  type: json
+  content: |-
+    { "newKuboId": "911e5b93-93d1-4a70-aa28-c2b5ebdbad5f" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Staff can reassign back (200)', () => pm.response.to.have.status(200));
+      pm.test('Original kubo is assigned again', () => pm.expect((pm.response.json().reservedKubos || {}).kubo_id).to.eql('911e5b93-93d1-4a70-aa28-c2b5ebdbad5f'));
+order: 5700
