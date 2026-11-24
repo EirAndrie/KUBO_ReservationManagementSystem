@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/reservations/0c7adeb6-485d-4c98-9a65-1f4bec4b0c1e/kubos
+url: '{{base_url}}/reservations/0c7adeb6-485d-4c98-9a65-1f4bec4b0c1e/kubos'
 method: POST
 body:
   type: json

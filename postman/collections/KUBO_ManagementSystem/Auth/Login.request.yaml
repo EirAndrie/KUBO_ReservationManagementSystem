@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/auth/login
+url: '{{base_url}}/auth/login
 method: POST
 body:
   type: json

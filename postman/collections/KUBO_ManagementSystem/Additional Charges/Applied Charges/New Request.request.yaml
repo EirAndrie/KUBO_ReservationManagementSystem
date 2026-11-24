@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/additional-charges/8a92ab2e-6816-4f6a-9b57-aa12faf8cc32/corrections
+url: '{{base_url}}/additional-charges/8a92ab2e-6816-4f6a-9b57-aa12faf8cc32/corrections'
 method: POST
 body:
   type: json

@@ -1,4 +1,4 @@
 $kind: http-request
-url: http://localhost:8080/KUBO_Resort/Management-System/v0.0.1/payments
+url: '{{base_url}}/payments'
 method: GET
 order: 3000
