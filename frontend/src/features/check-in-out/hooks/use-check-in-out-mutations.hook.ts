@@ -15,6 +15,14 @@ import type { CheckInOutActionParams } from '../types/check-in-out.types';
 const GUEST_STAY_STATS_KEY = ['guests', 'stay-stats'] as const;
 
 /**
+ * Applied additional charges (`paymentKeys.charges(reservationId)` in the payment
+ * feature). Check-in adds an `EarlyCheckIn` fee and check-out a `LateCheckOut` fee,
+ * so the reservation page's charges table must refetch. Written out for the same
+ * reason as the key above.
+ */
+const ADDITIONAL_CHARGES_KEY = ['additional-charges'] as const;
+
+/**
  * Mutation hook to check in a reserved kubo assignment (BR-058, BR-060).
  */
 export function useCheckInKubo() {
@@ -29,6 +37,7 @@ export function useCheckInKubo() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
       queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADDITIONAL_CHARGES_KEY });
     },
   });
 }
@@ -48,6 +57,7 @@ export function useApproveEarlyCheckIn() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
       queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADDITIONAL_CHARGES_KEY });
     },
   });
 }
@@ -103,6 +113,7 @@ export function useCheckOutKubo() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all });
       queryClient.invalidateQueries({ queryKey: ['kubos'] });
       queryClient.invalidateQueries({ queryKey: GUEST_STAY_STATS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADDITIONAL_CHARGES_KEY });
     },
   });
 }
