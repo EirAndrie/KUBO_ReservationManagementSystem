@@ -213,7 +213,7 @@ Staff only.
 | Kubo does not exist | `404` | `Kubo does not exist.` |
 | Kubo status is not bookable | `400` | `Kubo is not available for booking.` |
 | Same-day check-in on a `Cleaning` kubo | `400` | `Kubo is being cleaned and is not available for a same-day check-in.` |
-| Overlapping assignment | `400` | `Kubo is not available for the selected dates.` |
+| Overlapping assignment, or a guest still `CheckedIn` past check-out when the stay starts today or earlier | `400` | `Kubo is not available for the selected dates.` |
 | Assignment cannot be reloaded after insert | `404` | `Reserved kubo not found` |
 | Not authenticated | `401` | `Authentication required` |
 | Not Staff | `403` | `Insufficient privileges` |

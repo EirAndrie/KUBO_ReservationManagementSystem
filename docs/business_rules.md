@@ -458,6 +458,13 @@ instead (retained from old rule `l`).
   `20261116_add_reserved_kubo_overlap_exclusion.sql`) backs this up in the database:
   `EXCLUDE USING gist (kubo_id WITH =, daterange(check_in_date, check_out_date, '[)') WITH &&) WHERE (status IN ('Reserved', 'CheckedIn'))`.
   The range is half-open, so a stay may start on another stay's check-out date.
+  Overstay: while a guest is still `CheckedIn` after the assignment's check-out date,
+  a stay starting today or earlier on that kubo is refused with the same message
+  (`20261123_block_booking_over_overstay.sql`, in `fn_validate_kubo_assignment`). A guest
+  due out today is not an overstay yet, so a direct create or reassign is still allowed
+  for a same-day turnover. The availability search is stricter: it hides any kubo with a
+  `CheckedIn` guest for a stay starting today or earlier. Stays starting later are not
+  affected.
   Before the constraint is added, `20261116_add_reserved_kubo_overlap_cleanup.sql`
   moves assignments still `Reserved`/`CheckedIn` under a `Cancelled`, `NoShow`, or
   `CheckedOut` reservation to the matching inactive status (the procedures already
